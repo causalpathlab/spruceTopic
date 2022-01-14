@@ -37,3 +37,23 @@ vignettes/*.pdf
 
 # R Environment Variables
 .Renviron
+
+# Ignore all data files
+*.txt.gz
+*.gtf.gz
+*.csv
+*.txt
+
+#Ignore config file
+config.yaml
+io.py
+
+
+#Ignore extra files
+*.html
+
+# Byte-compiled / optimized / DLL files
+__pycache__/
+*.py[cod]
+*$py.class
+
