@@ -34,7 +34,7 @@ sc.pp.scale(adata, max_value=10)
 
 sc.tl.pca(adata, svd_solver='arpack')
 sc.pl.pca(adata, color='CST3')
-plt.savefig("../scanpy_pbmc_pca.png")
+plt.savefig("../scanpy_pbmc_pca.png");plt.close()
 
 df = adata.to_df()
 

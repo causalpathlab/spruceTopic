@@ -1,21 +1,67 @@
 import pandas as pd
+import matplotlib.pylab as plt
 from gen_util.io import read_config
+
+
+def select_protein_coding_genes(df):
+    params = read_config()
+    pcg = params["home"]+params["database"]+params["protein_coding_genes"]
+    df_pcg = pd.read_csv(pcg,header=None,names=["gene"])
+    drop_columns = [x for x in df.columns[1:-1] if x not in df_pcg["gene"].values]
+    df = df.drop(drop_columns,axis=1)
+    return df
+
+def scanpy_filter(df):
+    
+    import scanpy as sc
+    
+    ## convert df to anndata object
+    obs = pd.DataFrame(df.iloc[:,0])
+    var = pd.DataFrame(index=df.columns[1:-1])
+    X = df.iloc[:,1:-1].to_numpy()
+    adata = sc.AnnData(X, obs=obs, var=var, dtype='int32')
+
+    ## filter scanpy default settings
+    sc.pp.filter_cells(adata, min_genes=200)
+    sc.pp.filter_genes(adata, min_cells=3)
+    adata.var['mt'] = adata.var_names.str.startswith('MT-')  
+    sc.pp.calculate_qc_metrics(adata, qc_vars=['mt'], percent_top=None, log1p=False, inplace=True)
+    adata = adata[adata.obs.n_genes_by_counts < 2500, :]
+    adata = adata[adata.obs.pct_counts_mt < 5, :]
+    sc.pp.normalize_total(adata, target_sum=1e4)
+    sc.pp.log1p(adata)
+    sc.pp.highly_variable_genes(adata, min_mean=0.0125, max_mean=3, min_disp=0.5)
+    adata = adata[:, adata.var.highly_variable]
+    sc.pp.regress_out(adata, ['total_counts', 'pct_counts_mt'])
+    sc.pp.scale(adata, max_value=10)
+
+    ## scanpy pca check
+    sc.tl.pca(adata, svd_solver='arpack')
+    sc.pl.pca(adata, color='CST3')
+    plt.savefig("../output/scanpy_test_pca.png");plt.close()
+
+    ## get df back from anndata object
+    df_scanpy = adata.to_df()
+    df_scanpy.columns = adata.var_names
+    df_scanpy["cell"] = adata.obs.cell
+    dfjoin = pd.merge(df_scanpy,df[["cell","cluster"]],on="cell",how="left")
+    dfjoin = dfjoin[["cell"]+[x for x in adata.var_names]+["cluster"]]
+    return dfjoin
 
 
 def filter_genes(df):
     
-    # filter out the following-
-    
-    # 1) TODO non protein coding
+    print("initial data size : ",df.shape)
 
-    # 2)mitochondrial genes were eliminated previousl ?
+    # keeping protein coding genes
+    df = select_protein_coding_genes(df)
+    print("after selecting protein coding genes ",df.shape)
 
-    # 3) a gene was eliminated if the number of cells expressing this gene is <10.
-    print("before filtering genes ",df.shape)
+    # a gene was eliminated if the number of cells expressing this gene is <10.
     drop_columns = [ col for col,val  in df.iloc[:,1:-1].sum(axis=0).iteritems() if val < 10 ]
     df = df.drop(drop_columns,axis=1)
-    print("after filtering genes ",df.shape)
-
+    print("after selecting genes with read counts >= 10 cells ",df.shape)
+    
     return df
 
 

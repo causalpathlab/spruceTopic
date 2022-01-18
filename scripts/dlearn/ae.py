@@ -12,6 +12,9 @@ import torch.nn as nn
 import torch.nn.functional as F
 from torch.utils.data import DataLoader
 from torch.utils.data import Dataset
+import matplotlib.pyplot as plt
+import pandas as pd
+import numpy as np
 
 
 class Encoder(nn.Module):
@@ -123,4 +126,18 @@ def vaetrain(autoencoder, data,device, epochs=50):
 		if epoch % 5 == 0:  
 			print('====> Epoch: {} Average loss: {:.4f}'.format(epoch, loss/len(data)))
 	return autoencoder
+def plot_ae_components(data,autoencoder,device,label):
+	for i, (x,y) in enumerate(data):
+		z = autoencoder.encoder(x.to(device))
+		z = z.to('cpu').detach().numpy()
+		plt.scatter(z[:, 0], z[:, 1],c=y, cmap='tab10')
+	plt.savefig("../output/"+label+".png");plt.close()
+
+def get_encoded_z(df,autoencoder,device):
+	x = df.iloc[:,1:-1].values.astype('float32')
+	x = torch.from_numpy(x).to(device)
+	z = autoencoder.encoder(x.to(device))
+	df_z = pd.DataFrame(z.to('cpu').detach().numpy())
+	df_z.columns = ["z"+str(i)for i in df_z.columns]
+	return df_z
 
