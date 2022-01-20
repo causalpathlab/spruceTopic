@@ -1,11 +1,4 @@
 
-
-## in progress..
-## compiled from pytorch tutorials..
-## https://avandekleut.github.io/vae/
-## https://github.com/lschmiddey/Autoencoder
-
-
 import torch; torch.manual_seed(0)
 import torchvision
 import torch.nn as nn
@@ -16,39 +9,32 @@ import matplotlib.pyplot as plt
 import pandas as pd
 import numpy as np
 
+class Stacklayers(nn.Module):
+	def __init__(self,input_size,layers_design):
+		super(Stacklayers, self).__init__()
 
-class Encoder(nn.Module):
-	def __init__(self, input_dims, latent_dims):
-		super(Encoder, self).__init__()
-		self.linear1 = nn.Linear(input_dims, 128)
-		self.linear2 = nn.Linear(128, latent_dims)
-	def forward(self, x):
-		output = F.relu(self.linear1(x))
-		z = F.relu(self.linear2(output))
-		return z
-
-class VariationalEncoder(nn.Module):
-	def __init__(self, input_dims, latent_dims):
-		super(VariationalEncoder, self).__init__()
-		self.linear1 = nn.Linear(input_dims, 128)
-		self.linear2 = nn.Linear(128, latent_dims)
-		self.linear3 = nn.Linear(128, latent_dims)
-
-		## TODO need to look up pytorch documentation for cuda sampling call
-		self.N = torch.distributions.Normal(0, 1)
-		self.N.loc = self.N.loc.cuda() 
-		self.N.scale = self.N.scale.cuda()
-		self.kl = 0
-
-	def forward(self, x):
-		output = F.relu(self.linear1(x))
-		mu =  self.linear2(output)
-		## TODO do we need to pass sigma from relu as well if exp is used
-		sigma = torch.exp(self.linear3(output))
-		z = mu + sigma*self.N.sample(mu.shape)
-		self.kl = (sigma**2 + mu**2 - torch.log(sigma) - 1/2).sum()
-		return z
-
+		self.layers = nn.ModuleList()
+		self.input_size = input_size
+		for next_size,activfunc in layers_design:
+			self.layers.append(nn.Linear(input_size,next_size))
+			self.layers.append(nn.BatchNorm1d(next_size))
+			input_size = next_size
+			self.layers.append(self.get_activation(activfunc))
+		
+	def forward(self, input_data):
+		for layer in self.layers:
+			input_data = layer(input_data)
+		return input_data
+	
+	def get_activation(self, act):
+		if act == 'tanh':
+			act = nn.Tanh()
+		elif act == 'relu':
+			act = nn.ReLU()
+		else:
+			print('Defaulting to tanh activations...')
+			act = nn.Tanh()
+		return act 
 
 class Decoder(nn.Module):
 	def __init__(self, input_dims, latent_dims):
@@ -60,23 +46,18 @@ class Decoder(nn.Module):
 		x_hat = F.relu(self.linear2(output))
 		return x_hat
 
+
 class Autoencoder(nn.Module):
 	def __init__(self,input_dims,latent_dims):
 		super(Autoencoder, self).__init__()
-		self.encoder = Encoder(input_dims,latent_dims)
+		self.encoder = Stacklayers(input_dims, \
+						[(128,"relu"),\
+						(latent_dims,"relu")])
 		self.decoder = Decoder(input_dims,latent_dims)
 	def forward(self, x):
 		z = self.encoder(x)
 		return self.decoder(z)
 
-class VariationalAutoencoder(nn.Module):
-	def __init__(self,input_dims,latent_dims):
-		super(VariationalAutoencoder, self).__init__()
-		self.encoder = VariationalEncoder(input_dims,latent_dims)
-		self.decoder = Decoder(input_dims,latent_dims)
-	def forward(self, x):
-		z = self.encoder(x)
-		return self.decoder(z)
 
 class TabularDataset(Dataset):
 	def __init__(self, x,y):
@@ -110,22 +91,6 @@ def train(autoencoder, data,device, epochs=300):
 	return autoencoder
 
 
-def vaetrain(autoencoder, data,device, epochs=50):
-	opt = torch.optim.Adam(autoencoder.parameters())
-	mse = nn.MSELoss()
-	for epoch in range(epochs):
-		loss = 0
-		for indx,(x,y) in enumerate(data):
-			x = x.to(device)
-			opt.zero_grad()
-			x_hat = autoencoder(x)
-			train_loss = mse(x_hat,x) + autoencoder.encoder.kl
-			train_loss.backward()
-			opt.step()
-			loss += train_loss.item()
-		if epoch % 5 == 0:  
-			print('====> Epoch: {} Average loss: {:.4f}'.format(epoch, loss/len(data)))
-	return autoencoder
 def plot_ae_components(data,autoencoder,device,label):
 	for i, (x,y) in enumerate(data):
 		z = autoencoder.encoder(x.to(device))

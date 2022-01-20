@@ -49,18 +49,21 @@ def scanpy_filter(df):
     return dfjoin
 
 
-def filter_genes(df):
+def filter_minimal(df):
     
     print("initial data size : ",df.shape)
 
-    # keeping protein coding genes
-    df = select_protein_coding_genes(df)
-    print("after selecting protein coding genes ",df.shape)
-
-    # a gene was eliminated if the number of cells expressing this gene is <10.
-    drop_columns = [ col for col,val  in df.iloc[:,1:-1].sum(axis=0).iteritems() if val < 10 ]
+    # eliminate gene if the total number of counts is < cutoff per tissue type.
+    cutoff = 50
+    drop_columns =[]
+    for tissue in df["sample"].unique():
+        drop_columns_sample = [ col for col,val  in df[df["sample"]==tissue].iloc[:,1:-1].sum(axis=0).iteritems() if val < cutoff ]
+        for c in drop_columns_sample:
+            if c not in drop_columns:
+                drop_columns.append(c)
+    
     df = df.drop(drop_columns,axis=1)
-    print("after selecting genes with read counts >= 10 cells ",df.shape)
+    print("after selecting genes with read counts >= "+str(cutoff)+" cells ",df.shape)
     
     return df
 
@@ -76,7 +79,11 @@ def read_sc_data():
         df = df.rename(columns=df.iloc[0])
         df = df.iloc[1:].reset_index()
         df = df.rename(columns={"index":"cell"})
-        # df['sample'] = sample.split('_')[0]+"_"+sample.split('.')[1]
+        df['sample'] = sample.split('_')[1]+"_"+sample.split('.')[1]
+        print(df.head())
+        
+        ## take 500 cells sample per cell typer per tissue type
+        df = df.sample(n = 500)
         if sample == params['sample_first']:
             df_combine = df
             print(df.shape,df_combine.shape)
@@ -84,7 +91,11 @@ def read_sc_data():
             df_combine = pd.concat([df_combine, df], axis=0, ignore_index=True)
             print(df.shape,df_combine.shape)
     
-    return df_combine
+    # return df_combine
+    # df_combine = df_combine.fillna(0) ###super slow
+    df_combine.values[df_combine.isna()] = 0
+    df_combine.to_csv("../output/cd4_cd8_500cells_per_tissue_counts.txt.gz",index=False,sep="\t",compression="gzip")
+
 
 
 def select_cells():
@@ -118,4 +129,4 @@ def create_test_data():
     '''IMPORTANT:memory reaches 90%, 80k by 30k merge with 5k by 2'''
     df_selected= df_selected[ [ col for col in df_selected.columns if col != "cluster" ] + ["cluster"]]
     df_selected.to_csv("../output/cd4_c13_c18_counts.txt.gz",index=False,sep="\t",compression="gzip")
-    
+

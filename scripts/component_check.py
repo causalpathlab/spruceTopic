@@ -8,8 +8,6 @@ def run_component_analysis(x,y,method="tsne"):
     import seaborn as sns
     from mpl_toolkits.mplot3d import Axes3D
 
-    # standardizer = preprocessing.StandardScaler()
-    # x = standardizer.fit_transform(x) 
 
     model = None
     if method=="tsne":
@@ -18,6 +16,8 @@ def run_component_analysis(x,y,method="tsne"):
     elif method=="pca":
         from sklearn.decomposition import PCA
         model = PCA(n_components=3)
+        standardizer = preprocessing.StandardScaler()
+        x = standardizer.fit_transform(x) 
 
     components = model.fit_transform(x)
     df_components = pd.DataFrame(data = components,columns = [method+'1', method+'2', method+'3'])
