@@ -5,6 +5,8 @@ import torchvision
 from torch.utils.data import DataLoader
 from torch.utils.data import Dataset
 
+
+
 def parameterize(mean,lnvar):
 	sig = torch.exp(lnvar/2.)
 	eps = torch.randn_like(sig)
@@ -57,14 +59,14 @@ class ETMDecoder(nn.Module):
 	def __init__(self,out_dims,latent_dims,jitter=.1):
 		super(ETMDecoder, self).__init__()
 		self.lbeta = nn.Parameter(torch.randn(latent_dims,out_dims)*jitter)
-		self.beta = nn.LogSoftmax()
-		self.hid = nn.LogSoftmax()
+		self.beta = nn.LogSoftmax(dim=-1)
+		self.hid = nn.LogSoftmax(dim=-1)
 
 	def forward(self, zz):
 		beta = self.beta(self.lbeta)
 		hh = self.hid(zz)
-		return torch.mm(torch.exp(hh),torch.exp(beta))
-
+		return torch.mm(torch.exp(hh),torch.exp(beta)), torch.exp(hh)
+	
 class ETM(nn.Module):
 	def __init__(self,input_dims,out_dims,latent_dims,layers) :
 		super(ETM,self).__init__()
@@ -73,10 +75,9 @@ class ETM(nn.Module):
 		
 	def forward(self,xx):
 		zz,mean,lv = self.encoder(xx)
-		pr = self.decoder(zz)
-		return pr,mean,lv
-
-
+		pr,hh = self.decoder(zz)
+		return pr,mean,lv,hh
+	
 class TabularDataset(Dataset):
 	def __init__(self, x,y):
 		self.X = x
@@ -86,25 +87,63 @@ class TabularDataset(Dataset):
 	def __getitem__(self, idx):
 		return [self.X[idx], self.y[idx]]
 
-def load_data(x,y,device):
+def load_data(x,y,device,bath_size):
 	x = x.astype('float32')
 	x = torch.from_numpy(x).to(device)
-	return DataLoader(TabularDataset(x,y), batch_size=200, shuffle=True)
+	return DataLoader(TabularDataset(x,y), batch_size=bath_size, shuffle=True)
 
-def train(etm, data,device, epochs=300):
-	opt = torch.optim.Adam(etm.parameters(),lr=0.001)
+def train(etm, data,device, epochs,l_rate):
+	opt = torch.optim.Adam(etm.parameters(),lr=l_rate)
+	loss_values = []
 	for epoch in range(epochs):
 		loss = 0
 		for indx,(x,y) in enumerate(data):
 			x = x.to(device)
 			opt.zero_grad()
-			recon,mean,lnvar = etm(x)
+			recon,mean,lnvar,hh = etm(x)
 			loglikloss = etm_llik(x,recon)
 			kl = kl_loss(mean,lnvar)
 			train_loss = torch.mean(kl-loglikloss).to("cpu")
 			train_loss.backward()
 			opt.step()
 			loss += train_loss.item()
-		if epoch % 30 == 0:  
+		if epoch % 100 == 0:  
 			print('====> Epoch: {} Average loss: {:.4f}'.format(epoch, loss/len(data)))
-	return etm
+		
+		loss_values.append(loss/len(data))
+	
+	return loss_values
+
+
+def get_encoded_h(df,model,device,title,loss_values):
+	import pandas as pd
+	import matplotlib.pylab as plt
+	import seaborn as sns
+	from matplotlib.cm import ScalarMappable
+
+	x = df.iloc[:,1:-1].values.astype('float32')
+	x = torch.from_numpy(x).to(device)
+	
+	zz,mean,lv = model.encoder(x)
+	pr,hh = model.decoder(zz)
+
+	df_z = pd.DataFrame(hh.to('cpu').detach().numpy())
+	df_z.columns = ["hh"+str(i)for i in df_z.columns]
+	
+	data_color = range(len(df_z.columns))
+	data_color = [x / max(data_color) for x in data_color] 
+
+	custom_map = plt.cm.get_cmap('coolwarm') #one of the color schemas stored
+	custom = custom_map(data_color)  #mapping the color info to the variable custom
+	df_z.plot(kind='bar', stacked=True, color=custom,figsize=(25,10))
+	plt.ylabel("hidden state proportion", fontsize=18)
+	plt.xlabel("samples", fontsize=22)
+	plt.xticks([])
+	plt.title(title,fontsize=25)
+	plt.savefig("../output/hh_"+title+".png");plt.close()
+
+	plt.plot(loss_values)
+	plt.ylabel("loss", fontsize=18)
+	plt.xlabel("epochs", fontsize=22)
+	plt.title(title,fontsize=25)
+	plt.savefig("../output/hh_"+title+"_loss.png");plt.close()
