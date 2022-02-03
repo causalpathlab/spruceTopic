@@ -10,31 +10,24 @@ import pandas as pd
 import numpy as np
 
 class Stacklayers(nn.Module):
-	def __init__(self,input_size,layers_design):
+	def __init__(self,input_size,layers):
 		super(Stacklayers, self).__init__()
-
 		self.layers = nn.ModuleList()
 		self.input_size = input_size
-		for next_size,activfunc in layers_design:
-			self.layers.append(nn.Linear(input_size,next_size))
-			self.layers.append(nn.BatchNorm1d(next_size))
-			input_size = next_size
-			self.layers.append(self.get_activation(activfunc))
+		for next_l in layers:
+			self.layers.append(nn.Linear(self.input_size,next_l))
+			self.layers.append(self.get_activation())
+			nn.BatchNorm1d(next_l)
+			self.input_size = next_l
 		
 	def forward(self, input_data):
 		for layer in self.layers:
 			input_data = layer(input_data)
 		return input_data
-	
-	def get_activation(self, act):
-		if act == 'tanh':
-			act = nn.Tanh()
-		elif act == 'relu':
-			act = nn.ReLU()
-		else:
-			print('Defaulting to tanh activations...')
-			act = nn.Tanh()
-		return act 
+
+	def get_activation(self):
+		return nn.ReLU()
+
 
 class Decoder(nn.Module):
 	def __init__(self, input_dims, latent_dims):
@@ -48,12 +41,10 @@ class Decoder(nn.Module):
 
 
 class Autoencoder(nn.Module):
-	def __init__(self,input_dims,latent_dims):
+	def __init__(self,input_dims,out_dims,latent_dims,layers):
 		super(Autoencoder, self).__init__()
-		self.encoder = Stacklayers(input_dims, \
-						[(128,"relu"),\
-						(latent_dims,"relu")])
-		self.decoder = Decoder(input_dims,latent_dims)
+		self.encoder = Stacklayers(input_dims,layers)
+		self.decoder = Decoder(out_dims,latent_dims)
 	def forward(self, x):
 		z = self.encoder(x)
 		return self.decoder(z)
@@ -68,14 +59,15 @@ class TabularDataset(Dataset):
 	def __getitem__(self, idx):
 		return [self.X[idx], self.y[idx]]
 
-def load_data(x,y,device):
+def load_data(x,y,device,batch_size):
 	x = x.astype('float32')
 	x = torch.from_numpy(x).to(device)
-	return DataLoader(TabularDataset(x,y), batch_size=64, shuffle=True)
+	return DataLoader(TabularDataset(x,y), batch_size=batch_size, shuffle=True)
 
-def train(autoencoder, data,device, epochs=300):
-	opt = torch.optim.Adam(autoencoder.parameters())
+def train(autoencoder, data,device, epochs,lr):
+	opt = torch.optim.Adam(autoencoder.parameters(),lr=lr)
 	mse = nn.MSELoss()
+	loss_values =[]
 	for epoch in range(epochs):
 		loss = 0
 		for indx,(x,y) in enumerate(data):
@@ -88,7 +80,8 @@ def train(autoencoder, data,device, epochs=300):
 			loss += train_loss.item()
 		if epoch % 30 == 0:  
 			print('====> Epoch: {} Average loss: {:.4f}'.format(epoch, loss/len(data)))
-	return autoencoder
+		loss_values.append(loss/len(data))
+	return loss_values
 
 
 def plot_ae_components(data,autoencoder,device,label):
@@ -105,4 +98,39 @@ def get_encoded_z(df,autoencoder,device):
 	df_z = pd.DataFrame(z.to('cpu').detach().numpy())
 	df_z.columns = ["z"+str(i)for i in df_z.columns]
 	return df_z
+
+
+def get_encoded_h(df,model,device,title,loss_values):
+	import pandas as pd
+	import matplotlib.pylab as plt
+	import seaborn as sns
+	from matplotlib.cm import ScalarMappable
+
+	x = df.iloc[:,1:-1].values.astype('float32')
+	x = torch.from_numpy(x).to(device)
+	
+	z = model.encoder(x.to(device))
+
+	df_z = pd.DataFrame(z.to('cpu').detach().numpy())
+	df_z.columns = ["z"+str(i)for i in df_z.columns]
+	
+	data_color = range(len(df_z.columns))
+	data_color = [x / max(data_color) for x in data_color] 
+
+	custom_map = plt.cm.get_cmap('coolwarm') #one of the color schemas stored
+	custom = custom_map(data_color)  #mapping the color info to the variable custom
+	df_z.plot(kind='bar', stacked=True, color=custom,figsize=(25,10))
+	plt.ylabel("hidden state proportion", fontsize=18)
+	plt.xlabel("samples", fontsize=22)
+	plt.xticks([])
+	plt.title(title,fontsize=25)
+	plt.savefig("../output/ae_z_"+title+".png");plt.close()
+
+	plt.plot(loss_values)
+	plt.ylabel("loss", fontsize=18)
+	plt.xlabel("epochs", fontsize=22)
+	plt.title(title,fontsize=25)
+	plt.savefig("../output/ae_z_"+title+"_loss.png");plt.close()
+	# df_z.to_csv("../output/hh_"+title+"_data.csv",sep="\t",index=False)
+
 
