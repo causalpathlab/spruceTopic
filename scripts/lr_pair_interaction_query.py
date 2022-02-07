@@ -10,6 +10,11 @@ import numpy as np
 data = "cd4_cd8_500cells_per_tissue_counts_l_r_pair.txt.gz"
 df_exp = pd.read_csv("../output/cell_data/"+data,sep="\t")
 
+##normalize
+df_exp = df_exp.loc[:, (df_exp != 0).any(axis=0)]
+row_sum = df_exp.iloc[:,1:-1].sum().values
+df_exp.iloc[:,1:-1] = df_exp.iloc[:,1:-1].apply(lambda x: x/row_sum, axis=1)
+
 # get genes from lr db
 # remove genes present in lr db but not in experiment data
 genes = nbr.genes_from_ligand_receptor_db("gene")
@@ -23,9 +28,14 @@ lr_pairs = [ x for x in lr_pairs if x.split('_')[0] not in check_genes and x.spl
 zz="../output/cell_data/sc_zz_sc_epochs_2000_data.csv"
 df = pd.read_csv(zz,sep="\t")
 
-####
-# nbr_mode = ("one_cell",25)
-nbr_mode = ("random_cell",2)
+'''
+neighbor cell search mode:
+    oncp - one neighbor cell pair, get one neighboring cell pair from any group
+    ancp - all neighbor cell pair, get neighboring cell for all cells
+    rncp - random neighbor cell pair, get non-overlaping neighboring cell pair
+'''
+# nbr_mode = ("oncp",25)
+nbr_mode = ("rncp",25)
 
 
 ####
@@ -46,7 +56,7 @@ df_mat = pd.DataFrame(mat_xij)
 df_mat.columns = lr_pairs
 df_mat.index = cell_pairs_type
 
-noise_thr = 10
+noise_thr = 0.01
 df_mat = df_mat.loc[:, (df_mat > noise_thr).any(axis=0)]
 
 

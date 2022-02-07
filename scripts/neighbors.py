@@ -12,25 +12,39 @@ def get_neighbors(df,nbr_mode):
     distances, indices = nbrs.kneighbors(X)
     cell_pairs = []
 
-    if nbr_mode[0] == "one_cell":
-        i = indices[0]
-        cell_pair_indexes = [":".join(map(str, comb)) for comb in combinations(i, 2)]
+    if nbr_mode[0] == "oncp":
+        i = indices[np.random.randint(len(indices), size=1)][0]
+        cell_pair_indexes = [comb for comb in combinations(i, 2)]
         for cell_pair_index in cell_pair_indexes:
-            i1,i2 = int(cell_pair_index.split(":")[0]),int(cell_pair_index.split(":")[1])
-            cell_pair =  ":".join(df.cell[[i1,i2]].sort_values().values)
+            i1,i2 = int(cell_pair_index[0]),int(cell_pair_index[1])
+            cell_pair =  list(df.cell[[i1,i2]].sort_values().values)
             if cell_pair not in cell_pairs:
                 cell_pairs.append(cell_pair)
-        return [x.split(':') for x in cell_pairs]
+        return cell_pairs
 
-    elif nbr_mode[0] == "random_cell":
+    elif nbr_mode[0] == "ancp":
         for i in indices:
-            cell_pair_indexes = [":".join(map(str, comb)) for comb in combinations(i, 2)]
+            cell_pair_indexes = [ comb for comb in combinations(i, 2)]
             for cell_pair_index in cell_pair_indexes:
-                i1,i2 = int(cell_pair_index.split(":")[0]),int(cell_pair_index.split(":")[1])
-                cell_pair =  ":".join(df.cell[[i1,i2]].sort_values().values)
+                i1,i2 = int(cell_pair_index[0]),int(cell_pair_index[1])
+                cell_pair =  list(df.cell[[i1,i2]].sort_values().values)
                 if cell_pair not in cell_pairs:
                     cell_pairs.append(cell_pair)
-        return [x.split(':') for x in cell_pairs]
+        return cell_pairs
+
+    elif nbr_mode[0] == "rncp":
+        selected_pair = []
+        discarded_cells = []
+        for indx in indices:
+            i,j = indx[0],indx[1]
+            if i not in discarded_cells and j not in discarded_cells:
+                selected_pair.append((i,j))
+            for x in indx:discarded_cells.append(x)
+        for cell_pair_index in selected_pair:
+            i1,i2 = int(cell_pair_index[0]),int(cell_pair_index[1])
+            cell_pair =  list(df.cell[[i1,i2]].sort_values().values)
+            cell_pairs.append(cell_pair)
+        return cell_pairs
 
 def genes_from_ligand_receptor_db(mode):
     lr_db="../database/celltalkdb_v20220131_human_lr_pair.txt"

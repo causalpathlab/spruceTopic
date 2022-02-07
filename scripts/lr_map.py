@@ -5,8 +5,7 @@ from igraph import plot as igplt
 from itertools import combinations
 
 
-
-def plot_l_r_db():
+def plot_l_r_db(df_mat):
     lr_db="../database/celltalkdb_v20220131_human_lr_pair.txt"
     df = pd.read_csv(lr_db,sep="\t")
     '''
@@ -14,6 +13,9 @@ def plot_l_r_db():
     815 ligands
     780 receptors
     '''
+    sc_genes = list(df_mat.index)
+
+
     ### get gene names from the db
     genes = list(df.ligand_gene_symbol.unique())
     gene_type = ["blue" for x in genes]
@@ -26,13 +28,17 @@ def plot_l_r_db():
     g.add_vertices(genes)
     g.vs['color'] = gene_type
     for i,row in df.iterrows():
-        g.add_edge(row.ligand_gene_symbol,row.receptor_gene_symbol, weight=1)
+        ligand = row.ligand_gene_symbol 
+        receptor = row.receptor_gene_symbol 
+        if ligand in sc_genes and receptor in sc_genes:
+            lr_weight = df_m
+            g.add_edge(row.ligand_gene_symbol,row.receptor_gene_symbol, weight=0)
 
     # del_nodes = [v.index for v in g.vs if v.degree()<5]
-    visual_style={}
-    visual_style["layout"] = g.layout_reingold_tilford()
-
-    igplt(g, target='../output/interaction.pdf',**visual_style)
+    # visual_style={}
+    # visual_style["layout"] = g.layout_reingold_tilford()
+    # igplt(g, target='../output/interaction.pdf',**visual_style)
+    return g
 
 
 
