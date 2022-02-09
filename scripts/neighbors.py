@@ -1,8 +1,6 @@
 import pandas as pd
 import numpy as np
 import random
-import matplotlib.pylab as plt
-import seaborn as sns
 from sklearn.neighbors import NearestNeighbors
 from itertools import combinations
 
@@ -45,27 +43,6 @@ def get_neighbors(df,nbr_mode):
             cell_pair =  list(df.cell[[i1,i2]].sort_values().values)
             cell_pairs.append(cell_pair)
         return cell_pairs
-
-def genes_from_ligand_receptor_db(mode):
-    lr_db="../database/celltalkdb_v20220131_human_lr_pair.txt"
-    df = pd.read_csv(lr_db,sep="\t")
-    if mode == "gene":
-        genes = []
-        for gp in df["lr_pair"].values:
-            gp = gp.split("_");genes.append(gp[0]);genes.append(gp[1])
-        return genes
-    elif mode == "lrpair":
-        return df["lr_pair"].values
-
-def keep_lr_genes():
-    ### select only genes present in the ligand-receptor database 
-    # need to run first time to filter out genes
-    data = "cd4_cd8_500cells_per_tissue_counts.txt.gz"
-    df_exp = pd.read_csv("../output/cell_data/"+data,sep="\t")
-    lr_genes = genes_from_ligand_receptor_db("gene")
-    selected_genes = [x for x in df_exp.columns if x in lr_genes ]
-    df_exp = df_exp[["cell"]+selected_genes+["sample"]]
-    df_exp.to_csv("cd4_cd8_500cells_per_tissue_counts_l_r_pair.txt.gz",index=False,sep="\t",compression="gzip")
 
 def adhoc_check(df_exp,cell_pairs,genes):
     ave_exp= 5
@@ -113,7 +90,7 @@ def interaction_method_lrpair(x,m):
                          (x[0,1] * x[1,0]) - (x[0,0] - x[1,1]) ] )
     elif m== "et": # expression thresholding
         thr = 3
-        if (x[0,0] > 1 and x[1,1] > 1) or (x[1,0] > 1 and x[0,1] > 1):
+        if (x[0,0] > thr and x[1,1] > thr) or (x[1,0] > thr and x[0,1] > thr):
             return 1
         else:
             return 0
@@ -128,3 +105,14 @@ def incidence_mat_lrpair(df_exp,cell_pairs,lr_pairs):
         mat_xij = np.append(mat_xij, np.array([x_ij]), axis=0)
     return np.matrix(mat_xij)
 
+def incidence_mat_lrgraph(g,cell_pairs,df_exp):
+    mat_xij = np.empty((0,len(g.es)), int)
+    for cell_pair in cell_pairs:
+        x_ij = []
+        for e in g.es:
+            g1 = g.vs[e.source]['name']
+            g2 = g.vs[e.target]['name']
+            cell_lr_table = df_exp.loc[df_exp["cell"].isin(cell_pair),[g1,g2]].values
+            x_ij.append(interaction_method_lrpair(cell_lr_table,"ep"))
+        mat_xij = np.append(mat_xij, np.array([x_ij]), axis=0)
+    return np.matrix(mat_xij)
