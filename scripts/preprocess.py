@@ -49,12 +49,11 @@ def scanpy_filter(df):
     return dfjoin
 
 
-def filter_minimal(df):
+def filter_minimal(df,cutoff):
     
     print("initial data size : ",df.shape)
 
     # eliminate gene if the total number of counts is < cutoff per tissue type.
-    cutoff = 50
     drop_columns =[]
     for tissue in df["sample"].unique():
         drop_columns_sample = [ col for col,val  in df[df["sample"]==tissue].iloc[:,1:-1].sum(axis=0).iteritems() if val < cutoff ]
@@ -130,3 +129,27 @@ def create_test_data():
     df_selected= df_selected[ [ col for col in df_selected.columns if col != "cluster" ] + ["cluster"]]
     df_selected.to_csv("../output/cd4_c13_c18_counts.txt.gz",index=False,sep="\t",compression="gzip")
 
+
+def cellid_to_meta(cell_pairs):
+    params = read_config()
+    meta_path = params["home"]+params["database"]
+    df_meta = pd.read_csv(meta_path+params["metadata"],sep="\t")
+
+    cell_pairs_meta = []
+    for cp in cell_pairs:
+        types = df_meta.loc[df_meta["cellID"].isin(cp),["meta.cluster"]].values
+        cell_pairs_meta.append(types.flatten()[0]+"/"+types.flatten()[1])
+
+    return cell_pairs_meta
+
+def cellid_to_meta_single(cell_ids):
+    params = read_config()
+    meta_path = params["home"]+params["database"]
+    df_meta = pd.read_csv(meta_path+params["metadata"],sep="\t")
+
+    cell_meta = []
+    for cid in cell_ids:
+        types = df_meta.loc[df_meta["cellID"]==cid,["meta.cluster"]].values
+        cell_meta.append(types.flatten()[0])
+
+    return cell_meta

@@ -2,6 +2,7 @@ import numpy as np
 import pandas as pd
 import scanpy as sc
 
+
 sc.settings.verbosity = 3            
 sc.logging.print_header()
 sc.settings.set_figure_params(dpi=80, facecolor='white')
@@ -13,6 +14,9 @@ adata = sc.read_10x_mtx(
     var_names='gene_symbols',                
     cache=True)   
 
+# df = adata.to_df()
+# df = df.reset_index()
+# df.to_csv("../output/pbmc3k_scanpy_raw_counts.txt.gz",index=False,compression="gzip")
 ### run through scanpy filtering as suggested by authors
 sc.pp.filter_cells(adata, min_genes=200)
 sc.pp.filter_genes(adata, min_cells=3)
@@ -34,7 +38,20 @@ sc.pp.scale(adata, max_value=10)
 
 sc.tl.pca(adata, svd_solver='arpack')
 sc.pl.pca(adata, color='CST3')
-plt.savefig("../scanpy_pbmc_pca.png");plt.close()
+
+##this section needed to assign cell type
+sc.pp.neighbors(adata, n_neighbors=10, n_pcs=40)
+sc.tl.umap(adata)
+sc.tl.leiden(adata)
+sc.tl.rank_genes_groups(adata, 'leiden', method='t-test')
+sc.pl.rank_genes_groups(adata, n_genes=25, sharey=False)
+clust = [int(x) for x in adata.obs.leiden.values]
+cell_type = {
+    0:'CD4 T', 1:'CD14 Monocytes', 2:'CD4 Mem',
+    3:'B', 4:'CD8 T',
+    5:'NK', 6:'FCGR3A Monocytes',
+    7:'Dendritic', 8:'Megakaryocytes'}
+cell_type_list = [cell_type[x] for x in clust]
 
 df = adata.to_df()
 

@@ -127,6 +127,13 @@ def get_encoded_h(df,model,device,title,loss_values):
 	# df_z = pd.DataFrame(hh.to('cpu').detach().numpy())
 	df_z = pd.DataFrame(zz.to('cpu').detach().numpy())
 	df_z.columns = ["hh"+str(i)for i in df_z.columns]
+
+	df_z["cell"] = df.iloc[:,0]
+	df_z["sample"] = df.iloc[:,df.shape[1]-1]
+	df_z = df_z[ ["cell"]+\
+            [x for x in df_z.columns if x not in["cell","sample"]]+\
+            ["sample"]]
+
 	
 	# data_color = range(len(df_z.columns))
 	# data_color = [x / max(data_color) for x in data_color] 
@@ -145,3 +152,4 @@ def get_encoded_h(df,model,device,title,loss_values):
 	plt.title(title,fontsize=25)
 	plt.savefig("../output/sc_"+title+"_loss.png");plt.close()
 	df_z.to_csv("../output/sc_zz_"+title+"_data.csv",sep="\t",index=False)
+	return df_z

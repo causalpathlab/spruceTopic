@@ -12,6 +12,7 @@ def get_neighbors(df,nbr_mode):
 
     if nbr_mode[0] == "oncp":
         i = indices[np.random.randint(len(indices), size=1)][0]
+        # i = indices[0]
         cell_pair_indexes = [comb for comb in combinations(i, 2)]
         for cell_pair_index in cell_pair_indexes:
             i1,i2 = int(cell_pair_index[0]),int(cell_pair_index[1])
@@ -86,8 +87,9 @@ def incidence_mat_gene(df_exp,cell_pairs,genes,interaction_mode):
 
 def interaction_method_lrpair(x,m):
     if m == "ep": #expression product
+        # return np.max( [ (x[0,0] * x[1,1]) , (x[0,1] * x[1,0]) ] )
         return np.max( [ (x[0,0] * x[1,1]) - (x[0,1] * x[1,0]) , \
-                         (x[0,1] * x[1,0]) - (x[0,0] - x[1,1]) ] )
+                         (x[0,1] * x[1,0]) - (x[0,0] * x[1,1]) ] )
     elif m== "et": # expression thresholding
         thr = 3
         if (x[0,0] > thr and x[1,1] > thr) or (x[1,0] > thr and x[0,1] > thr):

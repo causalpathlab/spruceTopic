@@ -13,12 +13,18 @@ plt.rcParams["figure.autolayout"] = True
 ### get lr genes
 genes = lrm.genes_from_lr_db("gene")
 
-######
-exp_data = "cd4_cd8_500cells_per_tissue_counts_l_r_pair.txt.gz"
-df_exp = pd.read_csv("../output/tcell_data/"+exp_data,sep="\t")
-# ### get z from etm 
-zz="../output/tcell_data/sc_zz_sc_epochs_2000_data.csv"
+###bc data
+exp_data = "bc_counts.txt.gz"
+df_exp = pd.read_csv("../output/bc_sc_data/"+exp_data,sep="\t")
+keep_lr_genes = ["cell"]+[x for x in df_exp.columns if x in genes ] +["sample"]
+df_exp = df_exp[keep_lr_genes]
+### get z from etm 
+zz="../output/bc_sc_data/sc_zz_sc_epochs_2000_data.csv"
 df = pd.read_csv(zz,sep="\t")
+df["cell"] =df_exp["cell"]
+df["sample"] =df_exp["sample"]
+df = df[["cell"]+[x for x in df.columns[1:-2] ] +["sample"]]
+
 
 ##normalize
 df_exp = df_exp.loc[:, (df_exp != 0).any(axis=0)]
@@ -33,27 +39,35 @@ genes = pd.Series(genes).unique()
 g = lrm.graph_lr_db(genes)
 
 ####
-'''
-neighbor cell search mode:
-    oncp - one neighbor cell pair, select any one cell and get its neighboring cells 
-    ancp - all neighbor cell pair, get neighboring cell for all cells
-    rncp - random neighbor cell pair, get non-overlaping neighboring cell pair
-'''
-nbr_mode = ("oncp",25)
-# nbr_mode = ("rncp",25)
+# nbr_mode = ("oncp",15)
+nbr_mode = ("ancp",2)
+# nbr_mode = ("rncp",2)
 
 #### interactions
-cell_pairs = nbr.get_neighbors(df,nbr_mode)
-N=25
-cell_pairs_batch = random.sample(cell_pairs,N)
+cell_pairs_batch = nbr.get_neighbors(df,nbr_mode)
 mat_xij = nbr.incidence_mat_lrgraph(g,cell_pairs_batch,df_exp)
 
-##get cell meta data -
-cell_pairs_type = preprocess.cellid_to_meta(cell_pairs_batch)
+df_meta = pd.read_csv("../input/bc_data/GSE75688_final_sample_information.txt",sep="\t")
+meta = {}
+for x,y in zip(df_meta["sample"],df_meta["index2"]):meta[x]=y 
+
+cell_pairs_type = []
+for x in cell_pairs_batch:
+    try:
+        id = x[0]+'_'+ meta[x[0]]+'/'+ x[1]+'_'+ meta[x[1]]
+    except:
+        id = x[0]+'/'+ x[1]
+    cell_pairs_type.append(id)
+
 
 df_mat = pd.DataFrame(mat_xij)
 df_mat.columns = [g.vs[e.source]['name']+'_'+g.vs[e.target]['name'] for e in g.es]
 df_mat.index = cell_pairs_type
+
+tumor_immune = []
+for i in cell_pairs_type:
+    if "Tumor" in i and "Stromal" in i:tumor_immune.append(i)
+df_mat = df_mat[df_mat.index.isin(tumor_immune)]
 
 plt.plot(df_mat.values.flatten())
 plt.savefig("../df_vals.png");plt.close()

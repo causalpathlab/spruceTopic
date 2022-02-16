@@ -1,0 +1,126 @@
+---
+title: "Single-cell network mixed-membership community detection by XXX"
+author:
+  - Sishir Subedi^[Bioinformatics Program, The University of British Columbia]
+  - Yongjin P. Park^[Department of Statistics, The University of British Columbia, ypp@stat.ubc.ca]
+date: "`r format(Sys.time(), ' %X, %b %d, %Y')`"
+fontsize: 11pt
+output:
+  pdf_document:
+    latex_engine: xelatex
+    citation_package: natbib
+    fig_caption: true
+bibliography: references.bib 
+link-citations: yes
+tables: yes
+always_allow_html: true
+header-includes:
+ - \usepackage{fontspec}
+ - \usepackage{booktabs}
+ - \usepackage{longtable}
+ - \usepackage{array}
+ - \usepackage{multirow}
+ - \usepackage{wrapfig}
+ - \usepackage{float}
+ - \usepackage{colortbl}
+ - \usepackage{pdflscape}
+ - \usepackage{tabu}
+ - \usepackage{threeparttable}
+ - \usepackage{threeparttablex}
+ - \usepackage{makecell}
+ - \usepackage{amsmath}
+ - \usepackage{amssymb}
+ - \usepackage{setspace}\doublespacing
+---
+
+
+
+Background
+
+The advancement in single-cell RNA-sequencing (scRNA-seq) has emerged as a new frontier in transcriptomics and contributed to our understanding of complex disease biology. The ability to quantify gene expression levels at a single-cell resolution provides a framework to uncover novel cell types, interactions, and dynamics of cellular systems during disease progression.[@nomura2021single] There are numerous popular tools to analyze gene expression data from single-cell. Most of these tools incorporate a common workflow that includes data normalization, filtering, and representation in lower dimensions for various downstream analyses such as clustering, differential expression, and cell type identification.[@zappia2021over] This multi-step process has limitations (TODO:explain), and efforts are ongoing to develop a streamlined and robust computational method to model gene expression levels directly from raw count data.
+
+Autoencoder is an unsupervised machine learning method based on neural networks architecture and has been utilized in many areas of single-cell analysis, such as denoising and clustering.[@eraslan2019single,@geddes2019autoencoder]. These studies have shown that autoencoder-based techniques capture the essential biological signals from sparse and heterogeneous single-cell data by efficiently representing the data in lower dimensions. 
+
+Results
+
+Discussion
+
+Conclusions
+
+Methods
+
+## Datasets
+* toy data?
+* breast cancer - @chung2017single
+* peripheral blood mononuclear cells (pbmc) - @freytag2018comparison
+* tcells - @zheng2021pan
+
+## The Embedded Latent Space model
+We have a sample of cells ${c_{1},....,c_{N}}$ and a list of genes ${g_{1},....,g_{D}}$, where ${c_{n}g_{1},....,c_{n}g_{D}}$ are raw count data for $D$ genes in cell $c_{n}$. 
+
+Likelihood
+\begin{equation}
+\begin{split}
+p(c_{nd}\mid \delta_{n}, \beta) = \sum_{k}\theta_{nk}\beta_{k,c_{nd}} 
+\end{split}
+\end{equation}
+
+## How to construct a feature-incidence matrix
+* Train ETM model 
+* Use latent dimension to find neighbouring cells
+
+
+* For each neighbourhood, construct an interaction matrix where rows are neighbouring cell pairs and edges are ligand-receptor pairs from known database
+
+* calculate ligand-receptor interaction score
+
+$$ f(c_{i},c_{j},l_{x},r_{y}) = max(e_{c_{i}l_{x}} \times e_{c_{j}r_{y}} ,e_{c_{i}r_{y}} \times e_{c_{j}l_{x}}) $$
+$e_{c_{i}l_{x}}$ is expression of ligand $x$ in cell $i$, $e_{c_{j}r_{y}}$ is expression of receptor $y$ in cell $j$, $c_{i}$ and $c_{j}$ are neighbouring cells from ETM model, and $l_{x}$ and $r_{y}$ are ligand-receptor pairs from known database 
+
+* $X_{gi}$
+
+<!-- \begin{eqnarray*} -->
+<!-- a \\ -->
+<!-- b \\ -->
+<!-- \end{eqnarray*} -->
+
+## Clustering the rows of an incidence matrix
+
+Notations
+
+* $Y_{eg}$: a feature $g$'s contribution to an edge $e$, $Y \ge 0$
+
+* $Z_{ek}$: a latent variable for an edge $e$ 
+
+* $p(Z_{ek}=\pi)$, where $\pi = 1$ if and only if the edge $e$ belongs to the cluster $k$; otherwise, $\pi = 0$
+
+* $\boldsymbol{\lambda}_{k}:$ parameter vector for a cluster $k$
+
+Likelihood
+\begin{equation}
+\begin{split}
+p(Y,Z|\lambda,\pi) & = \prod_{g}\sum_{k}p(y_{g},z_{g}=k) \\
+ & = \prod_{g}\sum_{k}p(y_{g}\mid z_{g}=k)p(z_{g}=k) \\
+& = \prod_{g}\sum_{k}Poisson(y_{g}\mid \lambda_{k}^{y})\pi_{k} \\
+& = \prod_{g}\sum_{k}\prod_{e}Poisson(y_{eg}\mid \lambda_{ek}^{y})\pi_{k} \\
+\end{split}
+\end{equation}
+
+Log-likelihood
+\begin{equation}
+\begin{split}
+log(p(Y,Z|\lambda,\pi)) & = \sum_{g} log (\sum_{k} p(y_{g},z_{g}=k))\\
+& \geq \sum_{g} \sum_{k} q(z_{g}=k) log (\frac{ p(y_{g},z_{g}=k)} {q(z_{g}=k)} )\\
+& = \sum_{g} \sum_{k} q(z_{g}=k) log (p(y_{g},z_{g}=k)) - q(z_{g}=k) log (q(z_{g}=k)) \\
+\end{split}
+\end{equation}
+
+
+
+
+EM algorithm (like forward-backward of HMM):
+
+1. Step 1. Estimate $z$ given $\lambda$
+
+2. Step 2. Estimate $\lambda$ given $z$
+
