@@ -83,7 +83,7 @@ def update_graph(g,df_mat):
 
 def plot_graph(g,df,pltname):
     clustn = len(df["cluster"].unique())
-    colors = [plt.cm.Pastel1(x) for x in range(clustn)]
+    colors = [plt.cm.Dark2(x) for x in range(clustn)]
     color_dict = dict(zip(range(clustn), colors))
 
     edge_colors = []

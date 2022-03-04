@@ -1,6 +1,9 @@
 import pandas as pd
 import matplotlib.pylab as plt
 from gen_util.io import read_config
+import datatable as dt
+from scipy import sparse 
+import numpy as np
 
 
 def select_protein_coding_genes(df):
@@ -49,18 +52,23 @@ def scanpy_filter(df):
     return dfjoin
 
 
-def filter_minimal(df,cutoff):
+def filter_minimal(df,mode, cutoff):
     
     print("initial data size : ",df.shape)
 
-    # eliminate gene if the total number of counts is < cutoff per tissue type.
-    drop_columns =[]
-    for tissue in df["sample"].unique():
-        drop_columns_sample = [ col for col,val  in df[df["sample"]==tissue].iloc[:,1:-1].sum(axis=0).iteritems() if val < cutoff ]
-        for c in drop_columns_sample:
-            if c not in drop_columns:
-                drop_columns.append(c)
+    if mode == "tissue":
+        # eliminate gene if the total number of counts is < cutoff per tissue type.
+        drop_columns =[]
+        for tissue in df["sample"].unique():
+            drop_columns_sample = [ col for col,val  in df[df["sample"]==tissue].iloc[:,1:-1].sum(axis=0).iteritems() if val < cutoff ]
+            for c in drop_columns_sample:
+                if c not in drop_columns:
+                    drop_columns.append(c)
     
+    elif mode == "dataset":
+        drop_columns = [ col for col,val  in df.iloc[:,1:].sum(axis=0).iteritems() if val < cutoff ]
+
+
     df = df.drop(drop_columns,axis=1)
     print("after selecting genes with read counts >= "+str(cutoff)+" cells ",df.shape)
     
@@ -74,7 +82,9 @@ def read_sc_data():
     df_combine = pd.DataFrame()
     for sample in params["samples"]:
         print("processing--"+sample)
-        df = pd.read_csv(sample_path+sample,sep="\t").T
+        dtab = dt.fread(sample_path+sample)
+        df = dtab.to_pandas()
+        df = df.T 
         df = df.rename(columns=df.iloc[0])
         df = df.iloc[1:].reset_index()
         df = df.rename(columns={"index":"cell"})
@@ -95,7 +105,52 @@ def read_sc_data():
     df_combine.values[df_combine.isna()] = 0
     df_combine.to_csv("../output/cd4_cd8_500cells_per_tissue_counts.txt.gz",index=False,sep="\t",compression="gzip")
 
+def read_sc_data_sparse(maxcellcount_pertissue=100000,mingene_totalcount=10):
 
+    params = read_config()
+    sample_path = params["home"]+params["data"]
+
+    df_combine = pd.DataFrame()
+    for sample in params["samples"]:
+        
+        print("processing--"+sample)
+        
+        dtab = dt.fread(sample_path+sample,verbose=False)
+        df = dtab.to_pandas() 
+        del dtab        
+        
+        df = df.T
+        df = df.rename(columns=df.iloc[0])
+        df = df.iloc[1:].reset_index()
+        
+        df.values[df.isna()] = 0
+        df = filter_minimal(df,"dataset", mingene_totalcount)
+
+        if df.shape[0]>maxcellcount_pertissue:
+            df = df.sample(n=maxcellcount_pertissue)
+        if sample == params['sample_first']:
+            df_combine = df
+            print(df.shape,df_combine.shape)
+        else:
+            print("concatinating...")
+            df_combine = pd.concat([df_combine, df], axis=0, ignore_index=True)
+            print(df.shape,df_combine.shape)
+    del df
+
+    print("processing--creating coo sparse matrix file")
+
+    label = df_combine.iloc[:,0].to_numpy()
+    np.savez_compressed(params["home"]+params["data"]+params["sparse_label"]+"_"+str(maxcellcount_pertissue), idx=label,allow_pickle=True)
+
+    df_combine = df_combine.iloc[:,1:]
+    immune_signatures = get_immune_genes()
+    immune_index = [(x,y) for x,y in enumerate(df_combine.columns) if y in immune_signatures]
+    np.savez_compressed(params["home"]+params["data"]+params["sparse_label"]+"_immune_index_"+str(maxcellcount_pertissue), idx=immune_index, allow_pickle=True)
+
+    S = sparse.coo_matrix(df_combine.to_numpy())
+    idx, idy, val = sparse.find(S)
+    d = df_combine.shape
+    np.savez_compressed(params["home"]+params["data"]+params["sparse_data"]+"_"+str(maxcellcount_pertissue), idx=idx,idy=idy,val=val,shape=d,allow_pickle=True)
 
 def select_cells():
     '''
@@ -153,3 +208,9 @@ def cellid_to_meta_single(cell_ids):
         cell_meta.append(types.flatten()[0])
 
     return cell_meta
+
+def get_immune_genes():
+    params = read_config()
+    meta_path = params["home"]+params["database"]
+    df_meta = pd.read_csv(meta_path+params["immune_signature_genes"],sep="\t")
+    return df_meta["signature_genes"].values

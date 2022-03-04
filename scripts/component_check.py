@@ -1,7 +1,7 @@
 import pandas as pd
 import numpy as np
 
-def run_component_analysis(x,y,method="tsne"):
+def run_component_analysis(x,y,method,title):
 
     from sklearn import preprocessing
     import matplotlib.pyplot as plt
@@ -38,8 +38,10 @@ def run_component_analysis(x,y,method="tsne"):
     # ax.set_ylabel(method+"2")
     # ax.set_zlabel(method+"3")
     # plt.savefig("../output/"+method+"_3d.png");plt.close()
-
-    sns.scatterplot(data=df_components, x=method+"1", y=method+"2", hue="sample")
-    plt.legend(bbox_to_anchor=(1.05, 1), loc=2, borderaxespad=0.)
-    plt.savefig("../output/"+method+"_2d.png");plt.close()
+    custpal = ['grey','dodgerblue','green','red','orange','brown','purple']
+    sns.scatterplot(data=df_components, x=method+"1", y=method+"2", hue="sample",palette=custpal)
+    plt.xlabel(method+'1', fontsize=20)
+    plt.ylabel(method+'2', fontsize=20)
+    plt.legend(bbox_to_anchor=(1.05, 1), loc=2, borderaxespad=0.,prop={"size":20})
+    plt.savefig("../output/"+method+"_"+title+".png");plt.close()
 

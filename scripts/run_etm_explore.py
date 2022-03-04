@@ -1,12 +1,9 @@
-from matplotlib.pyplot import axis
 import pandas as pd
 import numpy as np
 import preprocess 
 import component_check 
 from dlearn import etm
-from dlearn import ae
 import datatable as dt
-import importlib
 import sys
 
 
@@ -44,7 +41,7 @@ def run_toy_data():
     print("data shape before model", df.shape)
     y = np.array([1 if "CD4" in x else 0 for x in df.iloc[:,-1]])
 
-    # component_check.run_component_analysis(df.iloc[:,1:df.shape[1]-1],y,"pca")
+    component_check.run_component_analysis(df.iloc[:,1:df.shape[1]-1],y,"pca")
 
     device = etm.torch.device('cuda' if etm.torch.cuda.is_available() else 'cpu')
     input_dims = df.iloc[:,1:-1].shape[1]
@@ -65,7 +62,6 @@ def run_toy_data():
 def run_tcell_sc_data():
 
     data = "cd4_cd8_500cells_per_tissue_counts.txt.gz"
-    # data = "cd4_cd8_500cells_per_tissue_counts_denoised.txt.gz"
     df = pd.read_csv("../output/tcell_data/"+data,sep="\t")
     df = df[ ["cell"]+\
             [x for x in df.columns if x not in["cell","sample"]]+\
@@ -76,7 +72,7 @@ def run_tcell_sc_data():
     y = np.array([1 if "CD4" in x else 0 for x in df.iloc[:,-1]])
 
     y=df.iloc[:,-1]
-    component_check.run_component_analysis(df.iloc[:,1:df.shape[1]-1],y,"pca")
+    # component_check.run_component_analysis(df.iloc[:,1:df.shape[1]-1],y,"pca")
 
     #### etm tests
     device = etm.torch.device('cuda' if etm.torch.cuda.is_available() else 'cpu')
@@ -84,9 +80,9 @@ def run_tcell_sc_data():
     print("Input dimension is "+ str(input_dims))
 
     batch_size = 64
-    l_rate = 0.01
+    l_rate = 0.001
     epochs = 2000
-    layers = [128,32,16]
+    layers = [128,128,32,16]
     latent_dims = 16
 
     model = etm.ETM(input_dims,input_dims,latent_dims,layers).to(device)
@@ -109,7 +105,7 @@ def run_pbmc_sc_data():
     df['sample'] = "pbmc"
 
 
-    df = preprocess.filter_minimal(df)
+    df = preprocess.filter_minimal(df,50)
     print("data shape before model", df.shape)
 
     dfmeta = pd.read_csv("../output/pbmc_data/pbmc_metadata.csv",sep="\t")
@@ -166,7 +162,6 @@ def run_bc_sc_data():
     print("data shape before model", df.shape)
 
     y=df.iloc[:,-1]
-    # component_check.run_component_analysis(df.iloc[:,0:df.shape[1]-1],y,"pca")
     # component_check.run_component_analysis(df.iloc[:,1:df.shape[1]-1],y,"pca")
 
 
@@ -188,8 +183,8 @@ def run_bc_sc_data():
 
     df_z = etm.get_encoded_h(df,model,device,"bc_epochs_"+str(epochs),loss_values)
 
-    component_check.run_component_analysis(df_z.iloc[:,1:df_z.shape[1]-1],df_z.iloc[:,-1],"pca")
-    component_check.run_component_analysis(df_z.iloc[:,1:df_z.shape[1]-1],df_z.iloc[:,-1],"tsne")
+    component_check.run_component_analysis(df_z.iloc[:,1:df_z.shape[1]-1],df_z.iloc[:,-1],"pca","fpca")
+    component_check.run_component_analysis(df_z.iloc[:,1:df_z.shape[1]-1],df_z.iloc[:,-1],"tsne","ftsne")
 
 def run_nyt_data():
 

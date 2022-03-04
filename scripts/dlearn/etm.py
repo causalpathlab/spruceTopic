@@ -4,6 +4,10 @@ import torch.nn.functional as F
 import torchvision
 from torch.utils.data import DataLoader
 from torch.utils.data import Dataset
+from scipy import sparse
+import numpy as np 
+import preprocess
+
 
 def reparameterize(mean,lnvar):
 	sig = torch.exp(lnvar/2.)
@@ -89,6 +93,53 @@ def load_data(x,y,device,bath_size):
 	x = torch.from_numpy(x).to(device)
 	return DataLoader(TabularDataset(x,y), batch_size=bath_size, shuffle=True)
 
+class SparseData():
+	def __init__(self,indptr,indices,data,shape,label):
+		self.indptr = indptr
+		self.indices = indices
+		self.data = data
+		self.shape = shape
+		self.label = label
+
+class SparseTabularDataset(Dataset):
+	def __init__(self, sparse_data, device):
+		self.indptr = sparse_data.indptr
+		self.indices = sparse_data.indices
+		self.data = sparse_data.data
+		self.shape = sparse_data.shape
+		self.label = sparse_data.label
+		self.device = device
+
+	def __len__(self):
+		return self.shape[0]
+
+	def __getitem__(self, idx):
+		cell = torch.zeros((self.shape[1],), dtype=torch.int32, device=self.device)
+		ind1,ind2 = self.indptr[idx],self.indptr[idx+1]
+		cell[self.indices[ind1:ind2].long()] = self.data[ind1:ind2]
+		return cell,self.label[idx]
+	
+	def dmat(self):
+		s = torch.sparse_csr_tensor(self.indptr,self.indices,self.data,size=self.shape)
+		return s.to_dense()
+
+def load_sparse_data(data_file,meta_file,device,bath_size):
+
+	npzarrs = np.load(data_file,allow_pickle=True)
+	s = sparse.csr_matrix( (npzarrs['val'].astype(np.int32), (npzarrs['idx'], npzarrs['idy']) ),shape=npzarrs['shape'] )
+	
+	device = torch.device(device)
+	indptr = torch.tensor(s.indptr.astype(np.int32), dtype=torch.int32, device=device)
+	indices = torch.tensor(s.indices.astype(np.int32), dtype=torch.int32, device=device)
+	val = torch.tensor(s.data.astype(np.int32), dtype=torch.int32, device=device)
+	shape = tuple(npzarrs['shape'])
+
+	metadat = np.load(meta_file,allow_pickle=True)
+	label = metadat["idx"]
+	spdata = SparseData(indptr,indices,val,shape,label)
+	return DataLoader(SparseTabularDataset(spdata,device), batch_size=bath_size, shuffle=True)
+
+
 def train(etm, data,device, epochs,l_rate):
 	opt = torch.optim.Adam(etm.parameters(),lr=l_rate)
 	loss_values = []
@@ -112,14 +163,11 @@ def train(etm, data,device, epochs,l_rate):
 	return loss_values
 
 
-def get_encoded_h(df,model,device,title,loss_values):
+def get_encoded_h(x,label,model,device,title,loss_values):
 	import pandas as pd
 	import matplotlib.pylab as plt
 	import seaborn as sns
 	from matplotlib.cm import ScalarMappable
-
-	x = df.iloc[:,1:-1].values.astype('float32')
-	x = torch.from_numpy(x).to(device)
 	
 	zz,mean,lv = model.encoder(x)
 	pr,hh = model.decoder(zz)
@@ -128,11 +176,11 @@ def get_encoded_h(df,model,device,title,loss_values):
 	df_z = pd.DataFrame(zz.to('cpu').detach().numpy())
 	df_z.columns = ["hh"+str(i)for i in df_z.columns]
 
-	df_z["cell"] = df.iloc[:,0]
-	df_z["sample"] = df.iloc[:,df.shape[1]-1]
+	df_z["cell"] = label
+	df_z["sample"] = preprocess.cellid_to_meta_single(label)
 	df_z = df_z[ ["cell"]+\
-            [x for x in df_z.columns if x not in["cell","sample"]]+\
-            ["sample"]]
+			[x for x in df_z.columns if x not in["cell","sample"]]+\
+			["sample"]]
 
 	
 	# data_color = range(len(df_z.columns))
@@ -152,4 +200,3 @@ def get_encoded_h(df,model,device,title,loss_values):
 	plt.title(title,fontsize=25)
 	plt.savefig("../output/sc_"+title+"_loss.png");plt.close()
 	df_z.to_csv("../output/sc_zz_"+title+"_data.csv",sep="\t",index=False)
-	return df_z

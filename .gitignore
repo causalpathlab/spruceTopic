@@ -42,6 +42,7 @@ vignettes/*.pdf
 /input/
 /database/
 /output/
+/model/
 *.txt
 *.log
 

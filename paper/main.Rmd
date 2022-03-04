@@ -31,6 +31,8 @@ header-includes:
  - \usepackage{amsmath}
  - \usepackage{amssymb}
  - \usepackage{setspace}\doublespacing
+ - \usepackage{algorithm}
+ - \usepackage{algpseudocode}
 ---
 
 
@@ -39,7 +41,9 @@ Background
 
 The advancement in single-cell RNA-sequencing (scRNA-seq) has emerged as a new frontier in transcriptomics and contributed to our understanding of complex disease biology. The ability to quantify gene expression levels at a single-cell resolution provides a framework to uncover novel cell types, interactions, and dynamics of cellular systems during disease progression.[@nomura2021single] There are numerous popular tools to analyze gene expression data from single-cell. Most of these tools incorporate a common workflow that includes data normalization, filtering, and representation in lower dimensions for various downstream analyses such as clustering, differential expression, and cell type identification.[@zappia2021over] This multi-step process has limitations (TODO:explain), and efforts are ongoing to develop a streamlined and robust computational method to model gene expression levels directly from raw count data.
 
-Autoencoder is an unsupervised machine learning method based on neural networks architecture and has been utilized in many areas of single-cell analysis, such as denoising and clustering.[@eraslan2019single,@geddes2019autoencoder]. These studies have shown that autoencoder-based techniques capture the essential biological signals from sparse and heterogeneous single-cell data by efficiently representing the data in lower dimensions. 
+Autoencoder is an unsupervised machine learning method based on neural networks architecture and has been utilized in many areas of single-cell analysis, such as denoising and clustering.[@eraslan2019single,@geddes2019autoencoder]. These studies have shown that autoencoder-based techniques capture the essential biological signals from sparse and heterogeneous single-cell data by efficiently representing it in lower dimensions. TODO: recent studies related to raw count data, other methods and use of vae 
+
+TODO: another paragraph ...In this study...expand lda, include vae, identify lr interactions
 
 Results
 
@@ -55,15 +59,110 @@ Methods
 * peripheral blood mononuclear cells (pbmc) - @freytag2018comparison
 * tcells - @zheng2021pan
 
-## The Embedded Latent Space model
-We have a sample of cells ${c_{1},....,c_{N}}$ and a list of genes ${g_{1},....,g_{D}}$, where ${c_{n}g_{1},....,c_{n}g_{D}}$ are raw count data for $D$ genes in cell $c_{n}$. 
-
-Likelihood
+## The Embedded Topic Model
+The ETM model extends on the ideas of LDA. Consider a sample of cells ${c_{1},....,c_{N}}$ and a list of genes ${g_{1},....,g_{D}}$, where ${x_{c1},x_{c2},...,x_{cD}}$ are raw count data for $D$ genes in cell $c$. The model represents each cell in terms of K latent topics and each topic is a full distribution over the genes. In LDA, topic proportion $\theta_{c}$ for cell $c$ and topic distribution over genes $\beta_{k}$ for topic $k$ are drawn from Dirichlet distribution with fixed model hyperparameters. In ETM, for the topic proportion Dirichlet distribution is replaced with logistic normal distribution, and $\beta_{k}$ topic distribution over genes uses softmax function with model hyperparameters $\alpha_{k}$.
 \begin{equation}
 \begin{split}
-p(c_{nd}\mid \delta_{n}, \beta) = \sum_{k}\theta_{nk}\beta_{k,c_{nd}} 
+\delta_{c} \sim LN(0,I);\theta_{c} = softmax(\delta_{c})\\
+\beta_{k} = softmax(\alpha_{k})
 \end{split}
 \end{equation}
+
+
+
+The marginal likelihood 
+
+The parameters of ETM model are the topic embeddings $\beta_{1:K}$. The marginal likelihood of cells is given as,
+\begin{equation}
+\begin{split}
+L(\beta) = \sum_{n} log \ p(c_{n} \mid \beta)\\
+p(c_{n} \mid \beta) = \int p(\delta_{c}) \prod_{d} p(x_{cd} \mid \delta_{c},\beta) d\delta_{c}\\
+p(x_{cd}\mid \delta_{c}, \beta) = \sum_{k}\theta_{ck}\beta_{k,x_{cd}} \\
+\end{split}
+\end{equation}
+Here, $\theta_{ck}$ is topic proportion transformed using softmax fuction over $\delta_{c}$ for cell $c$, and $\beta_{k}$ is distribution over genes induced by topic embeddings $\alpha_{k}$. The marginal likelihood of each cell is an intractable problem because it involves integral over the topic proportion. Variational inference techniques can be used to approximate this type of intractable integrals. 
+
+Let $p_{\theta}(z \mid x)$ be a true posterior and $q_{\phi}(z \mid x)$ be an approximate posterior.
+\begin{equation}
+\begin{split}
+D_{KL}(q_{\phi}\mid\mid p_{\theta}) & = E_{q_{\phi}}[log  \frac {q_{\phi}(z \mid x)}{p_{\theta}(z \mid x)}]\\
+& = E_{q_{\phi}}[log \ {q_{\phi}(z \mid x)}] - E_{q_{\phi}} [log \ {p_{\theta}(z \mid x)}]\\
+& = E_{q_{\phi}}[log \ {q_{\phi}(z \mid x)}] - E_{q_{\phi}} [log \ \frac {p_{\theta}(z,x)}{p_{\theta}(x)}]\\
+& = E_{q_{\phi}}[log \ {q_{\phi}(z \mid x)}] - E_{q_{\phi}} [log \ {p_{\theta}(z,x)}] + E_{q_{\phi}} [log \ {p_{\theta}(x)}]\\
+& = E_{q_{\phi}}[log \ {q_{\phi}(z \mid x)}] - E_{q_{\phi}} [log \ {p_{\theta}(z,x)}] + \int q_{\phi}(z \mid x) log \ {p_{\theta}(x)}dz\\
+& = E_{q_{\phi}}[log \ {q_{\phi}(z \mid x)}] - E_{q_{\phi}} [log \ {p_{\theta}(z,x)}] + log \ {p_{\theta}(x)} \int q_{\phi}(z \mid x) dz \\
+& = E_{q_{\phi}}[log \ {q_{\phi}(z \mid x)}] - E_{q_{\phi}} [log \ {p_{\theta}(z,x)}] + log \ {p_{\theta}(x)}\\
+log \ {p_{\theta}(x)} & = - E_{q_{\phi}}[log \ {q_{\phi}(z \mid x)}] + E_{q_{\phi}} [log \ {p_{\theta}(z,x)}] + D_{KL}(q_{\phi}\mid\mid p_{\theta}) \\
+\end{split}
+\end{equation}
+Here, $D_{KL}(q_{\phi}\mid\mid p_{\theta})$ is intractable but it is always $\geq$ 0, we can use this property to remove $D_{KL}$ from the equation and the marginal log likelihood $log \ {p_{\theta}(x)}$ will be at least $\geq - E_{q_{\phi}}[log \ {q_{\phi}(z \mid x)}] + E_{q_{\phi}} [log \ {p_{\theta}(z,x)}]$. Since this term is the lower bound on the evidence,it is called as Evidence Lower Bound(ELBO). We maximize the marginal log likelihood by maximizing the ELBO and indirectly minimize the KL divergence.
+
+\begin{equation}
+\begin{split}
+ELBO & = - E_{q_{\phi}}[log \ {q_{\phi}(z \mid x)}] + E_{q_{\phi}} [log \ {p_{\theta}(z,x)}] \\
+& = - E_{q_{\phi}}[log \ {q_{\phi}(z \mid x)}] + E_{q_{\phi}} [log \ {p_{\theta}(x \mid z)}] + E_{q_{\phi}} [log \ {p_{\theta}(z)}] \\
+& = E_{q_{\phi}} [log \ {p_{\theta}(x \mid z)}]  - E_{q_{\phi}}[log \ {q_{\phi}(z \mid x)}] + E_{q_{\phi}}[log \ {p_{\theta}(z)}] \\
+ELBO & = E_{q_{\phi}} [log \ {p_{\theta}(x \mid z)}]  - E_{q_{\phi}} [log \frac{q_{\phi}(z \mid x)}{p_{\theta}(z)}] \\
+\end{split}
+\end{equation}
+Here, $E_{q_{\phi}} [log \ {p_{\theta}(x \mid z)}]$ is an expected reconstruction error 
+and $E_{q_{\phi}} [log \frac{q_{\phi}(z \mid x)}{p_{\theta}(z)}]$ is KL Divergence between approximate posterior and the prior.
+
+Reconstruction error
+
+Let $x_{cd}$ be count data for $d^{th}$ gene in cell $c$ 
+and $P_{cd}$ be probability of observing $x_{cd}$ count data.
+Then the likelihood of observing count data for all $D$ genes 
+in cell $c$ is $\prod^{D}_{d} P^{x_{cd}}_{cd}$ and log-likelihood 
+is $\sum^{D}_{d} x_{cd} log(P_{cd})$.
+
+Approximate posterior and prior
+
+The approximate posterior $q_{\phi}(z \mid x)$ is a 
+Gaussian variational distribution 
+$q(\delta_{c};c_{n},v)$ = $N(\mu,\Sigma)$
+whose mean and variance are constructed 
+form a neural network parameterized by $v$.
+The network takes raw count data of a cell 
+$c_{n}$ for $D$ genes and outputs a mean and
+variance of $\delta_{c}$. The prior $p_{\theta}(z)$ = $N(0,I)$.
+The KL divergence between these two form of Gaussians exist in closed form and given as-
+\begin{equation}
+\begin{split}
+D_{KL}(q_{\phi}\mid\mid p_{\theta}) & = E_{q_{\phi}} [log \frac{q_{\phi}(z \mid x)}{p_{\theta}(z)}] \\
+& = E_{q_{\phi}}[log \ {q_{\phi}(z \mid x)}] - E_{q_{\phi}} [log \ {p_{\theta}(z)}]\\
+& = ....TODO \\
+& = 1/2 \sum_{d} (1 + log(\Sigma) - \mu^{2} - \Sigma) \\
+\end{split}
+\end{equation}
+
+
+\begin{algorithm}
+\caption{ETM Algorithm}\label{alg:cap}
+\begin{algorithmic}
+\State Initialize model parameters $\alpha$,$v$
+
+\For {i in 1,2,...} 
+  \State Compute $\beta_{k}$ = softmax($\alpha_{k}$) for each topic k
+  \State Choose a minibatch $C$ of cells
+
+  \For {c in $C$ } 
+    \State Get raw count of $D$ genes from cell c as $x_{c}$
+    \State Compute $\mu_{c}$ = $NN(x_{c};v_{\mu})$
+    \State Compute $\Sigma_{c}$ = $NN(x_{c};v_{\Sigma})$
+    \State Sample $\delta_{c} \sim LN(\mu_{c},\Sigma_{c})$
+    
+    \State Compute $\theta_{c}$ = softmax($\delta_{c}$)
+  
+  
+    \For {d genes in cell c } 
+      \State Compute $p(x_{cd}\mid \theta_{c}, \beta)$ = $\theta^{T}_{c}\beta_{x_{cd}}$
+\EndFor
+\EndFor
+  \State Calculate the ELBO, gradient, and update parameters
+\EndFor
+\end{algorithmic}
+\end{algorithm}
 
 ## How to construct a feature-incidence matrix
 * Train ETM model 
@@ -72,7 +171,7 @@ p(c_{nd}\mid \delta_{n}, \beta) = \sum_{k}\theta_{nk}\beta_{k,c_{nd}}
 
 * For each neighbourhood, construct an interaction matrix where rows are neighbouring cell pairs and edges are ligand-receptor pairs from known database
 
-* calculate ligand-receptor interaction score
+* calculate ligand-receptor interaction score 
 
 $$ f(c_{i},c_{j},l_{x},r_{y}) = max(e_{c_{i}l_{x}} \times e_{c_{j}r_{y}} ,e_{c_{i}r_{y}} \times e_{c_{j}l_{x}}) $$
 $e_{c_{i}l_{x}}$ is expression of ligand $x$ in cell $i$, $e_{c_{j}r_{y}}$ is expression of receptor $y$ in cell $j$, $c_{i}$ and $c_{j}$ are neighbouring cells from ETM model, and $l_{x}$ and $r_{y}$ are ligand-receptor pairs from known database 
@@ -114,9 +213,6 @@ log(p(Y,Z|\lambda,\pi)) & = \sum_{g} log (\sum_{k} p(y_{g},z_{g}=k))\\
 & = \sum_{g} \sum_{k} q(z_{g}=k) log (p(y_{g},z_{g}=k)) - q(z_{g}=k) log (q(z_{g}=k)) \\
 \end{split}
 \end{equation}
-
-
-
 
 EM algorithm (like forward-backward of HMM):
 
