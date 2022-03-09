@@ -6,7 +6,7 @@ from torch.utils.data import DataLoader
 from torch.utils.data import Dataset
 from scipy import sparse
 import numpy as np
-import preprocess
+from scmetm import preprocess
 import logging
 logger = logging.getLogger(__name__)
 
@@ -90,7 +90,7 @@ class ETMDecoder(nn.Module):
 
 		beta = torch.cat((beta1,beta2),1)
 
-		return torch.mm(torch.exp(hh),torch.exp(beta)) 
+		return torch.mm(torch.exp(hh),torch.exp(beta)), hh
 
 class ETM(nn.Module):
 	def __init__(self,input_dims1,input_dims2,latent_dims,layers1, layers2) :
@@ -100,8 +100,8 @@ class ETM(nn.Module):
 		
 	def forward(self,xx1,xx2):
 		zz,m,v = self.encoder(xx1,xx2)
-		pr = self.decoder(zz)
-		return pr,m,v
+		pr,h = self.decoder(zz)
+		return pr,m,v,h
 	
 class TabularDataset(Dataset):
 	def __init__(self, x,y):
@@ -154,10 +154,6 @@ class SparseTabularDataset(Dataset):
 
 		return cell_i,cell_o,self.label[idx]
 	
-	def get_dense(self):
-		s = torch.sparse_csr_tensor(self.indptr,self.indices,self.data,size=self.shape)
-		return s.to_dense()
-
 def load_sparse_data(data_file,meta_file,immuneindex_file,device,bath_size):
 
 	npzarrs = np.load(data_file,allow_pickle=True)
@@ -191,7 +187,7 @@ def train(etm, data, device, epochs,l_rate):
 			x1 = x1.to(device)
 			x2 = x2.to(device)
 			opt.zero_grad()
-			recon,m,v = etm(x1,x2)
+			recon,m,v,h = etm(x1,x2)
 			x = torch.cat((x1,x2),1)
 			loglikloss = etm_llik(x,recon)
 			kl = kl_loss(m,v)
@@ -207,7 +203,7 @@ def train(etm, data, device, epochs,l_rate):
 	
 	return loss_values
 
-def get_encoded_h(data,model,title,loss_values):
+def get_latent(data,model,model_file,loss_values,mode):
 	import pandas as pd
 	import matplotlib.pylab as plt
 	import seaborn as sns
@@ -221,35 +217,51 @@ def get_encoded_h(data,model,title,loss_values):
 		xx2 = x2
 		label = y
 		break
-	
-	# zz,m,v = model.encoder(xx1,xx2)
+	if mode == "model":
+		zz,m,v = model.encoder(xx1,xx2)
+		pr,hh = model.decoder(zz)
 
-	# # df_z = pd.DataFrame(hh.to('cpu').detach().numpy())
-	# df_z = pd.DataFrame(zz.to('cpu').detach().numpy())
-	# df_z.columns = ["hh"+str(i)for i in df_z.columns]
+		df_z = pd.DataFrame(zz.to('cpu').detach().numpy())
+		df_z.columns = ["zz"+str(i)for i in df_z.columns]
+		df_z["cell"] = label
+		df_z = df_z[ ["cell"]+[x for x in df_z.columns if x not in["cell","sample"]]]
+		df_z.to_csv(model_file+"etm_zz_data.csv",sep="\t",index=False)
 
-	# df_z["cell"] = label
-	# df_z["sample"] = preprocess.cellid_to_meta_single(label)
-	# df_z = df_z[ ["cell"]+\
-	# 		[x for x in df_z.columns if x not in["cell","sample"]]+\
-	# 		["sample"]]
+		df_h = pd.DataFrame(hh.to('cpu').detach().numpy())
+		df_h.columns = ["hh"+str(i)for i in df_h.columns]
+		df_h["cell"] = label
+		df_h = df_h[ ["cell"]+[x for x in df_h.columns if x not in["cell","sample"]]]
+		df_h.to_csv(model_file+"etm_hh_data.csv",sep="\t",index=False)
 
-	# plt.plot(loss_values)
-	# plt.ylabel("loss", fontsize=18)
-	# plt.xlabel("epochs", fontsize=22)
-	# plt.title(title,fontsize=25)
-	# plt.savefig("../output/sc_"+title+"_loss.png");plt.close()
-	# df_z.to_csv("../output/sc_zz_"+title+"_data.csv",sep="\t",index=False)
+		beta1 =  None
+		beta2 =  None
+		for n,p in model.named_parameters():
+			if n == "decoder.lbeta1":
+				beta1=p
+			elif n == "decoder.lbeta2":
+				beta2=p
 
-	x = torch.cat((x1,x2),1)
-	df_raw = pd.DataFrame(x.to('cpu').detach().numpy())
-	df_raw.columns = ["hh"+str(i)for i in df_raw.columns]
+		df_beta1 = pd.DataFrame(beta1.to('cpu').detach().numpy())
+		df_beta1.to_csv(model_file+"etm_beta1_data.csv",sep="\t",index=False)
 
-	df_raw["cell"] = label
-	df_raw["sample"] = preprocess.cellid_to_meta_single(label)
-	df_raw = df_raw[ ["cell"]+\
-			[x for x in df_raw.columns if x not in["cell","sample"]]+\
-			["sample"]]
-	df_raw.to_csv("../output/sc_raw_"+title+"_data.csv",sep="\t",index=False)
+		df_beta2 = pd.DataFrame(beta2.to('cpu').detach().numpy())
+		df_beta2.to_csv(model_file+"etm_beta2_data.csv",sep="\t",index=False)
+
+		plt.plot(loss_values)
+		plt.ylabel("loss", fontsize=18)
+		plt.xlabel("epochs", fontsize=22)
+		plt.savefig(model_file+"loss.png");plt.close()
+
+	elif mode=="raw":
+		x = torch.cat((x1,x2),1)
+		df_raw = pd.DataFrame(x.to('cpu').detach().numpy())
+		df_raw.columns = ["hh"+str(i)for i in df_raw.columns]
+
+		df_raw["cell"] = label
+		df_raw["sample"] = preprocess.cellid_to_meta_single(label)
+		df_raw = df_raw[ ["cell"]+\
+				[x for x in df_raw.columns if x not in["cell","sample"]]+\
+				["sample"]]
+		df_raw.to_csv(model_file+"etm_raw_data.csv",sep="\t",index=False)
 
 

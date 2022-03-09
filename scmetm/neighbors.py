@@ -60,8 +60,8 @@ def adhoc_check(df_exp,cell_pairs,genes):
                     print(gene_pair,res[gene_pair])
     df_res = pd.DataFrame([res])
     df_res = df_res.T
-    df_res.to_csv("../output/cell_data/interaction_result.csv",index=False,sep="\t")
-
+    return df_res
+    
 def interaction_method_gene(xij,m):
     if m == "add":
         return xij[0,:]+xij[1,:]

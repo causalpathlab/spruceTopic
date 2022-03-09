@@ -1,0 +1,58 @@
+home : /home/BCCRC.CA/ssubedi/projects/tumour_immune_interaction/
+database : database/
+pscripts : scmetm/
+rscripts : R
+
+
+metadata : GSE156728_metadata.txt.gz
+protein_coding_genes : homo_sapiens.grch38.104.protein_coding_genes.txt
+immune_signature_genes : ImmuCellDB_signature_genes.txt
+
+
+input : input/
+output : output/
+
+sample_first : GSE156728_BC_10X.CD4.counts.txt.gz
+samples : 
+  - GSE156728_BC_10X.CD4.counts.txt.gz
+  - GSE156728_BCL_10X.CD4.counts.txt.gz
+  - GSE156728_ESCA_10X.CD4.counts.txt.gz
+  - GSE156728_MM_10X.CD4.counts.txt.gz
+  - GSE156728_PACA_10X.CD4.counts.txt.gz
+  - GSE156728_RC_10X.CD4.counts.txt.gz
+  - GSE156728_THCA_10X.CD4.counts.txt.gz
+  - GSE156728_UCEC_10X.CD4.counts.txt.gz
+  - GSE156728_BC_10X.CD8.counts.txt.gz
+  - GSE156728_BCL_10X.CD8.counts.txt.gz
+  - GSE156728_ESCA_10X.CD8.counts.txt.gz
+  - GSE156728_MM_10X.CD8.counts.txt.gz
+  - GSE156728_PACA_10X.CD8.counts.txt.gz
+  - GSE156728_RC_10X.CD8.counts.txt.gz
+  - GSE156728_THCA_10X.CD8.counts.txt.gz
+  - GSE156728_UCEC_10X.CD8.counts.txt.gz
+
+model : 
+  sparse_data : GSE156728_coo_matrix_
+  sparse_label : GSE156728_label_
+  data_tag : 180k_18k
+  out : model/
+  train :
+    batch_size : 64
+    l_rate : 0.001
+    epochs : 1000
+    layers1 : [128,128,1000,32,16]
+    layers2 : [128,128,1000,32,16]
+    latent_dims : 16
+  eval :
+    batch_size : 178000
+    l_rate : 0.001
+    epochs : 1000
+    layers1 : [128,128,1000,32,16]
+    layers2 : [128,128,1000,32,16]
+    latent_dims : 16
+  mfile : 128_128_1000_32_16_ep1000_180k_18k_
+
+
+
+
+
