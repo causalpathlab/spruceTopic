@@ -7,10 +7,15 @@ rscripts : R
 metadata : GSE156728_metadata.txt.gz
 protein_coding_genes : homo_sapiens.grch38.104.protein_coding_genes.txt
 immune_signature_genes : ImmuCellDB_signature_genes.txt
-
+lr_db : celltalkdb_v20220131_human_lr_pair.txt
 
 input : input/
 output : output/
+
+raw_data : GSE156728_ALLTISSUE_10X.CD4.CD8.counts.FILTERED.180k_18k.pkl
+raw_genes : GSE156728_ALLTISSUE_10X.CD4.CD8.counts.FILTERED.180k_18k_GENES.pkl
+raw_lr_data : GSE156728_ALLTISSUE_10X.CD4.CD8.counts.FILTERED.180k_18k.lr_db_selected.pkl
+
 
 sample_first : GSE156728_BC_10X.CD4.counts.txt.gz
 samples : 
@@ -50,7 +55,7 @@ model :
     layers1 : [128,128,1000,32,16]
     layers2 : [128,128,1000,32,16]
     latent_dims : 16
-  mfile : 128_128_1000_32_16_ep1000_180k_18k_
+  mfile : 128_128_1000_32_16_ep1000_tcells_180k_18k_
 
 
 

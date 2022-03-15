@@ -45,6 +45,7 @@ vignettes/*.pdf
 /model/
 *.txt
 *.log
+*.pdg
 
 #Ignore config file
 config.yaml
@@ -59,4 +60,5 @@ scratch.py
 __pycache__/
 *.py[cod]
 *$py.class
+/build
 

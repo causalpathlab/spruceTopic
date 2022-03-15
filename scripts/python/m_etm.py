@@ -1,7 +1,7 @@
 import pandas as pd
 import numpy as np
 from scmetm import component_check 
-from scmetm.dlearn import  metm
+from dlearn import  metm
 import torch
 import logging
 logger = logging.getLogger(__name__)

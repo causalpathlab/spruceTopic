@@ -1,16 +1,18 @@
 import pandas as pd
 import numpy as np
-from sklearn import preprocessing
-import matplotlib.pyplot as plt
-import seaborn as sns
-from mpl_toolkits.mplot3d import Axes3D
-plt.rcParams["figure.figsize"] = [15.50, 10.50]
-plt.rcParams["figure.autolayout"] = True
 
 def run_component_analysis(x,y,method,title):
 
+    from sklearn import preprocessing
+    import matplotlib.pyplot as plt
+    import seaborn as sns
+    from mpl_toolkits.mplot3d import Axes3D
+    plt.rcParams["figure.figsize"] = [15.50, 10.50]
+    plt.rcParams["figure.autolayout"] = True
+
+
+
     model = None
-    
     if method=="tsne":
         from sklearn.manifold import TSNE
         model = TSNE(n_components=3,random_state=0)

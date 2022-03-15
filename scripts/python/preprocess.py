@@ -1,6 +1,6 @@
 import pandas as pd
 import matplotlib.pylab as plt
-from scmetm.gen_util.io import read_config
+from gen_util.io import read_config
 import datatable as dt
 from scipy import sparse 
 import numpy as np

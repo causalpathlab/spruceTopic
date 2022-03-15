@@ -1,11 +1,11 @@
 import sys
 import pandas as pd
-from scmetm import neighbors as nbr,lr_map as lrm, preprocess
+from scmetm import neighbors as nbr ,lr_map as lrm, preprocess
 import random
 import matplotlib.pylab as plt
 import seaborn as sns
 import numpy as np
-from scmetm.gen_util.io import read_config
+from gen_util.io import read_config
 from collections import namedtuple
 import logging
 
@@ -53,6 +53,7 @@ mat_xij = nbr.incidence_mat_lrgraph(g,cell_pairs,df_exp)
 
 # ##get cell meta data -
 # cell_pairs_type = preprocess.cellid_to_meta(cell_pairs)
+
 
 df_mat = pd.DataFrame(mat_xij)
 df_mat.columns = [g.vs[e.source]['name']+'_'+g.vs[e.target]['name'] for e in g.es]

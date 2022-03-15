@@ -1,6 +1,7 @@
 import torch; torch.manual_seed(0)
 import torch.nn as nn
 import torch.nn.functional as F
+import torchvision
 from torch.utils.data import DataLoader
 from torch.utils.data import Dataset
 from scipy import sparse
@@ -209,7 +210,6 @@ def get_latent(data,model,model_file,loss_values,mode):
 	from matplotlib.cm import ScalarMappable
 
 	for xx1,xx2,label in data: break
-
 	if mode == "model":
 		zz,m,v = model.encoder(xx1,xx2)
 		pr,hh = model.decoder(zz)
@@ -248,3 +248,17 @@ def get_latent(data,model,model_file,loss_values,mode):
 		plt.ylabel("loss", fontsize=18)
 		plt.xlabel("epochs", fontsize=22)
 		plt.savefig(model_file+"loss.png");plt.close()
+
+	elif mode=="raw":
+		x = torch.cat((x1,x2),1)
+		df_raw = pd.DataFrame(x.to('cpu').detach().numpy())
+		df_raw.columns = ["hh"+str(i)for i in df_raw.columns]
+
+		df_raw["cell"] = label
+		df_raw["sample"] = preprocess.cellid_to_meta_single(label)
+		df_raw = df_raw[ ["cell"]+\
+				[x for x in df_raw.columns if x not in["cell","sample"]]+\
+				["sample"]]
+		df_raw.to_csv(model_file+"etm_raw_data.csv",sep="\t",index=False)
+
+
