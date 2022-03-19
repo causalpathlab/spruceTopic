@@ -245,10 +245,9 @@ def create_test_data():
 	df_selected.to_csv("../output/cd4_c13_c18_counts.txt.gz",index=False,sep="\t",compression="gzip")
 
 
-def cellid_to_meta(cell_pairs):
-	params = read_config()
-	meta_path = params["home"]+params["database"]
-	df_meta = pd.read_csv(meta_path+params["metadata"],sep="\t")
+def cellid_to_meta(cell_pairs,args):
+	meta_path = args.home+ args.database +args.metadata
+	df_meta = pd.read_csv(meta_path,sep="\t")
 
 	cell_pairs_meta = []
 	for cp in cell_pairs:
@@ -257,10 +256,9 @@ def cellid_to_meta(cell_pairs):
 
 	return cell_pairs_meta
 
-def cellid_to_meta_single(cell_ids):
-	params = read_config()
-	meta_path = params["home"]+params["database"]
-	df_meta = pd.read_csv(meta_path+params["metadata"],sep="\t")
+def cellid_to_meta_single(cell_ids,args):
+	meta_path = args.home+ args.database +args.metadata
+	df_meta = pd.read_csv(meta_path,sep="\t")
 	df_meta = df_meta[["cellID","meta.cluster"]]
 
 	df = pd.DataFrame(cell_ids,columns=["cellID"])
@@ -274,3 +272,30 @@ def get_immune_genes():
 	meta_path = params["home"]+params["database"]
 	df_meta = pd.read_csv(meta_path+params["immune_signature_genes"],sep="\t")
 	return df_meta["signature_genes"].values
+
+def create_lr_exp_data(args):
+	lr_db=args.home+args.database+args.lr_db
+	df = pd.read_csv(lr_db,sep="\t")
+	receptors = list(df.receptor_gene_symbol.unique())
+	ligands = list(df.ligand_gene_symbol.unique())
+
+	df_exp=pd.read_pickle(args.home+args.input+args.raw_data)
+
+	fname = args.home+args.input+args.raw_data
+	l_fname = fname.replace(".pkl",".ligands.pkl")
+	r_fname = fname.replace(".pkl",".receptors.pkl")
+
+	df_exp[["index"]+[ x for x in ligands if x in df_exp.columns ]].to_pickle(l_fname)
+	df_exp[["index"]+[ x for x in receptors if x in df_exp.columns ]].to_pickle(r_fname)
+
+def create_lr_mat(args):
+	lr_db=args.home+args.database+args.lr_db
+	df = pd.read_csv(lr_db,sep="\t")
+	dflrmat = df.groupby(['ligand_gene_symbol','receptor_gene_symbol']).agg(['count'])['lr_pair']
+	dflrmat = dflrmat.unstack(fill_value=0)
+	dflrmat.columns = dflrmat.columns.droplevel(0)
+	fname = args.home+args.input+args.raw_data
+	lr_fname = fname.replace(".pkl",".ligands_receptors_mat_815_780.pkl")
+	dflrmat.to_pickle(lr_fname)
+
+

@@ -14,7 +14,7 @@ output : output/
 
 raw_data : GSE156728_ALLTISSUE_10X.CD4.CD8.counts.FILTERED.180k_18k.pkl
 raw_genes : GSE156728_ALLTISSUE_10X.CD4.CD8.counts.FILTERED.180k_18k_GENES.pkl
-raw_lr_data : GSE156728_ALLTISSUE_10X.CD4.CD8.counts.FILTERED.180k_18k.lr_db_selected.pkl
+lr_bimat : GSE156728_ALLTISSUE_10X.CD4.CD8.counts.FILTERED.180k_18k.ligands_receptors_mat_815_780.pkl
 
 
 sample_first : GSE156728_BC_10X.CD4.counts.txt.gz

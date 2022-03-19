@@ -184,8 +184,6 @@ def train(etm, data, device, epochs,l_rate):
 	for epoch in range(epochs):
 		loss = 0
 		for x1,x2,y in data:
-			x1 = x1.to(device)
-			x2 = x2.to(device)
 			opt.zero_grad()
 			recon,m,v,h = etm(x1,x2)
 			x = torch.cat((x1,x2),1)
