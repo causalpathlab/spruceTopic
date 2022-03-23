@@ -45,7 +45,8 @@ vignettes/*.pdf
 /model/
 *.txt
 *.log
-*.pdg
+*.pdf
+rsync*.sh
 
 #Ignore config file
 config.yaml

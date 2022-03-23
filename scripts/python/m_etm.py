@@ -10,19 +10,19 @@ def run_model(args):
 
     logger.info("Starting model training...")
     
-    tag=args.model["data_tag"]
-    data_file = args.home+args.input+args.model["sparse_data"]+tag+".npz"
-    meta_file = args.home+args.input+args.model["sparse_label"]+tag+".npz"
-    immuneindex_file = args.home+args.input+args.model["sparse_label"]+"immune_index_"+tag+".npz"
+    tag=args.nbr_model["data_tag"]
+    data_file = args.home+args.input+args.nbr_model["sparse_data"]+tag+".npz"
+    meta_file = args.home+args.input+args.nbr_model["sparse_label"]+tag+".npz"
+    immuneindex_file = args.home+args.input+args.nbr_model["sparse_label"]+"immune_index_"+tag+".npz"
     
-    batch_size = args.model["train"]["batch_size"]
-    l_rate = args.model["train"]["l_rate"]
-    epochs = args.model["train"]["epochs"]
-    layers1 = args.model["train"]["layers1"]
-    layers2 = args.model["train"]["layers2"]
-    latent_dims = args.model["train"]["latent_dims"]
+    batch_size = args.nbr_model["train"]["batch_size"]
+    l_rate = args.nbr_model["train"]["l_rate"]
+    epochs = args.nbr_model["train"]["epochs"]
+    layers1 = args.nbr_model["train"]["layers1"]
+    layers2 = args.nbr_model["train"]["layers2"]
+    latent_dims = args.nbr_model["train"]["latent_dims"]
     
-    model_file = args.home+args.output+args.model["out"]+args.model["mfile"]
+    model_file = args.home+args.output+args.nbr_model["out"]+args.nbr_model["mfile"]
 
     device = metm.torch.device('cuda' if metm.torch.cuda.is_available() else 'cpu')
 

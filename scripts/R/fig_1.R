@@ -53,41 +53,44 @@ ggsave("hh_umap_plot.png",p,width = 10, height = 10)
 }
 
 weightmat_plot <- function(args) {
-topgenes_file = paste(args$home,args$output,args$model$mfile,"top_3_genes_topic.tsv",sep="")
+topgenes_file = paste(args$home,args$output,args$nbr_model$out,args$nbr_model$mfile,"top_3_genes_topic.tsv",sep="")
 df_tg = read.table(topgenes_file, sep = "\t", header=TRUE)
 
 # df_tg <- df_tg[order(df_tg$Genes),]
 df_tg$Topic <- factor(df_tg$Topic,levels = c("k0", "k1", "k2", "k3", "k4","k5",
       "k6","k7","k8","k9","k10","k11","k12","k13","k14","k15"))
-
-p1 <- ggplot(df_tg[df_tg$GeneType=="immune",], aes(Genes,Topic)) + 
+df_tg$Proportion = log(df_tg$Proportion)
+p1 <- ggplot(df_tg[df_tg$GeneType=="immune",], aes(Gene,Topic)) + 
      geom_tile(aes(fill = Proportion), colour = "white") + 
-     geom_text(aes(label=Gene),size=2) +
+#      geom_text(aes(label=Gene),size=2) +
      scale_fill_gradient(low = "white", high = "steelblue") + 
-     xlab("Immune Genes") +
+     xlab("Immune Signature Genes") +
      theme(panel.background=element_blank(),
       panel.border=element_blank(),
       panel.grid.major=element_blank(),
       panel.grid.minor=element_blank(),
-      plot.background=element_blank()) 
+      plot.background=element_blank(),
+      axis.text.x = element_text(size=6,face="bold",angle = 45,hjust=1))
 
-p2 <- ggplot(df_tg[df_tg$GeneType=="non-immune",], aes( Genes, Topic)) + 
+p2 <- ggplot(df_tg[df_tg$GeneType=="non-immune",], aes( Gene, Topic)) + 
      geom_tile(aes(fill = Proportion), colour = "white") + 
-     geom_text(aes(label=Gene),size=2) +
+#      geom_text(aes(label=Gene),size=2) +
      scale_fill_gradient(low = "white", high = "steelblue") +
-     xlab("Non-Immune Genes") +
+     xlab("Other Genes") +
       theme(panel.background=element_blank(),
       panel.border=element_blank(),
       panel.grid.major=element_blank(),
       panel.grid.minor=element_blank(),
-      plot.background=element_blank())
+      plot.background=element_blank(),
+      axis.text.x = element_text(size=6,face="bold",angle = 45,hjust=1))
+
 plotlist = list()
 plotlist[[1]] = p1 
 plotlist[[2]] = p2 
 
-stplt <- grid.arrange(grobs=plotlist,ncol=2,
-heights = c(1/6, 1/6))
+stplt <- grid.arrange(grobs=plotlist,ncol=1,
+heights = c(1/2, 1/2))
 ggsave("pp_weightmat_plot.pdf",stplt)
 }
-# weightmat_plot(args)
-struct_plot(args)
+weightmat_plot(args)
+# struct_plot(args)
