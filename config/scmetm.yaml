@@ -1,4 +1,4 @@
-home : /home/BCCRC.CA/ssubedi/projects/tumour_immune_interaction/
+home : /tumour_immune_interaction/
 database : database/
 pscripts : scmetm/
 rscripts : R
@@ -58,13 +58,14 @@ lr_model :
   lr_data : GSE156728_ALLTISSUE_10X.CD4.CD8.counts.FILTERED.180k_18k.ligands_receptors_mat_815_780.pkl
   data_tag : lr_net
   out : model/lr_net/
+  in : lr_tensor/
   train :
     nbr_size : 50
-    batch_size : 128
-    l_rate : 0.01
-    epochs : 100
-    layers1 : [128,512,64]
-    layers2 : [128,512,64]
+    batch_size : 256
+    l_rate : 0.001
+    epochs : 1200
+    layers1 : [128,256,64]
+    layers2 : [128,256,64]
     latent_dims : 64
   eval :
     batch_size : 100

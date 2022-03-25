@@ -5,93 +5,114 @@ from torch.utils.data import DataLoader
 from torch.utils.data import Dataset
 import numpy as np
 import pandas as pd
+import random
 import annoy 
-import sys
-import time
+import os
 import logging
 logger = logging.getLogger(__name__)
 
 class ApproxNN():
-    def __init__(self, data, labels):
-        self.dimension = data.shape[1]
-        self.data = data.astype('float32')
-        self.labels = labels    
+	def __init__(self, data, labels):
+		self.dimension = data.shape[1]
+		self.data = data.astype('float32')
+		self.labels = labels    
    
-    def build(self, number_of_trees=50):
-        self.index = annoy.AnnoyIndex(self.dimension,'angular')
-        for i, vec in enumerate(self.data):
-            self.index.add_item(i, vec.tolist())
-        self.index.build(number_of_trees)
-        
-    def query(self, vector, k):
-        indices = self.index.get_nns_by_vector(vector.tolist(),k)                                           
-        # return [self.labels[i] for i in indices]
-        return indices
-
-class LRDataset(Dataset):
-	def __init__(self,lmat,rmat,labels,Alr,modelann,nbrsize,hmat,device) :
-		self.lmat = lmat
-		self.rmat = rmat
-		self.labels = labels
-		self.lrmat = Alr
-		self.modelann = modelann
-		self.nbrsize = nbrsize
-		self.hmat = hmat 
-		self.device = device
-
-	def __len__(self):
-		return self.hmat.shape[0]
+	def build(self, number_of_trees=50):
+		self.index = annoy.AnnoyIndex(self.dimension,'angular')
+		for i, vec in enumerate(self.data):
+			self.index.add_item(i, vec.tolist())
+		self.index.build(number_of_trees)
+		
+	def query(self, vector, k):
+		return self.index.get_nns_by_vector(vector.tolist(),k)                                           
 	
-	def __getitem__(self, idx):
+	
+def save_tensors(l_mat,r_mat,lr_mat,model_ann,nbr_size,h_mat,device,f_path,f_batch_size):
 
-		neighbours = self.modelann.query(self.hmat[idx],k=self.nbrsize)
+	l_in_mat = torch.empty(0, r_mat.shape[1]).to(device)
+	r_in_mat = torch.empty(0, l_mat.shape[1]).to(device)
 
-		l_in_mat,r_in_mat = [],[]
+	data_idxs = random.sample(range(h_mat.shape[0]),h_mat.shape[0])
 
-		cm_l = self.lmat[idx].unsqueeze(0)
-		cm_r = self.rmat[idx].unsqueeze(0)
+	for i,idx in enumerate(data_idxs) :
+		
+		neighbours = model_ann.query(h_mat[idx],k=nbr_size)
+
+		cm_l = l_mat[idx].unsqueeze(0)
+		cm_r = r_mat[idx].unsqueeze(0)
 
 		for nidx in neighbours[1:]:
 			
-			cn_l = self.lmat[nidx].unsqueeze(0)
-			cn_r = self.rmat[nidx].unsqueeze(0)
+			cn_l = l_mat[nidx].unsqueeze(0)
+			cn_r = r_mat[nidx].unsqueeze(0)
 
-			l_in_mat.append(torch.mm(cm_l,self.lrmat).mul(cm_r) + torch.mm(cn_l,self.lrmat).mul(cn_r))
-			r_in_mat.append(torch.mm(cm_r,torch.t(self.lrmat)).mul(cm_l) + torch.mm(cn_r,torch.t(self.lrmat)).mul(cn_l))
+			l_to_r = torch.mm(cm_l,lr_mat).mul(cm_r) + torch.mm(cn_l,lr_mat).mul(cn_r)
+			l_in_mat = torch.cat((l_in_mat,l_to_r),0)
+			r_to_l = torch.mm(cm_r,torch.t(lr_mat)).mul(cm_l) + torch.mm(cn_r,torch.t(lr_mat)).mul(cn_l)
+			r_in_mat = torch.cat((r_in_mat,r_to_l),0)
+		
+		if i % f_batch_size == 0:
 
-		l_in_mat = torch.cat(l_in_mat).to(self.device)
-		r_in_mat = torch.cat(r_in_mat).to(self.device)
+			logger.info('saving tensor...'+str(i))
 
-		return l_in_mat,r_in_mat
+			torch.save(l_in_mat, f_path + str(i)+'_ligands.pt')
+			torch.save(r_in_mat, f_path + str(i)+'_receptors.pt') 
 
-def load_data(args,nbr_size,batch_size,device):
+			l_in_mat = torch.empty(0, r_mat.shape[1]).to(device)
+			r_in_mat = torch.empty(0, l_mat.shape[1]).to(device)
 
-	fname = args.home+args.input+args.raw_data
-	l_fname = fname.replace(".pkl",".ligands.pkl")
-	r_fname = fname.replace(".pkl",".receptors.pkl")
-	lr_fname = fname.replace(".pkl",".ligands_receptors_mat_815_780.pkl")
 
-	df_h = pd.read_csv(args.home+args.output+args.nbr_model["out"]+args.nbr_model["mfile"]+"etm_hh_data.tsv",sep="\t")
 
+def generate_tensors(args,nbr_size,device):
+	
+	args_home = os.environ["args_home"]
+	l_fname = args_home+args.input+args.lr_model["l_data"]
+	r_fname = args_home+args.input+args.lr_model["r_data"]
+	lr_fname = args_home+args.input+args.lr_model["lr_data"]
+
+	df_h = pd.read_csv(args_home+args.output+args.nbr_model['out']+args.nbr_model['mfile']+'etm_hh_data.tsv',sep='\t')
 	df_l = pd.read_pickle(l_fname)
 	df_r = pd.read_pickle(r_fname)
-	df_l = df_l[df_l["index"].isin(df_h["cell"].values)]
-	df_r = df_r[df_r["index"].isin(df_h["cell"].values)]
 
-	dfjoin = pd.merge(df_l["index"],df_h,how="left",left_on="index",right_on="cell")
+	df_l = df_l[df_l['index'].isin(df_h['cell'].values)]
+	df_r = df_r[df_r['index'].isin(df_h['cell'].values)]
+
+	dfjoin = pd.merge(df_l['index'],df_h,how='left',left_on='index',right_on='cell')
 	model_ann = ApproxNN(dfjoin.iloc[:,2:].to_numpy(), dfjoin.iloc[:,0].values)
 	model_ann.build()
 
 	h_mat = torch.tensor(dfjoin.iloc[:,2:].values.astype(np.float32)).to(device)
-	lmat = torch.tensor(df_l.iloc[:,1:].values.astype(np.float32)).to(device)
-	rmat = torch.tensor(df_r.iloc[:,1:].values.astype(np.float32)).to(device)
-	lrlabels = df_l.iloc[:,0].values
+	l_mat = torch.tensor(df_l.iloc[:,1:].values.astype(np.float32)).to(device)
+	r_mat = torch.tensor(df_r.iloc[:,1:].values.astype(np.float32)).to(device)
+	lr_labels = df_l.iloc[:,0].values
 
 	df_lr = pd.read_pickle(lr_fname)
 	df_lr = df_lr.loc[df_l.columns[1:],df_r.columns[1:]]
-	Alr = torch.tensor(df_lr.values.astype(np.float32)).to(device)
+	lr_mat = torch.tensor(df_lr.values.astype(np.float32)).to(device)
 
-	return DataLoader(LRDataset(lmat,rmat,lrlabels,Alr,model_ann,nbr_size,h_mat,device), batch_size=batch_size, shuffle=True)
+	f_path = args_home+args.input+args.lr_model['in'] 
+	f_batch_size = 256
+
+	save_tensors(l_mat,r_mat,lr_mat,model_ann,nbr_size,h_mat,device,f_path,f_batch_size)
+
+class LRDataset(Dataset):
+	def __init__(self, tensor_fpath,flist):
+		self.path = tensor_fpath
+		self.flist = flist
+	
+	def __len__(self):
+		return len(self.flist)
+	
+	def __getitem__(self, idx):
+		l_in_mat = torch.load(os.path.join(self.path,self.flist[idx]+'_ligands.pt'))
+		r_in_mat = torch.load(os.path.join(self.path,self.flist[idx]+'_receptors.pt'))
+		return l_in_mat, r_in_mat
+
+
+def load_data(args,batch_size):
+	fdir = args.home+args.input+args.lr_model['in']
+	files = pd.Series([ x.split('_')[0] for x in os.listdir(fdir)]).unique()
+	return DataLoader(LRDataset(fdir,files), batch_size=batch_size, shuffle=True)
 
 def reparameterize(mean,lnvar):
 	sig = torch.exp(lnvar/2.)
@@ -185,12 +206,11 @@ class ETM(nn.Module):
 		return pr,m,v,h
 	
 def train(etm, data, device, epochs,l_rate):
-	logger.info("Starting training....")
+	logger.info('Starting training....')
 	opt = torch.optim.Adam(etm.parameters(),lr=l_rate)
 	loss_values = []
 	for epoch in range(epochs):
 		loss = 0
-		r = 0
 		for x1,x2 in data:
 			x1 = x1.reshape(x1.shape[0]*x1.shape[1],x1.shape[2])
 			x2 = x2.reshape(x2.shape[0]*x2.shape[1],x2.shape[2])
@@ -199,52 +219,53 @@ def train(etm, data, device, epochs,l_rate):
 			x = torch.cat((x1,x2),1)
 			loglikloss = etm_llik(x,recon)
 			kl = kl_loss(m,v)
-			train_loss = torch.mean(kl-loglikloss).to("cpu")
+			train_loss = torch.mean(kl-loglikloss).to('cpu')
 			train_loss.backward()
 			opt.step()
 			loss += train_loss.item()
-			r += 1
-			print(epoch,r)
-		logger.info('====> Epoch: {} Average loss: {:.4f}'.format(epoch, loss/len(data)))
-		
-		loss_values.append(loss/len(data))
+		if epoch % 10 ==0:
+			logger.info('====> Epoch: {} Average loss: {:.4f}'.format(epoch, loss/len(data)))
+			loss_values.append(loss/len(data))
 	
 	return loss_values
 
 def get_latent(data,model,model_file,loss_values):
 	import matplotlib.pylab as plt
 
-	for xx1,xx2 in data: break
-	zz,m,v = model.encoder(xx1,xx2)
+	for x1,x2 in data: break
+	x1 = x1.reshape(x1.shape[0]*x1.shape[1],x1.shape[2])
+	x2 = x2.reshape(x2.shape[0]*x2.shape[1],x2.shape[2])
+
+	zz,m,v = model.encoder(x1,x2)
 	pr,hh = model.decoder(zz)
 	hh = torch.exp(hh)
 
 	df_z = pd.DataFrame(zz.to('cpu').detach().numpy())
-	df_z.columns = ["zz"+str(i)for i in df_z.columns]
-	df_z.to_csv(model_file+"etm_zz_data.csv",sep="\t",index=False)
+	df_z.columns = ['zz'+str(i)for i in df_z.columns]
+	df_z.to_csv(model_file+'etm_zz_data.csv',sep='\t',index=False)
 
 	df_h = pd.DataFrame(hh.to('cpu').detach().numpy())
-	df_h.columns = ["hh"+str(i)for i in df_h.columns]
-	df_h.to_csv(model_file+"etm_hh_data.csv",sep="\t",index=False)
+	df_h.columns = ['hh'+str(i)for i in df_h.columns]
+	df_h.to_csv(model_file+'etm_hh_data.csv',sep='\t',index=False)
 
 	beta1 =  None
 	beta2 =  None
 	for n,p in model.named_parameters():
-		if n == "decoder.lbeta1":
+		if n == 'decoder.lbeta1':
 			beta1=p
-		elif n == "decoder.lbeta2":
+		elif n == 'decoder.lbeta2':
 			beta2=p
 	beta_smax = nn.LogSoftmax(dim=-1)
 	beta1 = torch.exp(beta_smax(beta1))
 	beta2 = torch.exp(beta_smax(beta2))
 
 	df_beta1 = pd.DataFrame(beta1.to('cpu').detach().numpy())
-	df_beta1.to_csv(model_file+"etm_beta1_data.csv",sep="\t",index=False)
+	df_beta1.to_csv(model_file+'etm_beta1_data.csv',sep='\t',index=False)
 
 	df_beta2 = pd.DataFrame(beta2.to('cpu').detach().numpy())
-	df_beta2.to_csv(model_file+"etm_beta2_data.csv",sep="\t",index=False)
+	df_beta2.to_csv(model_file+'etm_beta2_data.csv',sep='\t',index=False)
 
 	plt.plot(loss_values)
-	plt.ylabel("loss", fontsize=18)
-	plt.xlabel("epochs", fontsize=22)
-	plt.savefig(model_file+"loss.png");plt.close()
+	plt.ylabel('loss', fontsize=18)
+	plt.xlabel('epochs', fontsize=22)
+	plt.savefig(model_file+'loss.png');plt.close()
