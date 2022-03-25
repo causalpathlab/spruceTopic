@@ -1,13 +1,9 @@
 
 import torch; torch.manual_seed(0)
-import torchvision
 import torch.nn as nn
 import torch.nn.functional as F
 from torch.utils.data import DataLoader
 from torch.utils.data import Dataset
-import matplotlib.pyplot as plt
-import pandas as pd
-import numpy as np
 
 class Stacklayers(nn.Module):
 	def __init__(self,input_size,layers):
@@ -82,65 +78,3 @@ def train(autoencoder, data,device, epochs,lr):
 			print('====> Epoch: {} Average loss: {:.4f}'.format(epoch, loss/len(data)))
 		loss_values.append(loss/len(data))
 	return loss_values
-
-
-def plot_ae_components(data,autoencoder,device,label):
-	for i, (x,y) in enumerate(data):
-		z = autoencoder.encoder(x.to(device))
-		z = z.to('cpu').detach().numpy()
-		plt.scatter(z[:, 0], z[:, 1],c=y, cmap='tab10')
-	plt.savefig("../output/"+label+".png");plt.close()
-
-def get_xhat(df,autoencoder,device):
-	x = df.iloc[:,1:-1].values.astype('float32')
-	x = torch.from_numpy(x).to(device)
-	xhat = autoencoder(x.to(device))
-	df_xhat = pd.DataFrame(xhat.to('cpu').detach().numpy())
-	df_xhat.columns = [i for i in df.columns[1:-1]]
-	df_xhat["cell"] = df["cell"]
-	df_xhat["sample"] = df["sample"]
-	return df_xhat
-
-def get_encoded_z(df,autoencoder,device):
-	x = df.iloc[:,1:-1].values.astype('float32')
-	x = torch.from_numpy(x).to(device)
-	z = autoencoder.encoder(x.to(device))
-	df_z = pd.DataFrame(z.to('cpu').detach().numpy())
-	df_z.columns = ["z"+str(i)for i in df_z.columns]
-	return df_z
-
-
-def get_encoded_h(df,model,device,title,loss_values):
-	import pandas as pd
-	import matplotlib.pylab as plt
-	import seaborn as sns
-	from matplotlib.cm import ScalarMappable
-
-	# x = df.iloc[:,1:-1].values.astype('float32')
-	# x = torch.from_numpy(x).to(device)
-	
-	# z = model.encoder(x.to(device))
-
-	# df_z = pd.DataFrame(z.to('cpu').detach().numpy())
-	# df_z.columns = ["z"+str(i)for i in df_z.columns]
-	
-	# data_color = range(len(df_z.columns))
-	# data_color = [x / max(data_color) for x in data_color] 
-
-	# custom_map = plt.cm.get_cmap('coolwarm') #one of the color schemas stored
-	# custom = custom_map(data_color)  #mapping the color info to the variable custom
-	# df_z.plot(kind='bar', stacked=True, color=custom,figsize=(25,10))
-	# plt.ylabel("hidden state proportion", fontsize=18)
-	# plt.xlabel("samples", fontsize=22)
-	# plt.xticks([])
-	# plt.title(title,fontsize=25)
-	# plt.savefig("../output/ae_z_"+title+".png");plt.close()
-
-	plt.plot(loss_values)
-	plt.ylabel("loss", fontsize=18)
-	plt.xlabel("epochs", fontsize=22)
-	plt.title(title,fontsize=25)
-	plt.savefig("../output/ae_z_"+title+"_loss.png");plt.close()
-	# df_z.to_csv("../output/hh_"+title+"_data.csv",sep="\t",index=False)
-
-

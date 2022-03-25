@@ -19,10 +19,10 @@ args = namedtuple('Struct',params.keys())(*params.values())
 model_file = args_home+args.output+args.lr_model['out']+args.lr_model['mfile']+now.strftime('%d%m%Y%H%M%S')
 
 print(model_file)
-# logging.basicConfig(filename=model_file+'.log',
-# 						format='%(asctime)s %(levelname)-8s %(message)s',
-# 						level=logging.INFO,
-# 						datefmt='%Y-%m-%d %H:%M:%S')
+logging.basicConfig(filename=model_file+'.log',
+						format='%(asctime)s %(levelname)-8s %(message)s',
+						level=logging.INFO,
+						datefmt='%Y-%m-%d %H:%M:%S')
 
 def run_model(mode):
 	nbr_size = args.lr_model['train']['nbr_size']
@@ -33,7 +33,7 @@ def run_model(mode):
 	layers2 = args.lr_model['train']['layers2']
 	latent_dims = args.lr_model['train']['latent_dims']
 
-	if mode == 'generate_data':
+	if mode == 'generate_tensor':
 		device = lrnet.torch.device('cuda' if lrnet.torch.cuda.is_available() else 'cpu')
 		lrnet.generate_tensors(args,nbr_size,device)
 
@@ -48,7 +48,7 @@ def run_model(mode):
 
 		model = lrnet.ETM(input_dims1,input_dims2,latent_dims,layers1,layers2).to(device)
 		logging.info(model)
-		loss_values = lrnet.train(model,data,device,epochs,l_rate)
+		loss_values = lrnet.train(model,data,epochs,l_rate)
 
 		lrnet.torch.save(model.state_dict(), model_file+'etm.torch')
 		dflv = pd.DataFrame(loss_values)

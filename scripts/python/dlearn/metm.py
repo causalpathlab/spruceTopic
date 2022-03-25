@@ -5,7 +5,6 @@ from torch.utils.data import DataLoader
 from torch.utils.data import Dataset
 from scipy import sparse
 import numpy as np
-from scmetm import preprocess
 import logging
 logger = logging.getLogger(__name__)
 
@@ -155,6 +154,11 @@ class SparseTabularDataset(Dataset):
 	
 def load_sparse_data(data_file,meta_file,immuneindex_file,device,bath_size):
 
+	logger.info("loading sparse data...\n"+
+        data_file +"\n"+
+        meta_file +"\n" +
+        immuneindex_file )
+
 	npzarrs = np.load(data_file,allow_pickle=True)
 	s = sparse.csr_matrix( (npzarrs['val'].astype(np.int32), (npzarrs['idx'], npzarrs['idy']) ),shape=npzarrs['shape'] )
 	
@@ -176,7 +180,7 @@ def load_sparse_data(data_file,meta_file,immuneindex_file,device,bath_size):
 
 	return DataLoader(SparseTabularDataset(spdata,device), batch_size=bath_size, shuffle=True)
 
-def train(etm, data, device, epochs,l_rate):
+def train(etm,data,epochs,l_rate):
 	logger.info("Starting training....")
 	opt = torch.optim.Adam(etm.parameters(),lr=l_rate)
 	loss_values = []
@@ -203,8 +207,6 @@ def train(etm, data, device, epochs,l_rate):
 def get_latent(data,model,model_file,loss_values,mode):
 	import pandas as pd
 	import matplotlib.pylab as plt
-	import seaborn as sns
-	from matplotlib.cm import ScalarMappable
 
 	for xx1,xx2,label in data: break
 	if mode == "model":
@@ -216,13 +218,13 @@ def get_latent(data,model,model_file,loss_values,mode):
 		df_z.columns = ["zz"+str(i)for i in df_z.columns]
 		df_z["cell"] = label
 		df_z = df_z[ ["cell"]+[x for x in df_z.columns if x not in["cell","sample"]]]
-		df_z.to_csv(model_file+"etm_zz_data.csv",sep="\t",index=False)
+		df_z.to_csv(model_file+"etm_zz_data.tsv",sep="\t",index=False,compression=True)
 
 		df_h = pd.DataFrame(hh.to('cpu').detach().numpy())
 		df_h.columns = ["hh"+str(i)for i in df_h.columns]
 		df_h["cell"] = label
 		df_h = df_h[ ["cell"]+[x for x in df_h.columns if x not in["cell","sample"]]]
-		df_h.to_csv(model_file+"etm_hh_data.csv",sep="\t",index=False)
+		df_h.to_csv(model_file+"etm_hh_data.tsv",sep="\t",index=False,compression=True)
 
 		beta1 =  None
 		beta2 =  None
@@ -236,26 +238,13 @@ def get_latent(data,model,model_file,loss_values,mode):
 		beta2 = torch.exp(beta_smax(beta2))
 
 		df_beta1 = pd.DataFrame(beta1.to('cpu').detach().numpy())
-		df_beta1.to_csv(model_file+"etm_beta1_data.csv",sep="\t",index=False)
+		df_beta1.to_csv(model_file+"etm_beta1_data.tsv",sep="\t",index=False,compression=True)
 
 		df_beta2 = pd.DataFrame(beta2.to('cpu').detach().numpy())
-		df_beta2.to_csv(model_file+"etm_beta2_data.csv",sep="\t",index=False)
+		df_beta2.to_csv(model_file+"etm_beta2_data.tsv",sep="\t",index=False,compression=True)
 
 		plt.plot(loss_values)
 		plt.ylabel("loss", fontsize=18)
 		plt.xlabel("epochs", fontsize=22)
 		plt.savefig(model_file+"loss.png");plt.close()
-
-	elif mode=="raw":
-		x = torch.cat((x1,x2),1)
-		df_raw = pd.DataFrame(x.to('cpu').detach().numpy())
-		df_raw.columns = ["hh"+str(i)for i in df_raw.columns]
-
-		df_raw["cell"] = label
-		df_raw["sample"] = preprocess.cellid_to_meta_single(label)
-		df_raw = df_raw[ ["cell"]+\
-				[x for x in df_raw.columns if x not in["cell","sample"]]+\
-				["sample"]]
-		df_raw.to_csv(model_file+"etm_raw_data.csv",sep="\t",index=False)
-
 

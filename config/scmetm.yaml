@@ -1,21 +1,16 @@
 home : /tumour_immune_interaction/
 database : database/
-pscripts : scmetm/
-rscripts : R
-
+input : input/
+output : output/
 
 metadata : GSE156728_metadata.txt.gz
 protein_coding_genes : homo_sapiens.grch38.104.protein_coding_genes.txt
 immune_signature_genes : ImmuCellDB_signature_genes.txt
 lr_db : celltalkdb_v20220131_human_lr_pair.txt
 
-input : input/
-output : output/
-
 raw_data : GSE156728_ALLTISSUE_10X.CD4.CD8.counts.FILTERED.180k_18k.pkl
 raw_genes : GSE156728_ALLTISSUE_10X.CD4.CD8.counts.FILTERED.180k_18k_GENES.pkl
 lr_bimat : GSE156728_ALLTISSUE_10X.CD4.CD8.counts.FILTERED.180k_18k.ligands_receptors_mat_815_780.pkl
-
 
 sample_first : GSE156728_BC_10X.CD4.counts.txt.gz
 samples : 
@@ -37,9 +32,9 @@ samples :
   - GSE156728_UCEC_10X.CD8.counts.txt.gz
 
 nbr_model : 
-  sparse_data : GSE156728_coo_matrix_
-  sparse_label : GSE156728_label_
-  data_tag : 180k_18k
+  sparse_data : GSE156728_coo_matrix_180k_18k.npz
+  sparse_label : GSE156728_label_180k_18k.npz
+  sparse_immune_label : GSE156728_label_immune_index_180k_18k.npz
   out : model/nbr_net/
   train :
     batch_size : 64
@@ -50,18 +45,18 @@ nbr_model :
     latent_dims : 16
   eval :
     batch_size : 178000
-  mfile : 128_128_1000_32_16_ep1000_tcells_180k_18k_
+  mfile : test_
 
 lr_model : 
   l_data : GSE156728_ALLTISSUE_10X.CD4.CD8.counts.FILTERED.180k_18k.ligands.pkl
   r_data : GSE156728_ALLTISSUE_10X.CD4.CD8.counts.FILTERED.180k_18k.receptors.pkl
   lr_data : GSE156728_ALLTISSUE_10X.CD4.CD8.counts.FILTERED.180k_18k.ligands_receptors_mat_815_780.pkl
-  data_tag : lr_net
   out : model/lr_net/
   in : lr_tensor/
+  in_nbr_model : 128_128_1000_32_16_ep1000_tcells_180k_18k_etm_hh_data.tsv
   train :
     nbr_size : 50
-    batch_size : 256
+    batch_size : 1
     l_rate : 0.001
     epochs : 1200
     layers1 : [128,256,64]
@@ -69,9 +64,5 @@ lr_model :
     latent_dims : 64
   eval :
     batch_size : 100
-  mfile : 128_128_1000_128_ep100_lrnet_
-
-
-
-
+  mfile : test
 

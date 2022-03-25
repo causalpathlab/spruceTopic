@@ -55,7 +55,7 @@ io.py
 #Ignore other temp extra files
 *.html
 *.png
-scratch.py
+/scripts/archive/
 
 # Byte-compiled / optimized / DLL files
 __pycache__/

@@ -10,8 +10,6 @@ def run_component_analysis(x,y,method,title):
     plt.rcParams["figure.figsize"] = [15.50, 10.50]
     plt.rcParams["figure.autolayout"] = True
 
-
-
     model = None
     if method=="tsne":
         from sklearn.manifold import TSNE

@@ -1,13 +1,11 @@
 import torch; torch.manual_seed(0)
 import torch.nn as nn
 import torch.nn.functional as F
-import torchvision
 from torch.utils.data import DataLoader
 from torch.utils.data import Dataset
 from scipy import sparse
 import numpy as np 
 import preprocess
-
 
 def reparameterize(mean,lnvar):
 	sig = torch.exp(lnvar/2.)
@@ -161,42 +159,3 @@ def train(etm, data,device, epochs,l_rate):
 		loss_values.append(loss/len(data))
 	
 	return loss_values
-
-
-def get_encoded_h(x,label,model,device,title,loss_values):
-	import pandas as pd
-	import matplotlib.pylab as plt
-	import seaborn as sns
-	from matplotlib.cm import ScalarMappable
-	
-	zz,mean,lv = model.encoder(x)
-	pr,hh = model.decoder(zz)
-
-	# df_z = pd.DataFrame(hh.to('cpu').detach().numpy())
-	df_z = pd.DataFrame(zz.to('cpu').detach().numpy())
-	df_z.columns = ["hh"+str(i)for i in df_z.columns]
-
-	df_z["cell"] = label
-	df_z["sample"] = preprocess.cellid_to_meta_single(label)
-	df_z = df_z[ ["cell"]+\
-			[x for x in df_z.columns if x not in["cell","sample"]]+\
-			["sample"]]
-
-	
-	# data_color = range(len(df_z.columns))
-	# data_color = [x / max(data_color) for x in data_color] 
-	# custom_map = plt.cm.get_cmap('coolwarm') 
-	# custom = custom_map(data_color)  
-	# df_z.plot(kind='bar', stacked=True, color=custom,figsize=(25,10))
-	# plt.ylabel("hidden state proportion", fontsize=18)
-	# plt.xlabel("samples", fontsize=22)
-	# plt.xticks([])
-	# plt.title(title,fontsize=25)
-	# plt.savefig("../output/hh_"+title+".png");plt.close()
-
-	plt.plot(loss_values)
-	plt.ylabel("loss", fontsize=18)
-	plt.xlabel("epochs", fontsize=22)
-	plt.title(title,fontsize=25)
-	plt.savefig("../output/sc_"+title+"_loss.png");plt.close()
-	df_z.to_csv("../output/sc_zz_"+title+"_data.csv",sep="\t",index=False)

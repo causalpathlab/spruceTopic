@@ -70,7 +70,7 @@ def generate_tensors(args,nbr_size,device):
 	r_fname = args_home+args.input+args.lr_model["r_data"]
 	lr_fname = args_home+args.input+args.lr_model["lr_data"]
 
-	df_h = pd.read_csv(args_home+args.output+args.nbr_model['out']+args.nbr_model['mfile']+'etm_hh_data.tsv',sep='\t')
+	df_h = pd.read_csv(args_home+args.output+args.nbr_model['out']+args.lr_model['in_nbr_model'],sep='\t')
 	df_l = pd.read_pickle(l_fname)
 	df_r = pd.read_pickle(r_fname)
 
@@ -110,7 +110,8 @@ class LRDataset(Dataset):
 
 
 def load_data(args,batch_size):
-	fdir = args.home+args.input+args.lr_model['in']
+	args_home = os.environ["args_home"]
+	fdir = args_home+args.input+args.lr_model['in']
 	files = pd.Series([ x.split('_')[0] for x in os.listdir(fdir)]).unique()
 	return DataLoader(LRDataset(fdir,files), batch_size=batch_size, shuffle=True)
 
@@ -205,7 +206,7 @@ class ETM(nn.Module):
 		pr,h = self.decoder(zz)
 		return pr,m,v,h
 	
-def train(etm, data, device, epochs,l_rate):
+def train(etm,data,epochs,l_rate):
 	logger.info('Starting training....')
 	opt = torch.optim.Adam(etm.parameters(),lr=l_rate)
 	loss_values = []
@@ -242,11 +243,11 @@ def get_latent(data,model,model_file,loss_values):
 
 	df_z = pd.DataFrame(zz.to('cpu').detach().numpy())
 	df_z.columns = ['zz'+str(i)for i in df_z.columns]
-	df_z.to_csv(model_file+'etm_zz_data.csv',sep='\t',index=False)
+	df_z.to_csv(model_file+'etm_zz_data.csv',sep='\t',index=False,compression=True)
 
 	df_h = pd.DataFrame(hh.to('cpu').detach().numpy())
 	df_h.columns = ['hh'+str(i)for i in df_h.columns]
-	df_h.to_csv(model_file+'etm_hh_data.csv',sep='\t',index=False)
+	df_h.to_csv(model_file+'etm_hh_data.csv',sep='\t',index=False,compression=True)
 
 	beta1 =  None
 	beta2 =  None
@@ -260,10 +261,10 @@ def get_latent(data,model,model_file,loss_values):
 	beta2 = torch.exp(beta_smax(beta2))
 
 	df_beta1 = pd.DataFrame(beta1.to('cpu').detach().numpy())
-	df_beta1.to_csv(model_file+'etm_beta1_data.csv',sep='\t',index=False)
+	df_beta1.to_csv(model_file+'etm_beta1_data.csv',sep='\t',index=False,compression=True)
 
 	df_beta2 = pd.DataFrame(beta2.to('cpu').detach().numpy())
-	df_beta2.to_csv(model_file+'etm_beta2_data.csv',sep='\t',index=False)
+	df_beta2.to_csv(model_file+'etm_beta2_data.csv',sep='\t',index=False,compression=True)
 
 	plt.plot(loss_values)
 	plt.ylabel('loss', fontsize=18)
