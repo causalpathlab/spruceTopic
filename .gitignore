@@ -43,6 +43,8 @@ vignettes/*.pdf
 /database/
 /output/
 /model/
+
+
 *.txt
 *.log
 *.pdf
@@ -56,6 +58,7 @@ io.py
 *.html
 *.png
 /scripts/archive/
+/scripts/python/wip.py
 
 # Byte-compiled / optimized / DLL files
 __pycache__/
