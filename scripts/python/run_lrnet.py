@@ -12,7 +12,7 @@ spath = os.path.dirname(__file__)
 args_home = spath.replace('/scripts/python','/')
 
 os.chdir(args_home)
-os.environ["args_home"] = args_home
+os.environ['args_home'] = args_home
 
 params = read_config(args_home+'/config/scmetm.yaml')
 args = namedtuple('Struct',params.keys())(*params.values())
@@ -65,7 +65,7 @@ def run_model(mode):
 		model.load_state_dict(lrnet.torch.load(model_file+'etm.torch'))
 		model.eval()	
 
-		dfloss = pd.read_csv(model_file+'loss.tsv',sep="\t")
+		dfloss = pd.read_csv(model_file+'loss.tsv',sep='\t')
 
 		lrnet.get_latent(data,model,model_file,dfloss.iloc[:,0].values)
 

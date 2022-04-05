@@ -11,7 +11,7 @@ tcell_signature_genes : science.abe6474_table_s3.xlsx
 
 
 raw_data : GSE156728_ALLTISSUE_10X.CD4.CD8.counts.FILTERED.180k_18k.pkl
-raw_genes : GSE156728_ALLTISSUE_10X.CD4.CD8.counts.FILTERED.180k_18k_GENES.pkl
+raw_data_genes : GSE156728_ALLTISSUE_10X.CD4.CD8.counts.FILTERED.180k_18k_GENES.pkl
 lr_bimat : GSE156728_ALLTISSUE_10X.CD4.CD8.counts.FILTERED.180k_18k.ligands_receptors_mat_815_780.pkl
 
 sample_first : GSE156728_BC_10X.CD4.counts.txt.gz
@@ -34,20 +34,21 @@ samples :
   - GSE156728_UCEC_10X.CD8.counts.txt.gz
 
 nbr_model : 
-  sparse_data : GSE156728_coo_matrix_180k_18k.npz
-  sparse_label : GSE156728_label_180k_18k.npz
-  sparse_immune_label : GSE156728_label_immune_index_180k_18k.npz
+  sparse_data : GSE156728_coo_matrix_no_lr_180k_18k.npz
+  sparse_label : GSE156728_label_no_lr_180k_18k.npz
+  sparse_immune_label : GSE156728_label_immune_index_no_lr_180k_18k.npz
+  in : tcell_source/
   out : model/nbr_net/
   train :
-    batch_size : 64
-    l_rate : 0.001
-    epochs : 1000
-    layers1 : [128,128,1000,32,16]
-    layers2 : [128,128,1000,32,16]
-    latent_dims : 16
+    batch_size : 128
+    l_rate : 0.01
+    epochs : 10
+    layers1 : [128,128,32,12]
+    layers2 : [128,128,32,12]
+    latent_dims : 12
   eval :
     batch_size : 178000
-  mfile : 128_128_1000_32_16_ep1000_tcells_180k_18k_
+  mfile : 128_128_32_12_ep10_180k_18k_
 
 lr_model : 
   l_data : GSE156728_ALLTISSUE_10X.CD4.CD8.counts.FILTERED.180k_18k.ligands.pkl
@@ -66,5 +67,5 @@ lr_model :
     latent_dims : 64
   eval :
     batch_size : 100
-  mfile : 128_128_1000_32_16_ep1000_tcells_180k_18k_
+  mfile : 128_128_32_12_ep1000_180k_18k_
 

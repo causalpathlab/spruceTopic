@@ -65,10 +65,10 @@ def save_tensors(l_mat,r_mat,lr_mat,model_ann,nbr_size,h_mat,device,f_path,f_bat
 
 def generate_tensors(args,nbr_size,device):
 	
-	args_home = os.environ["args_home"]
-	l_fname = args_home+args.input+args.lr_model["l_data"]
-	r_fname = args_home+args.input+args.lr_model["r_data"]
-	lr_fname = args_home+args.input+args.lr_model["lr_data"]
+	args_home = os.environ['args_home']
+	l_fname = args_home+args.input+args.lr_model['l_data']
+	r_fname = args_home+args.input+args.lr_model['r_data']
+	lr_fname = args_home+args.input+args.lr_model['lr_data']
 
 	df_h = pd.read_csv(args_home+args.output+args.nbr_model['out']+args.lr_model['in_nbr_model'],sep='\t')
 	df_l = pd.read_pickle(l_fname)
@@ -110,7 +110,7 @@ class LRDataset(Dataset):
 
 
 def load_data(args,batch_size):
-	args_home = os.environ["args_home"]
+	args_home = os.environ['args_home']
 	fdir = args_home+args.input+args.lr_model['in']
 	files = pd.Series([ x.split('_')[0] for x in os.listdir(fdir)]).unique()
 	return DataLoader(LRDataset(fdir,files), batch_size=batch_size, shuffle=True)
