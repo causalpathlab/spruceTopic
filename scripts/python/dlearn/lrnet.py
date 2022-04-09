@@ -27,6 +27,78 @@ class ApproxNN():
 		return self.index.get_nns_by_vector(vector.tolist(),k)                                           
 	
 	
+def save_tensors_alltopic(l_mat,r_mat,lr_mat,model_ann,nbr_size,dflatent,device,f_path,f_batch_size,nbr_search_scale=1e4):
+
+	l_in_mat = torch.empty(0, r_mat.shape[1]).to(device)
+	r_in_mat = torch.empty(0, l_mat.shape[1]).to(device)
+
+	data_idxs = random.sample(range(dflatent.shape[0]),dflatent.shape[0])
+
+	for i,idx in enumerate(data_idxs) :
+		
+		neighbours = model_ann.query(dflatent.iloc[idx,2:].values,k=int(nbr_search_scale))
+
+		nbr_idxs = dflatent.iloc[neighbours[1:]].groupby('topic').head(nbr_size).index
+
+		cm_l = l_mat[idx].unsqueeze(0)
+		cm_r = r_mat[idx].unsqueeze(0)
+
+		for nidx in nbr_idxs:
+
+			cn_l = l_mat[nidx].unsqueeze(0)
+			cn_r = r_mat[nidx].unsqueeze(0)
+
+			l_to_r = torch.mm(cm_l,lr_mat).mul(cm_r) + torch.mm(cn_l,lr_mat).mul(cn_r)
+			l_in_mat = torch.cat((l_in_mat,l_to_r),0)
+			r_to_l = torch.mm(cm_r,torch.t(lr_mat)).mul(cm_l) + torch.mm(cn_r,torch.t(lr_mat)).mul(cn_l)
+			r_in_mat = torch.cat((r_in_mat,r_to_l),0)
+		
+		if i % f_batch_size == 0:
+
+			logger.info('saving tensor...'+str(i))
+
+			torch.save(l_in_mat, f_path + str(i)+'_ligands.pt')
+			torch.save(r_in_mat, f_path + str(i)+'_receptors.pt') 
+
+			l_in_mat = torch.empty(0, r_mat.shape[1]).to(device)
+			r_in_mat = torch.empty(0, l_mat.shape[1]).to(device)
+
+
+def generate_tensors_nbrs_alltopic(args,nbr_size,device):
+	
+	args_home = os.environ['args_home']
+	l_fname = args_home+args.input+args.raw_l_data
+	r_fname = args_home+args.input+args.raw_r_data
+	lr_fname = args_home+args.input+args.raw_lr_data
+
+	df_h = pd.read_csv(args_home+args.output+args.nbr_model['out']+args.lr_model['in_nbr_model'],sep='\t')
+	df_l = pd.read_pickle(l_fname)
+	df_r = pd.read_pickle(r_fname)
+
+	df_l = df_l[df_l['index'].isin(df_h['cell'].values)]
+	df_r = df_r[df_r['index'].isin(df_h['cell'].values)]
+
+	dflatent = pd.merge(df_l['index'],df_h,how='left',left_on='index',right_on='cell')
+	dflatent['cell'] = dflatent.iloc[:,2:].idxmax(axis=1)
+	dflatent = dflatent.rename(columns={'cell':'topic'})
+	
+	model_ann = ApproxNN(dflatent.iloc[:,2:].to_numpy(), dflatent.iloc[:,0].values)
+	model_ann.build()
+
+	l_mat = torch.tensor(df_l.iloc[:,1:].values.astype(np.float32)).to(device)
+	r_mat = torch.tensor(df_r.iloc[:,1:].values.astype(np.float32)).to(device)
+
+	df_lr = pd.read_pickle(lr_fname)
+	df_lr = df_lr.loc[df_l.columns[1:],df_r.columns[1:]]
+	lr_mat = torch.tensor(df_lr.values.astype(np.float32)).to(device)
+
+	f_path = args_home+args.input+args.lr_model['in'] 
+	f_batch_size = args.lr_model['train']['batch_size']
+	
+
+	save_tensors_alltopic(l_mat,r_mat,lr_mat,model_ann,nbr_size,dflatent,device,f_path,f_batch_size)
+
+
 def save_tensors(l_mat,r_mat,lr_mat,model_ann,nbr_size,h_mat,device,f_path,f_batch_size):
 
 	l_in_mat = torch.empty(0, r_mat.shape[1]).to(device)
@@ -65,10 +137,11 @@ def save_tensors(l_mat,r_mat,lr_mat,model_ann,nbr_size,h_mat,device,f_path,f_bat
 
 def generate_tensors(args,nbr_size,device):
 	
-	args_home = os.environ["args_home"]
-	l_fname = args_home+args.input+args.lr_model["l_data"]
-	r_fname = args_home+args.input+args.lr_model["r_data"]
-	lr_fname = args_home+args.input+args.lr_model["lr_data"]
+	args_home = os.environ['args_home']
+	l_fname = args_home+args.input+args.raw_l_data
+	r_fname = args_home+args.input+args.raw_r_data
+	lr_fname = args_home+args.input+args.raw_lr_data
+
 
 	df_h = pd.read_csv(args_home+args.output+args.nbr_model['out']+args.lr_model['in_nbr_model'],sep='\t')
 	df_l = pd.read_pickle(l_fname)
@@ -91,9 +164,11 @@ def generate_tensors(args,nbr_size,device):
 	lr_mat = torch.tensor(df_lr.values.astype(np.float32)).to(device)
 
 	f_path = args_home+args.input+args.lr_model['in'] 
-	f_batch_size = 256
+	f_batch_size = args.lr_model['train']['batch_size']
+
 
 	save_tensors(l_mat,r_mat,lr_mat,model_ann,nbr_size,h_mat,device,f_path,f_batch_size)
+
 
 class LRDataset(Dataset):
 	def __init__(self, tensor_fpath,flist):
@@ -110,7 +185,7 @@ class LRDataset(Dataset):
 
 
 def load_data(args,batch_size):
-	args_home = os.environ["args_home"]
+	args_home = os.environ['args_home']
 	fdir = args_home+args.input+args.lr_model['in']
 	files = pd.Series([ x.split('_')[0] for x in os.listdir(fdir)]).unique()
 	return DataLoader(LRDataset(fdir,files), batch_size=batch_size, shuffle=True)

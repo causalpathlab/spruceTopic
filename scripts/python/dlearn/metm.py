@@ -5,6 +5,7 @@ from torch.utils.data import DataLoader
 from torch.utils.data import Dataset
 from scipy import sparse
 import numpy as np
+import pandas as pd
 import logging
 logger = logging.getLogger(__name__)
 
@@ -39,24 +40,15 @@ class Stacklayers(nn.Module):
 	def get_activation(self):
 		return nn.ReLU()
 
-class BridgeEncoder(nn.Module):
-	def __init__(self, input_dims, latent_dims):
-		super(BridgeEncoder, self).__init__()
-		self.linear = nn.Linear(input_dims,latent_dims)
-		nn.ReLU()
-		nn.BatchNorm1d(latent_dims)
-
-	def forward(self, x):
-		return F.relu(self.linear(x))
-
 class ETMEncoder(nn.Module):
 	def __init__(self,input_dims1, input_dims2,latent_dims,layers1,layers2):
 		super(ETMEncoder, self).__init__()
 		self.fc1 = Stacklayers(input_dims1,layers1)
 		self.fc2 = Stacklayers(input_dims2,layers2)
-		self.fc = BridgeEncoder(latent_dims+latent_dims,latent_dims)
-		self.z_mean = nn.Linear(latent_dims,latent_dims)
-		self.z_lnvar = nn.Linear(latent_dims,latent_dims)
+		self.z1_mean = nn.Linear(latent_dims,latent_dims)
+		self.z1_lnvar = nn.Linear(latent_dims,latent_dims)
+		self.z2_mean = nn.Linear(latent_dims,latent_dims)
+		self.z2_lnvar = nn.Linear(latent_dims,latent_dims)
 
 	def forward(self, xx1, xx2):
 		xx1 = xx1/torch.sum(xx1,dim=-1,keepdim=True)
@@ -65,12 +57,17 @@ class ETMEncoder(nn.Module):
 		ss1 = self.fc1(torch.log1p(xx1))
 		ss2 = self.fc2(torch.log1p(xx2))
 
-		ss = self.fc(torch.cat((ss1,ss2),1))
+		mm1 = self.z1_mean(ss1)
+		lv1 = torch.clamp(self.z1_lnvar(ss1),-4.0,4.0)
+		z1 = reparameterize(mm1,lv1)
 
-		mm = self.z_mean(ss)
-		lv = torch.clamp(self.z_lnvar(ss),-4.0,4.0)
-		z = reparameterize(mm,lv)
-		return z, mm,lv
+		mm2 = self.z2_mean(ss2)
+		lv2 = torch.clamp(self.z2_lnvar(ss2),-4.0,4.0)
+		z2 = reparameterize(mm2,lv2)
+
+		z = (z1 + z2) / 2
+
+		return z,mm1,lv1,mm2,lv2
 
 class ETMDecoder(nn.Module):
 	def __init__(self,latent_dims,out_dims1, out_dims2,jitter=.1):
@@ -97,9 +94,9 @@ class ETM(nn.Module):
 		self.decoder = ETMDecoder(latent_dims, input_dims1, input_dims2)
 		
 	def forward(self,xx1,xx2):
-		zz,m,v = self.encoder(xx1,xx2)
+		zz,m1,v1,m2,v2 = self.encoder(xx1,xx2)
 		pr,h = self.decoder(zz)
-		return pr,m,v,h
+		return pr,m1,v1,m2,v2,h
 	
 class TabularDataset(Dataset):
 	def __init__(self, x,y):
@@ -154,9 +151,9 @@ class SparseTabularDataset(Dataset):
 	
 def load_sparse_data(data_file,meta_file,immuneindex_file,device,bath_size):
 
-	logger.info("loading sparse data...\n"+
-        data_file +"\n"+
-        meta_file +"\n" +
+	logger.info('loading sparse data...\n'+
+        data_file +'\n'+
+        meta_file +'\n' +
         immuneindex_file )
 
 	npzarrs = np.load(data_file,allow_pickle=True)
@@ -169,10 +166,10 @@ def load_sparse_data(data_file,meta_file,immuneindex_file,device,bath_size):
 	shape = tuple(npzarrs['shape'])
 
 	metadat = np.load(meta_file,allow_pickle=True)
-	label = metadat["idx"]
+	label = metadat['idx']
 
 	immunedat = np.load(immuneindex_file,allow_pickle=True)
-	immuneindx = torch.tensor(np.array([x[0] for x in immunedat["idx"]]).astype(np.int32), dtype=torch.int32, device=device)
+	immuneindx = torch.tensor(np.array([x[0] for x in immunedat['idx']]).astype(np.int32), dtype=torch.int32, device=device)
 
 	otherindx = torch.tensor(np.array([x for x in range(shape[1]) if x not in immuneindx]).astype(np.int32),dtype=torch.int32, device=device)
 	
@@ -181,70 +178,81 @@ def load_sparse_data(data_file,meta_file,immuneindex_file,device,bath_size):
 	return DataLoader(SparseTabularDataset(spdata,device), batch_size=bath_size, shuffle=True)
 
 def train(etm,data,epochs,l_rate):
-	logger.info("Starting training....")
+	logger.info('Starting training....')
 	opt = torch.optim.Adam(etm.parameters(),lr=l_rate)
 	loss_values = []
+	loss_values_sep = []
 	for epoch in range(epochs):
 		loss = 0
+		loss_ll = 0
+		loss_kl1 = 0
+		loss_kl2 = 0
 		for x1,x2,y in data:
 			opt.zero_grad()
-			recon,m,v,h = etm(x1,x2)
+			recon,m1,v1,m2,v2,h = etm(x1,x2)
 			x = torch.cat((x1,x2),1)
 			loglikloss = etm_llik(x,recon)
-			kl = kl_loss(m,v)
-			train_loss = torch.mean(kl-loglikloss).to("cpu")
-			train_loss.backward()
-			opt.step()
-			loss += train_loss.item()
+			kl1 = kl_loss(m1,v1)
+			kl2 = kl_loss(m2,v2)
 
-		if epoch % 100 == 0:  
+			ll_l = torch.mean(loglikloss).to('cpu')
+			kl_ml1 = torch.mean(kl1).to('cpu')
+			kl_ml2 = torch.mean(kl2).to('cpu')
+			
+			train_loss = torch.mean((kl1 + kl2)-loglikloss).to('cpu')
+			train_loss.backward()
+
+			opt.step()
+
+			loss += train_loss.item()
+			loss_ll += ll_l.item()
+			loss_kl1 += kl_ml1.item()
+			loss_kl2 += kl_ml2.item()
+
+		if epoch % 10 == 0:  
 			logger.info('====> Epoch: {} Average loss: {:.4f}'.format(epoch, loss/len(data)))
 		
 		loss_values.append(loss/len(data))
+		loss_values_sep.append((loss_ll/len(data),loss_kl1/len(data),
+		loss_kl2/len(data)))
+		
 	
-	return loss_values
+	return loss_values,loss_values_sep
 
 def get_latent(data,model,model_file,loss_values,mode):
-	import pandas as pd
-	import matplotlib.pylab as plt
 
 	for xx1,xx2,label in data: break
-	if mode == "model":
+	if mode == 'model':
 		zz,m,v = model.encoder(xx1,xx2)
 		pr,hh = model.decoder(zz)
 		hh = torch.exp(hh)
 
 		df_z = pd.DataFrame(zz.to('cpu').detach().numpy())
-		df_z.columns = ["zz"+str(i)for i in df_z.columns]
-		df_z["cell"] = label
-		df_z = df_z[ ["cell"]+[x for x in df_z.columns if x not in["cell","sample"]]]
-		df_z.to_csv(model_file+"etm_zz_data.tsv",sep="\t",index=False,compression=True)
+		df_z.columns = ['zz'+str(i)for i in df_z.columns]
+		df_z['cell'] = label
+		df_z = df_z[ ['cell']+[x for x in df_z.columns if x not in['cell','sample']]]
+		df_z.to_csv(model_file+'etm_zz_data.tsv',sep='\t',index=False,compression='gzip')
 
 		df_h = pd.DataFrame(hh.to('cpu').detach().numpy())
-		df_h.columns = ["hh"+str(i)for i in df_h.columns]
-		df_h["cell"] = label
-		df_h = df_h[ ["cell"]+[x for x in df_h.columns if x not in["cell","sample"]]]
-		df_h.to_csv(model_file+"etm_hh_data.tsv",sep="\t",index=False,compression=True)
+		df_h.columns = ['hh'+str(i)for i in df_h.columns]
+		df_h['cell'] = label
+		df_h = df_h[ ['cell']+[x for x in df_h.columns if x not in['cell','sample']]]
+		df_h.to_csv(model_file+'etm_hh_data.tsv',sep='\t',index=False,compression='gzip')
 
 		beta1 =  None
 		beta2 =  None
 		for n,p in model.named_parameters():
-			if n == "decoder.lbeta1":
+			if n == 'decoder.lbeta1':
 				beta1=p
-			elif n == "decoder.lbeta2":
+			elif n == 'decoder.lbeta2':
 				beta2=p
 		beta_smax = nn.LogSoftmax(dim=-1)
 		beta1 = torch.exp(beta_smax(beta1))
 		beta2 = torch.exp(beta_smax(beta2))
 
 		df_beta1 = pd.DataFrame(beta1.to('cpu').detach().numpy())
-		df_beta1.to_csv(model_file+"etm_beta1_data.tsv",sep="\t",index=False,compression=True)
+		df_beta1.to_csv(model_file+'etm_beta1_data.tsv',sep='\t',index=False,compression='gzip')
 
 		df_beta2 = pd.DataFrame(beta2.to('cpu').detach().numpy())
-		df_beta2.to_csv(model_file+"etm_beta2_data.tsv",sep="\t",index=False,compression=True)
-
-		plt.plot(loss_values)
-		plt.ylabel("loss", fontsize=18)
-		plt.xlabel("epochs", fontsize=22)
-		plt.savefig(model_file+"loss.png");plt.close()
+		df_beta2.to_csv(model_file+'etm_beta2_data.tsv',sep='\t',index=False,compression='gzip')
 

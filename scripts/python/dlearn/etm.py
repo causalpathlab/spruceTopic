@@ -133,7 +133,7 @@ def load_sparse_data(data_file,meta_file,device,bath_size):
 	shape = tuple(npzarrs['shape'])
 
 	metadat = np.load(meta_file,allow_pickle=True)
-	label = metadat["idx"]
+	label = metadat['idx']
 	spdata = SparseData(indptr,indices,val,shape,label)
 	return DataLoader(SparseTabularDataset(spdata,device), batch_size=bath_size, shuffle=True)
 
@@ -149,7 +149,7 @@ def train(etm, data,device, epochs,l_rate):
 			recon,mean,lnvar,hh = etm(x)
 			loglikloss = etm_llik(x,recon)
 			kl = kl_loss(mean,lnvar)
-			train_loss = torch.mean(kl-loglikloss).to("cpu")
+			train_loss = torch.mean(kl-loglikloss).to('cpu')
 			train_loss.backward()
 			opt.step()
 			loss += train_loss.item()

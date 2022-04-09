@@ -12,11 +12,11 @@ spath = os.path.dirname(__file__)
 args_home = spath.replace('/scripts/python','/')
 
 os.chdir(args_home)
-os.environ["args_home"] = args_home
+os.environ['args_home'] = args_home
 
 params = read_config(args_home+'/config/scmetm.yaml')
 args = namedtuple('Struct',params.keys())(*params.values())
-model_file = args_home+args.output+args.lr_model['out']+args.lr_model['mfile']+now.strftime('%d%m%Y%H%M%S')
+model_file = args_home+args.output+args.lr_model['out']+args.lr_model['mfile']+now.strftime('%Y%m%d%H%M')
 
 print(model_file)
 logging.basicConfig(filename=model_file+'.log',
@@ -26,7 +26,7 @@ logging.basicConfig(filename=model_file+'.log',
 
 def run_model(mode):
 	nbr_size = args.lr_model['train']['nbr_size']
-	batch_size = args.lr_model['train']['batch_size']
+	batch_size = args.lr_model['train']['run_batch_size']
 	l_rate = args.lr_model['train']['l_rate']
 	epochs = args.lr_model['train']['epochs']
 	layers1 = args.lr_model['train']['layers1']
@@ -34,8 +34,10 @@ def run_model(mode):
 	latent_dims = args.lr_model['train']['latent_dims']
 
 	if mode == 'generate_tensor':
-		device = lrnet.torch.device('cuda' if lrnet.torch.cuda.is_available() else 'cpu')
-		lrnet.generate_tensors(args,nbr_size,device)
+		# device = lrnet.torch.device('cuda' if lrnet.torch.cuda.is_available() else 'cpu')
+		device = 'cuda:3'
+		# lrnet.generate_tensors(args,nbr_size,device)
+		lrnet.generate_tensors_nbrs_alltopic(args,nbr_size,device)
 
 	elif mode=='train':
 		device = lrnet.torch.device('cuda' if lrnet.torch.cuda.is_available() else 'cpu')
@@ -65,7 +67,7 @@ def run_model(mode):
 		model.load_state_dict(lrnet.torch.load(model_file+'etm.torch'))
 		model.eval()	
 
-		dfloss = pd.read_csv(model_file+'loss.tsv',sep="\t")
+		dfloss = pd.read_csv(model_file+'loss.tsv',sep='\t')
 
 		lrnet.get_latent(data,model,model_file,dfloss.iloc[:,0].values)
 
