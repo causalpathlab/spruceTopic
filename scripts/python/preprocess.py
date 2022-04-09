@@ -29,6 +29,9 @@ def filter_minimal(logger,args,df,mode, cutoff):
 
 	drop_columns =[]
 
+	ligand_receptors = get_ligand_receptor_genes(args)
+	drop_columns =[]
+
 	if mode == 'tissue':
 		# eliminate gene if the total number of counts is < cutoff per tissue type.
 		for tissue in df['sample'].unique():
