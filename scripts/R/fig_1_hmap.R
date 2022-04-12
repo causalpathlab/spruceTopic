@@ -22,7 +22,7 @@ df_tg = read.table(topgenes_file, sep = "\t", header=TRUE)
 # df_tg$Topic <- factor(df_tg$Topic)
 
 df_tg$Topic <- gsub("k","",df_tg$Topic)
-df_tg$Topic <- factor(df_tg$Topic, levels = c("0", "1", "2","3","4","5","6","7","8","9","10","11","12","13","14"))
+# df_tg$Topic <- factor(df_tg$Topic, levels = c("0", "1", "2","3","4","5","6","7","8","9","10","11","12","13","14"))
 
 # df_tg$Proportion = log(df_tg$Proportion)
 # df_topic_i = as.matrix(cast( df_tg[df_tg$GeneType=="immune",] , Topic~Gene) )

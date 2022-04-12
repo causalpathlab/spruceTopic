@@ -53,7 +53,7 @@ nbr_model :
     latent_dims : 15
   eval :
     batch_size : 178000
-  mfile : 200_200_100_25_ep2500_180k_17k_no_lr_202204081557
+  mfile : 200_200_100_50_ep2500_180k_17k_no_lr_202204081557
 
 lr_model : 
   out : model/lr_net/
