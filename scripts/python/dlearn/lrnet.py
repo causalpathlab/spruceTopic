@@ -40,6 +40,8 @@ def save_tensors_alltopic(l_mat,r_mat,lr_mat,model_ann,nbr_size,dflatent,device,
 
 		nbr_idxs = dflatent.iloc[neighbours[1:]].groupby('topic').head(nbr_size).index
 
+		# print(dflatent.iloc[neighbours[1:]].groupby('topic').count()['index'].values)
+
 		cm_l = l_mat[idx].unsqueeze(0)
 		cm_r = r_mat[idx].unsqueeze(0)
 
@@ -71,7 +73,7 @@ def generate_tensors_nbrs_alltopic(args,nbr_size,device):
 	r_fname = args_home+args.input+args.raw_r_data
 	lr_fname = args_home+args.input+args.raw_lr_data
 
-	df_h = pd.read_csv(args_home+args.output+args.nbr_model['out']+args.lr_model['in_nbr_model'],sep='\t')
+	df_h = pd.read_csv(args_home+args.output+args.nbr_model['out']+args.lr_model['in_nbr_model'],sep='\t',compression='gzip')
 	df_l = pd.read_pickle(l_fname)
 	df_r = pd.read_pickle(r_fname)
 
@@ -220,37 +222,36 @@ class Stacklayers(nn.Module):
 	def get_activation(self):
 		return nn.ReLU()
 
-class BridgeEncoder(nn.Module):
-	def __init__(self, input_dims, latent_dims):
-		super(BridgeEncoder, self).__init__()
-		self.linear = nn.Linear(input_dims,latent_dims)
-		nn.ReLU()
-		nn.BatchNorm1d(latent_dims)
-
-	def forward(self, x):
-		return F.relu(self.linear(x))
 
 class ETMEncoder(nn.Module):
 	def __init__(self,input_dims1, input_dims2,latent_dims,layers1,layers2):
 		super(ETMEncoder, self).__init__()
 		self.fc1 = Stacklayers(input_dims1,layers1)
 		self.fc2 = Stacklayers(input_dims2,layers2)
-		self.fc = BridgeEncoder(latent_dims+latent_dims,latent_dims)
-		self.z_mean = nn.Linear(latent_dims,latent_dims)
-		self.z_lnvar = nn.Linear(latent_dims,latent_dims)
+		self.z1_mean = nn.Linear(latent_dims,latent_dims)
+		self.z1_lnvar = nn.Linear(latent_dims,latent_dims)
+		self.z2_mean = nn.Linear(latent_dims,latent_dims)
+		self.z2_lnvar = nn.Linear(latent_dims,latent_dims)
 
 	def forward(self, xx1, xx2):
 		xx1 = xx1/torch.sum(xx1,dim=-1,keepdim=True)
 		xx2 = xx2/torch.sum(xx2,dim=-1,keepdim=True)
+		
 		ss1 = self.fc1(torch.log1p(xx1))
 		ss2 = self.fc2(torch.log1p(xx2))
 
-		ss = self.fc(torch.cat((ss1,ss2),1))
+		mm1 = self.z1_mean(ss1)
+		lv1 = torch.clamp(self.z1_lnvar(ss1),-4.0,4.0)
+		z1 = reparameterize(mm1,lv1)
 
-		mm = self.z_mean(ss)
-		lv = torch.clamp(self.z_lnvar(ss),-4.0,4.0)
-		z = reparameterize(mm,lv)
-		return z, mm,lv
+		mm2 = self.z2_mean(ss2)
+		lv2 = torch.clamp(self.z2_lnvar(ss2),-4.0,4.0)
+		z2 = reparameterize(mm2,lv2)
+
+		z = (z1 + z2) / 2
+
+		return z,mm1,lv1,mm2,lv2
+
 
 class ETMDecoder(nn.Module):
 	def __init__(self,latent_dims,out_dims1, out_dims2,jitter=.1):
@@ -277,33 +278,53 @@ class ETM(nn.Module):
 		self.decoder = ETMDecoder(latent_dims, input_dims1, input_dims2)
 		
 	def forward(self,xx1,xx2):
-		zz,m,v = self.encoder(xx1,xx2)
+		zz,m1,v1,m2,v2 = self.encoder(xx1,xx2)
 		pr,h = self.decoder(zz)
-		return pr,m,v,h
+		return pr,m1,v1,m2,v2,h
 	
 def train(etm,data,epochs,l_rate):
 	logger.info('Starting training....')
 	opt = torch.optim.Adam(etm.parameters(),lr=l_rate)
 	loss_values = []
+	loss_values_sep = []
 	for epoch in range(epochs):
 		loss = 0
+		loss_ll = 0
+		loss_kl1 = 0
+		loss_kl2 = 0
 		for x1,x2 in data:
 			x1 = x1.reshape(x1.shape[0]*x1.shape[1],x1.shape[2])
 			x2 = x2.reshape(x2.shape[0]*x2.shape[1],x2.shape[2])
 			opt.zero_grad()
-			recon,m,v,h = etm(x1,x2)
+			recon,m1,v1,m2,v2,h = etm(x1,x2)
 			x = torch.cat((x1,x2),1)
 			loglikloss = etm_llik(x,recon)
-			kl = kl_loss(m,v)
-			train_loss = torch.mean(kl-loglikloss).to('cpu')
+			kl1 = kl_loss(m1,v1)
+			kl2 = kl_loss(m2,v2)
+
+			ll_l = torch.mean(loglikloss).to('cpu')
+			kl_ml1 = torch.mean(kl1).to('cpu')
+			kl_ml2 = torch.mean(kl2).to('cpu')
+			
+			train_loss = torch.mean((kl1 + kl2)-loglikloss).to('cpu')
 			train_loss.backward()
+
 			opt.step()
+
 			loss += train_loss.item()
-		if epoch % 10 ==0:
+			loss_ll += ll_l.item()
+			loss_kl1 += kl_ml1.item()
+			loss_kl2 += kl_ml2.item()
+
+		if epoch % 10 == 0:  
 			logger.info('====> Epoch: {} Average loss: {:.4f}'.format(epoch, loss/len(data)))
-			loss_values.append(loss/len(data))
+		
+		loss_values.append(loss/len(data))
+		loss_values_sep.append((loss_ll/len(data),loss_kl1/len(data),
+		loss_kl2/len(data)))
+		
 	
-	return loss_values
+	return loss_values,loss_values_sep
 
 def get_latent(data,model,model_file,loss_values):
 	import matplotlib.pylab as plt
@@ -312,17 +333,19 @@ def get_latent(data,model,model_file,loss_values):
 	x1 = x1.reshape(x1.shape[0]*x1.shape[1],x1.shape[2])
 	x2 = x2.reshape(x2.shape[0]*x2.shape[1],x2.shape[2])
 
-	zz,m,v = model.encoder(x1,x2)
+	zz,m1,v1,m2,v2 = model.encoder(x1,x2)
 	pr,hh = model.decoder(zz)
 	hh = torch.exp(hh)
 
 	df_z = pd.DataFrame(zz.to('cpu').detach().numpy())
 	df_z.columns = ['zz'+str(i)for i in df_z.columns]
-	df_z.to_csv(model_file+'etm_zz_data.csv',sep='\t',index=False,compression=True)
+	# df_z = df_z[ ['cell']+[x for x in df_z.columns if x not in['cell','sample']]]
+	df_z.to_csv(model_file+'etm_zz_data.tsv',sep='\t',index=False,compression='gzip')
 
 	df_h = pd.DataFrame(hh.to('cpu').detach().numpy())
 	df_h.columns = ['hh'+str(i)for i in df_h.columns]
-	df_h.to_csv(model_file+'etm_hh_data.csv',sep='\t',index=False,compression=True)
+	# df_h = df_h[ ['cell']+[x for x in df_h.columns if x not in['cell','sample']]]
+	df_h.to_csv(model_file+'etm_hh_data.tsv',sep='\t',index=False,compression='gzip')
 
 	beta1 =  None
 	beta2 =  None
@@ -336,12 +359,8 @@ def get_latent(data,model,model_file,loss_values):
 	beta2 = torch.exp(beta_smax(beta2))
 
 	df_beta1 = pd.DataFrame(beta1.to('cpu').detach().numpy())
-	df_beta1.to_csv(model_file+'etm_beta1_data.csv',sep='\t',index=False,compression=True)
+	df_beta1.to_csv(model_file+'etm_beta1_data.tsv',sep='\t',index=False,compression='gzip')
 
 	df_beta2 = pd.DataFrame(beta2.to('cpu').detach().numpy())
-	df_beta2.to_csv(model_file+'etm_beta2_data.csv',sep='\t',index=False,compression=True)
+	df_beta2.to_csv(model_file+'etm_beta2_data.tsv',sep='\t',index=False,compression='gzip')
 
-	plt.plot(loss_values)
-	plt.ylabel('loss', fontsize=18)
-	plt.xlabel('epochs', fontsize=22)
-	plt.savefig(model_file+'loss.png');plt.close()

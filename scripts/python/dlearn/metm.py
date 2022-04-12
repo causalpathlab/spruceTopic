@@ -219,40 +219,39 @@ def train(etm,data,epochs,l_rate):
 	
 	return loss_values,loss_values_sep
 
-def get_latent(data,model,model_file,loss_values,mode):
+def get_latent(data,model,model_file):
 
 	for xx1,xx2,label in data: break
-	if mode == 'model':
-		zz,m,v = model.encoder(xx1,xx2)
-		pr,hh = model.decoder(zz)
-		hh = torch.exp(hh)
+	zz,m1,v1,m2,v2 = model.encoder(xx1,xx2)
+	pr,hh = model.decoder(zz)
+	hh = torch.exp(hh)
 
-		df_z = pd.DataFrame(zz.to('cpu').detach().numpy())
-		df_z.columns = ['zz'+str(i)for i in df_z.columns]
-		df_z['cell'] = label
-		df_z = df_z[ ['cell']+[x for x in df_z.columns if x not in['cell','sample']]]
-		df_z.to_csv(model_file+'etm_zz_data.tsv',sep='\t',index=False,compression='gzip')
+	df_z = pd.DataFrame(zz.to('cpu').detach().numpy())
+	df_z.columns = ['zz'+str(i)for i in df_z.columns]
+	df_z['cell'] = label
+	df_z = df_z[ ['cell']+[x for x in df_z.columns if x not in['cell','sample']]]
+	df_z.to_csv(model_file+'etm_zz_data.tsv',sep='\t',index=False,compression='gzip')
 
-		df_h = pd.DataFrame(hh.to('cpu').detach().numpy())
-		df_h.columns = ['hh'+str(i)for i in df_h.columns]
-		df_h['cell'] = label
-		df_h = df_h[ ['cell']+[x for x in df_h.columns if x not in['cell','sample']]]
-		df_h.to_csv(model_file+'etm_hh_data.tsv',sep='\t',index=False,compression='gzip')
+	df_h = pd.DataFrame(hh.to('cpu').detach().numpy())
+	df_h.columns = ['hh'+str(i)for i in df_h.columns]
+	df_h['cell'] = label
+	df_h = df_h[ ['cell']+[x for x in df_h.columns if x not in['cell','sample']]]
+	df_h.to_csv(model_file+'etm_hh_data.tsv',sep='\t',index=False,compression='gzip')
 
-		beta1 =  None
-		beta2 =  None
-		for n,p in model.named_parameters():
-			if n == 'decoder.lbeta1':
-				beta1=p
-			elif n == 'decoder.lbeta2':
-				beta2=p
-		beta_smax = nn.LogSoftmax(dim=-1)
-		beta1 = torch.exp(beta_smax(beta1))
-		beta2 = torch.exp(beta_smax(beta2))
+	beta1 =  None
+	beta2 =  None
+	for n,p in model.named_parameters():
+		if n == 'decoder.lbeta1':
+			beta1=p
+		elif n == 'decoder.lbeta2':
+			beta2=p
+	beta_smax = nn.LogSoftmax(dim=-1)
+	beta1 = torch.exp(beta_smax(beta1))
+	beta2 = torch.exp(beta_smax(beta2))
 
-		df_beta1 = pd.DataFrame(beta1.to('cpu').detach().numpy())
-		df_beta1.to_csv(model_file+'etm_beta1_data.tsv',sep='\t',index=False,compression='gzip')
+	df_beta1 = pd.DataFrame(beta1.to('cpu').detach().numpy())
+	df_beta1.to_csv(model_file+'etm_beta1_data.tsv',sep='\t',index=False,compression='gzip')
 
-		df_beta2 = pd.DataFrame(beta2.to('cpu').detach().numpy())
-		df_beta2.to_csv(model_file+'etm_beta2_data.tsv',sep='\t',index=False,compression='gzip')
+	df_beta2 = pd.DataFrame(beta2.to('cpu').detach().numpy())
+	df_beta2.to_csv(model_file+'etm_beta2_data.tsv',sep='\t',index=False,compression='gzip')
 

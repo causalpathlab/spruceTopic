@@ -34,8 +34,7 @@ def run_model(mode):
 	latent_dims = args.lr_model['train']['latent_dims']
 
 	if mode == 'generate_tensor':
-		# device = lrnet.torch.device('cuda' if lrnet.torch.cuda.is_available() else 'cpu')
-		device = 'cuda:3'
+		device = lrnet.torch.device('cuda' if lrnet.torch.cuda.is_available() else 'cpu')
 		# lrnet.generate_tensors(args,nbr_size,device)
 		lrnet.generate_tensors_nbrs_alltopic(args,nbr_size,device)
 
@@ -53,10 +52,13 @@ def run_model(mode):
 		loss_values = lrnet.train(model,data,epochs,l_rate)
 
 		lrnet.torch.save(model.state_dict(), model_file+'etm.torch')
-		dflv = pd.DataFrame(loss_values)
-		dflv.to_csv(model_file+'loss.tsv',index=False,compression=True)
+		dflv = pd.DataFrame(loss_values[0])
+		dflv.to_csv(model_file+'loss.txt',index=False)
+		dflv = pd.DataFrame(loss_values[1])
+		dflv.to_csv(model_file+'loss2.txt',index=False)
 
 	elif mode == 'eval':
+		model_file = args_home+args.output+args.lr_model['out']+args.lr_model['mfile']
 		device = 'cuda'
 		batch_size = args.lr_model['eval']['batch_size']
 		data = lrnet.load_data(args,batch_size)
@@ -67,7 +69,7 @@ def run_model(mode):
 		model.load_state_dict(lrnet.torch.load(model_file+'etm.torch'))
 		model.eval()	
 
-		dfloss = pd.read_csv(model_file+'loss.tsv',sep='\t')
+		dfloss = pd.read_csv(model_file+'loss.txt',sep='\t')
 
 		lrnet.get_latent(data,model,model_file,dfloss.iloc[:,0].values)
 

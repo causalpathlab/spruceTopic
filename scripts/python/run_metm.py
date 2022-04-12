@@ -13,7 +13,7 @@ args_home = spath.replace('/scripts/python','/')
 os.chdir(args_home)
 os.environ['args_home'] = args_home
 
-params = read_config(args_home+'/config/scmetm_v3.yaml')
+params = read_config(args_home+'/config/scmetm.yaml')
 args = namedtuple('Struct',params.keys())(*params.values())
 model_file = args_home+args.output+args.nbr_model['out']+args.nbr_model['mfile']+now.strftime('%Y%m%d%H%M')
 
@@ -87,6 +87,6 @@ def eval_model(args):
 
     dfloss = pd.read_csv(model_file+'loss.txt')
     
-    metm.get_latent(data,model,model_file,dfloss.iloc[:,0].values,'model')
+    metm.get_latent(data,model,model_file)
 
-run_model(args)
+eval_model(args)

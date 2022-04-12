@@ -118,6 +118,9 @@ def read_sc_data_sparse(args,maxcellcount_pertissue=1e5,mingene_totalcount=10):
 	immune_signatures = get_tcell_signature_genes(args_home,args)
 	immune_index = [(x,y) for x,y in enumerate(df_combine.columns) if y in immune_signatures]
 	np.savez_compressed(sample_procpath + args.nbr_model['sparse_immune_label'], idx=immune_index, allow_pickle=True)
+	pd.DataFrame(df_combine.columns).to_pickle(sample_procpath+args.raw_data_no_lr_genes)
+
+
 
 	S = sparse.coo_matrix(df_combine.to_numpy())
 	idx, idy, val = sparse.find(S)

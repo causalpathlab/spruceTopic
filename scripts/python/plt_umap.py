@@ -11,10 +11,10 @@ import umap.plot
 
 
 
-def plot_umap_from_model():
+def plot_umap_from_model(args):
 	
-	# spath = os.path.dirname(__file__)
-	spath =  '/home/BCCRC.CA/ssubedi/projects/tumour_immune_interaction/scripts/python'
+	spath = os.path.dirname(__file__)
+	# spath =  '/home/BCCRC.CA/ssubedi/projects/tumour_immune_interaction/scripts/python'
 	# spath =  '/home/sishirsubedi/projects/tumour_immune_interaction/scripts/python'
 	args_home = spath.replace('/scripts/python','/')
 
@@ -25,7 +25,7 @@ def plot_umap_from_model():
 
 	df_h = pd.read_csv(args_home+args.output+args.nbr_model['out']+args.nbr_model['mfile']+'etm_zz_data.tsv',sep='\t',compression='gzip')
 
-	umap_2d = umap.UMAP(n_components=2, init='random', random_state=0)
+	umap_2d = umap.UMAP(n_components=2, init='random', random_state=0,min_dist=0.1)
 	proj_2d = umap_2d.fit(df_h.iloc[:,1:])
 	# plt.scatter(proj_2d[:,0],proj_2d[:,1],s=0.001)
 	
@@ -38,7 +38,7 @@ def plot_umap_from_model():
 	# kmeans = KMeans(n_clusters=df_h.shape[1]-1, random_state=0).fit(df_h.iloc[:,1:].to_numpy())
 	umap.plot.points(proj_2d,labels=topic_labels)
 
-	plt.savefig('umap_zz_v3.png',dpi=300);plt.close()
+	plt.savefig(args_home+args.output+args.nbr_model['out']+args.nbr_model['mfile']+'umap_zz_topic_label.png',dpi=300);plt.close()
 
 	# ##test to get neighbors
 	# embeddings = umap.UMAP(n_neighbors=15, min_dist=0.5).fit_transform(df_h.iloc[:,1:])

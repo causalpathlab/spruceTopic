@@ -12,8 +12,11 @@ tcell_signature_genes : science.abe6474_table_s3.xlsx
 
 raw_data : GSE156728_ALLTISSUE_10X.CD4.CD8.counts.FILTERED.180k_17k.pkl
 raw_data_genes : GSE156728_ALLTISSUE_10X.CD4.CD8.counts.FILTERED.180k_17k_GENES.pkl
+raw_data_no_lr_genes : GSE156728_ALLTISSUE_10X.CD4.CD8.counts.FILTERED.180k_17k_GENES_noLR.pkl
 raw_l_data : GSE156728_ALLTISSUE_10X.CD4.CD8.counts.FILTERED.180k_17k.ligands.pkl
+raw_l_data_genes : GSE156728_ALLTISSUE_10X.CD4.CD8.counts.FILTERED.180k_17k_GENES.ligands.pkl
 raw_r_data : GSE156728_ALLTISSUE_10X.CD4.CD8.counts.FILTERED.180k_17k.receptors.pkl
+raw_r_data_genes : GSE156728_ALLTISSUE_10X.CD4.CD8.counts.FILTERED.180k_17k_GENES.receptors.pkl
 raw_lr_data : GSE156728_ALLTISSUE_10X.CD4.CD8.counts.FILTERED.180k_17k.ligands_receptors_mat_815_780.pkl
 
 sample_first : GSE156728_BC_10X.CD4.counts.txt.gz
@@ -50,22 +53,22 @@ nbr_model :
     latent_dims : 15
   eval :
     batch_size : 178000
-  mfile : 200_200_100_15_ep2500_180k_17k_no_lr_
+  mfile : 200_200_100_25_ep2500_180k_17k_no_lr_202204081557
 
 lr_model : 
   out : model/lr_net/
   in : lr_tensor/
-  in_nbr_model : v_0.1/128_128_1000_32_16_ep1000_tcells_180k_18k_etm_hh_data.tsv
+  in_nbr_model : 200_200_100_15_ep2500_180k_17k_no_lr_202204081556etm_hh_data.tsv
   train :
     nbr_size : 5
     batch_size : 256
     run_batch_size : 1
     l_rate : 0.01
-    epochs : 10
+    epochs : 2500
     layers1 : [200,100,50]
     layers2 : [200,100,50]
     latent_dims : 50
   eval :
-    batch_size : 100
-  mfile : 128_128_32_12_ep1000_180k_18k_
+    batch_size : 1
+  mfile : 200_200_100_50_ep2500_180k_17k_no_lr_202204081556202204100530
 
