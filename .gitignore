@@ -43,6 +43,7 @@ vignettes/*.pdf
 /database/
 /output/
 /model/
+/lightning_logs/
 
 
 *.txt

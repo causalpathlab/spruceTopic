@@ -6,7 +6,7 @@ from torch.utils.data import Dataset
 import numpy as np
 import pandas as pd
 import random
-import annoy 
+import annoy
 import os
 import logging
 logger = logging.getLogger(__name__)
@@ -15,18 +15,18 @@ class ApproxNN():
 	def __init__(self, data, labels):
 		self.dimension = data.shape[1]
 		self.data = data.astype('float32')
-		self.labels = labels    
-   
+		self.labels = labels
+
 	def build(self, number_of_trees=50):
 		self.index = annoy.AnnoyIndex(self.dimension,'angular')
 		for i, vec in enumerate(self.data):
 			self.index.add_item(i, vec.tolist())
 		self.index.build(number_of_trees)
-		
+
 	def query(self, vector, k):
-		return self.index.get_nns_by_vector(vector.tolist(),k)                                           
-	
-	
+		return self.index.get_nns_by_vector(vector.tolist(),k)
+
+
 def save_tensors_alltopic(l_mat,r_mat,lr_mat,model_ann,nbr_size,dflatent,device,f_path,f_batch_size,nbr_search_scale=1e4):
 
 	l_in_mat = torch.empty(0, r_mat.shape[1]).to(device)
@@ -35,7 +35,7 @@ def save_tensors_alltopic(l_mat,r_mat,lr_mat,model_ann,nbr_size,dflatent,device,
 	data_idxs = random.sample(range(dflatent.shape[0]),dflatent.shape[0])
 
 	for i,idx in enumerate(data_idxs) :
-		
+
 		neighbours = model_ann.query(dflatent.iloc[idx,2:].values,k=int(nbr_search_scale))
 
 		nbr_idxs = dflatent.iloc[neighbours[1:]].groupby('topic').head(nbr_size).index
@@ -54,20 +54,19 @@ def save_tensors_alltopic(l_mat,r_mat,lr_mat,model_ann,nbr_size,dflatent,device,
 			l_in_mat = torch.cat((l_in_mat,l_to_r),0)
 			r_to_l = torch.mm(cm_r,torch.t(lr_mat)).mul(cm_l) + torch.mm(cn_r,torch.t(lr_mat)).mul(cn_l)
 			r_in_mat = torch.cat((r_in_mat,r_to_l),0)
-		
+
 		if i % f_batch_size == 0:
 
 			logger.info('saving tensor...'+str(i))
 
 			torch.save(l_in_mat, f_path + str(i)+'_ligands.pt')
-			torch.save(r_in_mat, f_path + str(i)+'_receptors.pt') 
+			torch.save(r_in_mat, f_path + str(i)+'_receptors.pt')
 
 			l_in_mat = torch.empty(0, r_mat.shape[1]).to(device)
 			r_in_mat = torch.empty(0, l_mat.shape[1]).to(device)
 
-
 def generate_tensors_nbrs_alltopic(args,nbr_size,device):
-	
+
 	args_home = os.environ['args_home']
 	l_fname = args_home+args.input+args.raw_l_data
 	r_fname = args_home+args.input+args.raw_r_data
@@ -83,7 +82,7 @@ def generate_tensors_nbrs_alltopic(args,nbr_size,device):
 	dflatent = pd.merge(df_l['index'],df_h,how='left',left_on='index',right_on='cell')
 	dflatent['cell'] = dflatent.iloc[:,2:].idxmax(axis=1)
 	dflatent = dflatent.rename(columns={'cell':'topic'})
-	
+
 	model_ann = ApproxNN(dflatent.iloc[:,2:].to_numpy(), dflatent.iloc[:,0].values)
 	model_ann.build()
 
@@ -94,12 +93,11 @@ def generate_tensors_nbrs_alltopic(args,nbr_size,device):
 	df_lr = df_lr.loc[df_l.columns[1:],df_r.columns[1:]]
 	lr_mat = torch.tensor(df_lr.values.astype(np.float32)).to(device)
 
-	f_path = args_home+args.input+args.lr_model['in'] 
+	f_path = args_home+args.input+args.lr_model['in']
 	f_batch_size = args.lr_model['train']['batch_size']
-	
+
 
 	save_tensors_alltopic(l_mat,r_mat,lr_mat,model_ann,nbr_size,dflatent,device,f_path,f_batch_size)
-
 
 def save_tensors(l_mat,r_mat,lr_mat,model_ann,nbr_size,h_mat,device,f_path,f_batch_size):
 
@@ -109,14 +107,14 @@ def save_tensors(l_mat,r_mat,lr_mat,model_ann,nbr_size,h_mat,device,f_path,f_bat
 	data_idxs = random.sample(range(h_mat.shape[0]),h_mat.shape[0])
 
 	for i,idx in enumerate(data_idxs) :
-		
+
 		neighbours = model_ann.query(h_mat[idx],k=nbr_size)
 
 		cm_l = l_mat[idx].unsqueeze(0)
 		cm_r = r_mat[idx].unsqueeze(0)
 
 		for nidx in neighbours[1:]:
-			
+
 			cn_l = l_mat[nidx].unsqueeze(0)
 			cn_r = r_mat[nidx].unsqueeze(0)
 
@@ -124,21 +122,19 @@ def save_tensors(l_mat,r_mat,lr_mat,model_ann,nbr_size,h_mat,device,f_path,f_bat
 			l_in_mat = torch.cat((l_in_mat,l_to_r),0)
 			r_to_l = torch.mm(cm_r,torch.t(lr_mat)).mul(cm_l) + torch.mm(cn_r,torch.t(lr_mat)).mul(cn_l)
 			r_in_mat = torch.cat((r_in_mat,r_to_l),0)
-		
+
 		if i % f_batch_size == 0:
 
 			logger.info('saving tensor...'+str(i))
 
 			torch.save(l_in_mat, f_path + str(i)+'_ligands.pt')
-			torch.save(r_in_mat, f_path + str(i)+'_receptors.pt') 
+			torch.save(r_in_mat, f_path + str(i)+'_receptors.pt')
 
 			l_in_mat = torch.empty(0, r_mat.shape[1]).to(device)
 			r_in_mat = torch.empty(0, l_mat.shape[1]).to(device)
 
-
-
 def generate_tensors(args,nbr_size,device):
-	
+
 	args_home = os.environ['args_home']
 	l_fname = args_home+args.input+args.raw_l_data
 	r_fname = args_home+args.input+args.raw_r_data
@@ -165,32 +161,76 @@ def generate_tensors(args,nbr_size,device):
 	df_lr = df_lr.loc[df_l.columns[1:],df_r.columns[1:]]
 	lr_mat = torch.tensor(df_lr.values.astype(np.float32)).to(device)
 
-	f_path = args_home+args.input+args.lr_model['in'] 
+	f_path = args_home+args.input+args.lr_model['in']
 	f_batch_size = args.lr_model['train']['batch_size']
-
 
 	save_tensors(l_mat,r_mat,lr_mat,model_ann,nbr_size,h_mat,device,f_path,f_batch_size)
 
-
 class LRDataset(Dataset):
-	def __init__(self, tensor_fpath,flist):
-		self.path = tensor_fpath
-		self.flist = flist
-	
+	def __init__(self,lmat,rmat,Alr,l_in_mat,r_in_mat,modelann,nbrsize,hmat,device) :
+		self.lmat = lmat
+		self.rmat = rmat
+		self.lrmat = Alr
+		self.l_in_mat = l_in_mat
+		self.r_in_mat = r_in_mat
+		self.modelann = modelann
+		self.nbrsize = nbrsize
+		self.hmat = hmat
+		self.device = device
+
 	def __len__(self):
-		return len(self.flist)
-	
+		return self.hmat.shape[0]
+
 	def __getitem__(self, idx):
-		l_in_mat = torch.load(os.path.join(self.path,self.flist[idx]+'_ligands.pt'))
-		r_in_mat = torch.load(os.path.join(self.path,self.flist[idx]+'_receptors.pt'))
-		return l_in_mat, r_in_mat
 
+		neighbours = self.modelann.query(self.hmat[idx],k=self.nbrsize)
 
-def load_data(args,batch_size):
+		cm_l = self.lmat[idx].unsqueeze(0)
+		cm_r = self.rmat[idx].unsqueeze(0)
+
+		for cindx, nidx in enumerate(neighbours[1:]):
+
+			cn_l = self.lmat[nidx].unsqueeze(0)
+			cn_r = self.rmat[nidx].unsqueeze(0)
+
+			self.l_in_mat[cindx] = torch.mm(cm_l,self.lrmat).mul(cm_r) + torch.mm(cn_l,self.lrmat).mul(cn_r) 
+			self.r_in_mat[cindx] = torch.mm(cm_r,torch.t(self.lrmat)).mul(cm_l) + torch.mm(cn_r,torch.t(self.lrmat)).mul(cn_l)
+
+		return self.l_in_mat, self.r_in_mat
+
+def load_data(args,nbr_size,batch_size,device):
+
 	args_home = os.environ['args_home']
-	fdir = args_home+args.input+args.lr_model['in']
-	files = pd.Series([ x.split('_')[0] for x in os.listdir(fdir)]).unique()
-	return DataLoader(LRDataset(fdir,files), batch_size=batch_size, shuffle=True)
+
+	l_fname = args_home+args.input+args.raw_l_data
+	r_fname = args_home+args.input+args.raw_r_data
+	lr_fname = args_home+args.input+args.raw_lr_data
+
+
+	df_h = pd.read_csv(args_home+args.output+args.nbr_model["out"]+args.nbr_model["mfile"]+"etm_hh_data.tsv",sep="\t",compression='gzip')
+
+	df_l = pd.read_pickle(l_fname)
+	df_r = pd.read_pickle(r_fname)
+	df_l = df_l[df_l["index"].isin(df_h["cell"].values)]
+	df_r = df_r[df_r["index"].isin(df_h["cell"].values)]
+
+	dfjoin = pd.merge(df_l["index"],df_h,how="left",left_on="index",right_on="cell")
+	model_ann = ApproxNN(dfjoin.iloc[:,2:].to_numpy(), dfjoin.iloc[:,0].values)
+	model_ann.build()
+
+	h_mat = torch.tensor(dfjoin.iloc[:,2:].values.astype(np.float32),requires_grad=False).to(device)
+	lmat = torch.tensor(df_l.iloc[:,1:].values.astype(np.float32),requires_grad=False).to(device)
+	rmat = torch.tensor(df_r.iloc[:,1:].values.astype(np.float32),requires_grad=False).to(device)
+
+	df_lr = pd.read_pickle(lr_fname)
+	df_lr = df_lr.loc[df_l.columns[1:],df_r.columns[1:]]
+	Alr = torch.tensor(df_lr.values.astype(np.float32),requires_grad=False).to(device)
+
+	l_in_mat = torch.empty((nbr_size-1), rmat.shape[1],device=torch.device(device),requires_grad=False)
+	r_in_mat = torch.empty((nbr_size-1), lmat.shape[1],device=torch.device(device),requires_grad=False)
+
+	return DataLoader(LRDataset(lmat,rmat,Alr,l_in_mat, r_in_mat,model_ann,nbr_size,h_mat,device), 
+	       batch_size=batch_size, shuffle=True)
 
 def reparameterize(mean,lnvar):
 	sig = torch.exp(lnvar/2.)
@@ -213,7 +253,7 @@ class Stacklayers(nn.Module):
 			self.layers.append(self.get_activation())
 			nn.BatchNorm1d(next_l)
 			self.input_size = next_l
-		
+
 	def forward(self, input_data):
 		for layer in self.layers:
 			input_data = layer(input_data)
@@ -236,7 +276,7 @@ class ETMEncoder(nn.Module):
 	def forward(self, xx1, xx2):
 		xx1 = xx1/torch.sum(xx1,dim=-1,keepdim=True)
 		xx2 = xx2/torch.sum(xx2,dim=-1,keepdim=True)
-		
+
 		ss1 = self.fc1(torch.log1p(xx1))
 		ss2 = self.fc2(torch.log1p(xx2))
 
@@ -276,25 +316,28 @@ class ETM(nn.Module):
 		super(ETM,self).__init__()
 		self.encoder = ETMEncoder(input_dims1,input_dims2,latent_dims,layers1,layers2)
 		self.decoder = ETMDecoder(latent_dims, input_dims1, input_dims2)
-		
+
 	def forward(self,xx1,xx2):
 		zz,m1,v1,m2,v2 = self.encoder(xx1,xx2)
 		pr,h = self.decoder(zz)
 		return pr,m1,v1,m2,v2,h
-	
-def train(etm,data,epochs,l_rate):
+
+def train(etm,data,epochs,l_rate,device):
 	logger.info('Starting training....')
 	opt = torch.optim.Adam(etm.parameters(),lr=l_rate)
 	loss_values = []
 	loss_values_sep = []
 	for epoch in range(epochs):
+		cell = 0 
 		loss = 0
 		loss_ll = 0
 		loss_kl1 = 0
 		loss_kl2 = 0
 		for x1,x2 in data:
+			print(x1.shape,x2.shape,x1.device)
 			x1 = x1.reshape(x1.shape[0]*x1.shape[1],x1.shape[2])
 			x2 = x2.reshape(x2.shape[0]*x2.shape[1],x2.shape[2])
+
 			opt.zero_grad()
 			recon,m1,v1,m2,v2,h = etm(x1,x2)
 			x = torch.cat((x1,x2),1)
@@ -305,7 +348,7 @@ def train(etm,data,epochs,l_rate):
 			ll_l = torch.mean(loglikloss).to('cpu')
 			kl_ml1 = torch.mean(kl1).to('cpu')
 			kl_ml2 = torch.mean(kl2).to('cpu')
-			
+
 			train_loss = torch.mean((kl1 + kl2)-loglikloss).to('cpu')
 			train_loss.backward()
 
@@ -316,14 +359,16 @@ def train(etm,data,epochs,l_rate):
 			loss_kl1 += kl_ml1.item()
 			loss_kl2 += kl_ml2.item()
 
-		if epoch % 10 == 0:  
-			logger.info('====> Epoch: {} Average loss: {:.4f}'.format(epoch, loss/len(data)))
-		
+			cell += 1000
+
+			if cell % 10000 == 0:
+				logger.info('====> Device: {} cells: {} loss {}'.format(x1.device, cell,loss))
+
 		loss_values.append(loss/len(data))
 		loss_values_sep.append((loss_ll/len(data),loss_kl1/len(data),
 		loss_kl2/len(data)))
-		
-	
+
+
 	return loss_values,loss_values_sep
 
 def get_latent(data,model,model_file,loss_values):

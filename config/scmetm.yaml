@@ -60,15 +60,14 @@ lr_model :
   in : lr_tensor/
   in_nbr_model : 200_200_100_15_ep2500_180k_17k_no_lr_202204081556etm_hh_data.tsv
   train :
-    nbr_size : 5
-    batch_size : 256
-    run_batch_size : 1
+    nbr_size : 45
+    batch_size : 5
     l_rate : 0.01
-    epochs : 2500
+    epochs : 25
     layers1 : [200,100,50]
     layers2 : [200,100,50]
     latent_dims : 50
   eval :
     batch_size : 1
-  mfile : 200_200_100_50_ep2500_180k_17k_no_lr_202204081556202204100530
+  mfile : 200_200_100_50_ep3_180k_17k_no_lr_202204081556202204100530
 

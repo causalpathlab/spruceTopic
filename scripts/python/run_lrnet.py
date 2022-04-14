@@ -2,7 +2,7 @@ import sys
 import os
 from gen_util.io import read_config
 from collections import namedtuple
-from dlearn import lrnet
+from dlearn import litlrnet as lrnet
 import pandas as pd
 import logging
 import datetime
@@ -11,7 +11,7 @@ now = datetime.datetime.now()
 spath = os.path.dirname(__file__)
 args_home = spath.replace('/scripts/python','/')
 
-os.chdir(args_home)
+# os.chdir(args_home)
 os.environ['args_home'] = args_home
 
 params = read_config(args_home+'/config/scmetm.yaml')
@@ -26,7 +26,7 @@ logging.basicConfig(filename=model_file+'.log',
 
 def run_model(mode):
 	nbr_size = args.lr_model['train']['nbr_size']
-	batch_size = args.lr_model['train']['run_batch_size']
+	batch_size = args.lr_model['train']['batch_size']
 	l_rate = args.lr_model['train']['l_rate']
 	epochs = args.lr_model['train']['epochs']
 	layers1 = args.lr_model['train']['layers1']
@@ -38,18 +38,44 @@ def run_model(mode):
 		# lrnet.generate_tensors(args,nbr_size,device)
 		lrnet.generate_tensors_nbrs_alltopic(args,nbr_size,device)
 
+	elif mode=='lt_train':
+
+		dl = lrnet.load_data(args,nbr_size,batch_size)
+
+		train_dataloader =  dl.train_dataloader()
+
+		input_dims1 = 539
+		input_dims2 = 498
+		logging.info('Input dimension - ligand is '+ str(input_dims1))
+		logging.info('Input dimension - receptor is '+ str(input_dims2))
+		model = lrnet.LitETM(input_dims1,input_dims2,latent_dims,layers1,layers2)
+		logging.info(model)
+
+		trainer = lrnet.pl.Trainer(
+		max_epochs=epochs,
+		accelerator='gpu',
+		plugins=lrnet.DDPPlugin(find_unused_parameters=False),
+    	precision=16,
+		progress_bar_refresh_rate=10)
+		
+		trainer.fit(model,train_dataloader)
+
 	elif mode=='train':
-		device = lrnet.torch.device('cuda' if lrnet.torch.cuda.is_available() else 'cpu')
-		data = lrnet.load_data(args,batch_size)
+		device = lrnet.torch.device('cuda:0' if lrnet.torch.cuda.is_available() else 'cpu')
+		data = lrnet.load_data(args,nbr_size,batch_size,device)
 
 		input_dims1 = 539
 		input_dims2 = 498
 		logging.info('Input dimension - ligand is '+ str(input_dims1))
 		logging.info('Input dimension - receptor is '+ str(input_dims2))
 
-		model = lrnet.ETM(input_dims1,input_dims2,latent_dims,layers1,layers2).to(device)
+		model = lrnet.ETM(input_dims1,input_dims2,latent_dims,layers1,layers2)
 		logging.info(model)
-		loss_values = lrnet.train(model,data,epochs,l_rate)
+
+		model = lrnet.nn.DataParallel(model)
+		model.to(device)
+
+		loss_values = lrnet.train(model,data,epochs,l_rate,device)
 
 		lrnet.torch.save(model.state_dict(), model_file+'etm.torch')
 		dflv = pd.DataFrame(loss_values[0])
@@ -67,7 +93,7 @@ def run_model(mode):
 
 		model = lrnet.ETM(input_dims1,input_dims2,latent_dims,layers1,layers2).to(device)
 		model.load_state_dict(lrnet.torch.load(model_file+'etm.torch'))
-		model.eval()	
+		model.eval()
 
 		dfloss = pd.read_csv(model_file+'loss.txt',sep='\t')
 
@@ -77,5 +103,6 @@ def run_model(mode):
 # 	mode='train'
 # 	run_model(mode)
 
-mode=sys.argv[1]
-run_model(mode)
+if __name__ == '__main__':
+	mode=sys.argv[1]
+	run_model(mode)
