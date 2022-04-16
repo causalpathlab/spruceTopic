@@ -29,16 +29,16 @@ class ApproxNN():
 		return self.index.get_nns_by_vector(vector.tolist(),k)
 
 class LRDataset(Dataset):
-	def __init__(self,lmat,rmat,Alr,nbrsize,hmat) :
+	def __init__(self,lmat,rmat,Alr,nbrsize,hmat,model_ann) :
 		self.lmat = lmat
 		self.rmat = rmat
 		self.lrmat = Alr
-		# self.modelann = modelann
+		self.model_ann = model_ann
 		self.nbrsize = nbrsize
-		self.hmat = hmat
+		self.dflatent = hmat
 
 	def __len__(self):
-		return self.hmat.shape[0]
+		return self.dflatent.shape[0]
 
 	def __getitem__(self, idx):
 
@@ -48,9 +48,9 @@ class LRDataset(Dataset):
 		cm_lr = torch.mm(cm_l,self.lrmat).mul(cm_r)
 		cm_rl = torch.mm(cm_r,torch.t(self.lrmat)).mul(cm_l)
 
-		neighbours = range(self.nbrsize)
-		# neighbours = self.modelann.query(self.hmat[idx],k=self.nbrsize)
-		
+		neighbours = self.model_ann.query(self.dflatent.iloc[idx,2:].values,k=45)
+		# nbr_idxs = self.dflatent.iloc[neighbours].groupby('topic').head(1).index
+
 		cn_l = self.lmat[neighbours]
 		cn_r = self.rmat[neighbours]
 
@@ -82,11 +82,14 @@ class load_data(pl.LightningDataModule):
 		df_l = df_l[df_l["index"].isin(df_h["cell"].values)]
 		df_r = df_r[df_r["index"].isin(df_h["cell"].values)]
 
-		dfjoin = pd.merge(df_l["index"],df_h,how="left",left_on="index",right_on="cell")
-		model_ann = ApproxNN(dfjoin.iloc[:,2:].to_numpy(), dfjoin.iloc[:,0].values)
+		dflatent = pd.merge(df_l['index'],df_h,how='left',left_on='index',right_on='cell')
+		dflatent['cell'] = dflatent.iloc[:,2:].idxmax(axis=1)
+		dflatent = dflatent.rename(columns={'cell':'topic'})
+
+		model_ann = ApproxNN(dflatent.iloc[:,2:].to_numpy(), dflatent.iloc[:,0].values)
 		model_ann.build()
 
-		h_mat = torch.tensor(dfjoin.iloc[:,2:].values.astype(np.float32),requires_grad=False).to(device)
+		# h_mat = torch.tensor(dfjoin.iloc[:,2:].values.astype(np.float32),requires_grad=False).to(device)
 		lmat = torch.tensor(df_l.iloc[:,1:].values.astype(np.float32),requires_grad=False).to(device)
 		rmat = torch.tensor(df_r.iloc[:,1:].values.astype(np.float32),requires_grad=False).to(device)
 
@@ -94,7 +97,7 @@ class load_data(pl.LightningDataModule):
 		df_lr = df_lr.loc[df_l.columns[1:],df_r.columns[1:]]
 		Alr = torch.tensor(df_lr.values.astype(np.float32),requires_grad=False).to(device)
 
-		return DataLoader(LRDataset(lmat,rmat,Alr,self.nbr_size,h_mat), batch_size=self.batch_size, shuffle=True)
+		return DataLoader(LRDataset(lmat,rmat,Alr,self.nbr_size,dflatent,model_ann), batch_size=self.batch_size, shuffle=True)
 
 def reparameterize(mean,lnvar):
 	sig = torch.exp(lnvar/2.)
@@ -218,5 +221,42 @@ class LitETM(pl.LightningModule):
 
 		return loss
 
+def run_model(args,):
+
+	args_home = os.environ['args_home']
+
+
+	nbr_size = args.lr_model['train']['nbr_size']
+	batch_size = args.lr_model['train']['batch_size']
+	l_rate = args.lr_model['train']['l_rate']
+	epochs = args.lr_model['train']['epochs']
+	layers1 = args.lr_model['train']['layers1']
+	layers2 = args.lr_model['train']['layers2']
+	latent_dims = args.lr_model['train']['latent_dims']
+
+
+	dl = load_data(args,nbr_size,batch_size)
+
+	train_dataloader =  dl.train_dataloader()
+
+	input_dims1 = 539
+	input_dims2 = 498
+	logging.info('Input dimension - ligand is '+ str(input_dims1))
+	logging.info('Input dimension - receptor is '+ str(input_dims2))
+	model = LitETM(input_dims1,input_dims2,latent_dims,layers1,layers2)
+	logging.info(model)
+
+	trainer = pl.Trainer(
+	max_epochs=epochs,
+	accelerator='gpu',
+	plugins= DDPPlugin(find_unused_parameters=False),
+	precision=16,
+	progress_bar_refresh_rate=10)
+	
+	trainer.fit(model,train_dataloader)
+
+# if __name__ == '__main__':
+# 	mode=sys.argv[1]
+# 	run_model(mode)
 
 

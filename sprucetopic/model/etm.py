@@ -5,7 +5,7 @@ from torch.utils.data import DataLoader
 from torch.utils.data import Dataset
 from scipy import sparse
 import numpy as np 
-import preprocess
+import sprucetopic.spruceTopic.preprocessing.preprocess as preprocess
 
 def reparameterize(mean,lnvar):
 	sig = torch.exp(lnvar/2.)

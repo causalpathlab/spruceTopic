@@ -167,12 +167,10 @@ def generate_tensors(args,nbr_size,device):
 	save_tensors(l_mat,r_mat,lr_mat,model_ann,nbr_size,h_mat,device,f_path,f_batch_size)
 
 class LRDataset(Dataset):
-	def __init__(self,lmat,rmat,Alr,l_in_mat,r_in_mat,modelann,nbrsize,hmat,device) :
+	def __init__(self,lmat,rmat,Alr,modelann,nbrsize,hmat,device) :
 		self.lmat = lmat
 		self.rmat = rmat
 		self.lrmat = Alr
-		self.l_in_mat = l_in_mat
-		self.r_in_mat = r_in_mat
 		self.modelann = modelann
 		self.nbrsize = nbrsize
 		self.hmat = hmat
@@ -183,20 +181,19 @@ class LRDataset(Dataset):
 
 	def __getitem__(self, idx):
 
-		neighbours = self.modelann.query(self.hmat[idx],k=self.nbrsize)
-
 		cm_l = self.lmat[idx].unsqueeze(0)
 		cm_r = self.rmat[idx].unsqueeze(0)
 
-		for cindx, nidx in enumerate(neighbours[1:]):
+		cm_lr = torch.mm(cm_l,self.lrmat).mul(cm_r)
+		cm_rl = torch.mm(cm_r,torch.t(self.lrmat)).mul(cm_l)
 
-			cn_l = self.lmat[nidx].unsqueeze(0)
-			cn_r = self.rmat[nidx].unsqueeze(0)
+		# neighbours = range(self.nbrsize)
+		neighbours = self.modelann.query(self.hmat[idx],k=self.nbrsize)
+		
+		cn_l = self.lmat[neighbours]
+		cn_r = self.rmat[neighbours]
 
-			self.l_in_mat[cindx] = torch.mm(cm_l,self.lrmat).mul(cm_r) + torch.mm(cn_l,self.lrmat).mul(cn_r) 
-			self.r_in_mat[cindx] = torch.mm(cm_r,torch.t(self.lrmat)).mul(cm_l) + torch.mm(cn_r,torch.t(self.lrmat)).mul(cn_l)
-
-		return self.l_in_mat, self.r_in_mat
+		return 	cm_lr + torch.mm(cn_l,self.lrmat).mul(cn_r) , cm_rl + torch.mm(cn_r,torch.t(self.lrmat)).mul(cn_l)
 
 def load_data(args,nbr_size,batch_size,device):
 
@@ -226,10 +223,7 @@ def load_data(args,nbr_size,batch_size,device):
 	df_lr = df_lr.loc[df_l.columns[1:],df_r.columns[1:]]
 	Alr = torch.tensor(df_lr.values.astype(np.float32),requires_grad=False).to(device)
 
-	l_in_mat = torch.empty((nbr_size-1), rmat.shape[1],device=torch.device(device),requires_grad=False)
-	r_in_mat = torch.empty((nbr_size-1), lmat.shape[1],device=torch.device(device),requires_grad=False)
-
-	return DataLoader(LRDataset(lmat,rmat,Alr,l_in_mat, r_in_mat,model_ann,nbr_size,h_mat,device), 
+	return DataLoader(LRDataset(lmat,rmat,Alr,model_ann,nbr_size,h_mat,device), 
 	       batch_size=batch_size, shuffle=True)
 
 def reparameterize(mean,lnvar):
@@ -334,7 +328,7 @@ def train(etm,data,epochs,l_rate,device):
 		loss_kl1 = 0
 		loss_kl2 = 0
 		for x1,x2 in data:
-			print(x1.shape,x2.shape,x1.device)
+
 			x1 = x1.reshape(x1.shape[0]*x1.shape[1],x1.shape[2])
 			x2 = x2.reshape(x2.shape[0]*x2.shape[1],x2.shape[2])
 
@@ -359,7 +353,7 @@ def train(etm,data,epochs,l_rate,device):
 			loss_kl1 += kl_ml1.item()
 			loss_kl2 += kl_ml2.item()
 
-			cell += 1000
+			cell += 5
 
 			if cell % 10000 == 0:
 				logger.info('====> Device: {} cells: {} loss {}'.format(x1.device, cell,loss))
@@ -408,4 +402,61 @@ def get_latent(data,model,model_file,loss_values):
 
 	df_beta2 = pd.DataFrame(beta2.to('cpu').detach().numpy())
 	df_beta2.to_csv(model_file+'etm_beta2_data.tsv',sep='\t',index=False,compression='gzip')
+
+def run_model(args,mode):
+
+	args_home = os.environ['args_home']
+
+
+	nbr_size = args.lr_model['train']['nbr_size']
+	batch_size = args.lr_model['train']['batch_size']
+	l_rate = args.lr_model['train']['l_rate']
+	epochs = args.lr_model['train']['epochs']
+	layers1 = args.lr_model['train']['layers1']
+	layers2 = args.lr_model['train']['layers2']
+	latent_dims = args.lr_model['train']['latent_dims']
+
+	if mode == 'generate_tensor':
+		device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
+		# generate_tensors(args,nbr_size,device)
+		generate_tensors_nbrs_alltopic(args,nbr_size,device)
+
+	elif mode=='train':
+		device = torch.device('cuda:0' if torch.cuda.is_available() else 'cpu')
+		data = load_data(args,nbr_size,batch_size,device)
+
+		input_dims1 = 539
+		input_dims2 = 498
+		logging.info('Input dimension - ligand is '+ str(input_dims1))
+		logging.info('Input dimension - receptor is '+ str(input_dims2))
+
+		model = ETM(input_dims1,input_dims2,latent_dims,layers1,layers2)
+		logging.info(model)
+
+		model = nn.DataParallel(model)
+		model.to(device)
+
+		loss_values = train(model,data,epochs,l_rate,device)
+
+		torch.save(model.state_dict(), model_file+'etm.torch')
+		dflv = pd.DataFrame(loss_values[0])
+		dflv.to_csv(model_file+'loss.txt',index=False)
+		dflv = pd.DataFrame(loss_values[1])
+		dflv.to_csv(model_file+'loss2.txt',index=False)
+
+	elif mode == 'eval':
+		model_file = args_home+args.output+args.lr_model['out']+args.lr_model['mfile']
+		device = 'cuda'
+		batch_size = args.lr_model['eval']['batch_size']
+		data = load_data(args,batch_size)
+		input_dims1 = 539
+		input_dims2 = 498
+
+		model = ETM(input_dims1,input_dims2,latent_dims,layers1,layers2).to(device)
+		model.load_state_dict(torch.load(model_file+'etm.torch'))
+		model.eval()
+
+		dfloss = pd.read_csv(model_file+'loss.txt',sep='\t')
+
+		get_latent(data,model,model_file,dfloss.iloc[:,0].values)
 

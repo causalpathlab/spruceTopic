@@ -2,66 +2,57 @@ import os
 import numpy as np
 import pandas as pd
 from collections import namedtuple
-from gen_util.io import read_config
+from _utils.io import read_config
 import matplotlib.pylab as plt
 plt.rcParams['figure.figsize'] = [12.50, 10.50]
 plt.rcParams['figure.autolayout'] = True
 import umap
 import umap.plot 
 
-
-
 def plot_umap_from_model(args):
+
+	cell_type={
+		0:'CD4T-Naive',
+		1:'CD4T-Memory',
+		4:'CD8T',
+		6:'NK',
+		3:'B',
+		2:'CD14',
+		5:'FCGR3A',
+		7:'Dendritic',
+		8:'Megakaryocytes'
+	}
 	
-	spath = os.path.dirname(__file__)
-	# spath =  '/home/BCCRC.CA/ssubedi/projects/tumour_immune_interaction/scripts/python'
-	# spath =  '/home/sishirsubedi/projects/tumour_immune_interaction/scripts/python'
-	args_home = spath.replace('/scripts/python','/')
+	args_home = os.environ['args_home'] 
+	df_z = pd.read_csv(args_home+args.output+args.nbr_model['out']+args.nbr_model['mfile']+'etm_zz_data.tsv',sep='\t',compression='gzip')
 
-	params = read_config(args_home+'/config/scmetm.yaml')
-	args = namedtuple('Struct',params.keys())(*params.values())
-
-
-
-	df_h = pd.read_csv(args_home+args.output+args.nbr_model['out']+args.nbr_model['mfile']+'etm_zz_data.tsv',sep='\t',compression='gzip')
-
+	df_meta = pd.read_pickle(args_home+args.scanpy_output+'pbmc_cluster.pkl')
+	dfjoin = pd.merge(df_z,df_meta,right_on='index',left_on='cell',how='left')
+	dfjoin = dfjoin[dfjoin['leiden'].notna()]
+	
 	umap_2d = umap.UMAP(n_components=2, init='random', random_state=0,min_dist=0.1)
-	proj_2d = umap_2d.fit(df_h.iloc[:,1:])
-	# plt.scatter(proj_2d[:,0],proj_2d[:,1],s=0.001)
+	proj_2d = umap_2d.fit(dfjoin.iloc[:,1:-2])
+	celltype_labels = np.array([ cell_type[int(x)] for x in dfjoin['leiden'].values ])
+	print(celltype_labels)
+	umap.plot.points(proj_2d,labels=celltype_labels,color_key_cmap='Paired')
+	plt.savefig(args_home+args.output+args.nbr_model['out']+args.nbr_model['mfile']+'umap_zz_scanpy_cluster_label.png',dpi=300);plt.close()
+
 	
 	df_h = pd.read_csv(args_home+args.output+args.nbr_model['out']+args.nbr_model['mfile']+'etm_hh_data.tsv',sep='\t',compression='gzip')
 	df_h.columns = [ x.replace('hh','k') for x in df_h.columns]
-	topic_labels = df_h.iloc[:,1:].idxmax(axis=1)
+	df_h['topic'] = df_h.iloc[:,1:].idxmax(axis=1)
 
+	topic_labels = pd.merge(dfjoin[['cell']],df_h[['cell','topic']],on='cell',how='left')['topic'].values
 
-	# from sklearn.cluster import KMeans
-	# kmeans = KMeans(n_clusters=df_h.shape[1]-1, random_state=0).fit(df_h.iloc[:,1:].to_numpy())
-	umap.plot.points(proj_2d,labels=topic_labels)
-
+	umap.plot.points(proj_2d,labels=topic_labels,color_key_cmap='tab20b')
 	plt.savefig(args_home+args.output+args.nbr_model['out']+args.nbr_model['mfile']+'umap_zz_topic_label.png',dpi=300);plt.close()
 
-	# ##test to get neighbors
-	# embeddings = umap.UMAP(n_neighbors=15, min_dist=0.5).fit_transform(df_h.iloc[:,1:])
-	# knn = umap.umap_.nearest_neighbors(embeddings, 
-	#         n_neighbors=15, metric='euclidean', 
-	#         metric_kwds={}, angular=True, 
-	#         random_state=np.random.RandomState(42))
 
-	# import pickle
 
-	# f_name = 'umap_model.pkl'
-	# pickle.dump(umap_2d, open(f_name, 'wb'))
 
-def label_pcs():
-
-	# spath = os.path.dirname(__file__)
-	spath =  '/home/BCCRC.CA/ssubedi/projects/tumour_immune_interaction/scripts/python'
-	# spath =  '/home/sishirsubedi/projects/tumour_immune_interaction/scripts/python'
-	args_home = spath.replace('/scripts/python','/')
-
-	params = read_config(args_home+'/config/scmetm.yaml')
-	args = namedtuple('Struct',params.keys())(*params.values())
-
+def label_pcs(args):
+	
+	args_home = os.environ['args_home'] 
 
 	df = pd.read_csv(args_home+args.output+args.nbr_model['out']+args.nbr_model['mfile']+'etm_zz_data.tsv',sep='\t',compression='gzip')
 

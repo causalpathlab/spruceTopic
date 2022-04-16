@@ -6,6 +6,7 @@ from torch.utils.data import Dataset
 from scipy import sparse
 import numpy as np
 import pandas as pd
+import os
 import logging
 logger = logging.getLogger(__name__)
 
@@ -31,7 +32,7 @@ class Stacklayers(nn.Module):
 			self.layers.append(self.get_activation())
 			nn.BatchNorm1d(next_l)
 			self.input_size = next_l
-		
+
 	def forward(self, input_data):
 		for layer in self.layers:
 			input_data = layer(input_data)
@@ -53,7 +54,7 @@ class ETMEncoder(nn.Module):
 	def forward(self, xx1, xx2):
 		xx1 = xx1/torch.sum(xx1,dim=-1,keepdim=True)
 		xx2 = xx2/torch.sum(xx2,dim=-1,keepdim=True)
-		
+
 		ss1 = self.fc1(torch.log1p(xx1))
 		ss2 = self.fc2(torch.log1p(xx2))
 
@@ -92,16 +93,16 @@ class ETM(nn.Module):
 		super(ETM,self).__init__()
 		self.encoder = ETMEncoder(input_dims1,input_dims2,latent_dims,layers1,layers2)
 		self.decoder = ETMDecoder(latent_dims, input_dims1, input_dims2)
-		
+
 	def forward(self,xx1,xx2):
 		zz,m1,v1,m2,v2 = self.encoder(xx1,xx2)
 		pr,h = self.decoder(zz)
 		return pr,m1,v1,m2,v2,h
-	
+
 class TabularDataset(Dataset):
 	def __init__(self, x,y):
 		self.X = x
-		self.y = y	
+		self.y = y
 	def __len__(self):
 		return len(self.X)
 	def __getitem__(self, idx):
@@ -139,26 +140,26 @@ class SparseTabularDataset(Dataset):
 		return self.shape[0]
 
 	def __getitem__(self, idx):
-		
+
 		cell = torch.zeros((self.shape[1],), dtype=torch.int32, device=self.device)
 		ind1,ind2 = self.indptr[idx],self.indptr[idx+1]
 		cell[self.indices[ind1:ind2].long()] = self.data[ind1:ind2]
-		
+
 		cell_i = cell[self.immuneindx.long()]
 		cell_o = cell[self.otherindx.long()]
 
 		return cell_i,cell_o,self.label[idx]
-	
+
 def load_sparse_data(data_file,meta_file,immuneindex_file,device,bath_size):
 
 	logger.info('loading sparse data...\n'+
-        data_file +'\n'+
-        meta_file +'\n' +
-        immuneindex_file )
+		data_file +'\n'+
+		meta_file +'\n' +
+		immuneindex_file )
 
 	npzarrs = np.load(data_file,allow_pickle=True)
 	s = sparse.csr_matrix( (npzarrs['val'].astype(np.int32), (npzarrs['idx'], npzarrs['idy']) ),shape=npzarrs['shape'] )
-	
+
 	device = torch.device(device)
 	indptr = torch.tensor(s.indptr.astype(np.int32), dtype=torch.int32, device=device)
 	indices = torch.tensor(s.indices.astype(np.int32), dtype=torch.int32, device=device)
@@ -172,7 +173,7 @@ def load_sparse_data(data_file,meta_file,immuneindex_file,device,bath_size):
 	immuneindx = torch.tensor(np.array([x[0] for x in immunedat['idx']]).astype(np.int32), dtype=torch.int32, device=device)
 
 	otherindx = torch.tensor(np.array([x for x in range(shape[1]) if x not in immuneindx]).astype(np.int32),dtype=torch.int32, device=device)
-	
+
 	spdata = SparseData(indptr,indices,val,shape,immuneindx,otherindx,label)
 
 	return DataLoader(SparseTabularDataset(spdata,device), batch_size=bath_size, shuffle=True)
@@ -198,7 +199,7 @@ def train(etm,data,epochs,l_rate):
 			ll_l = torch.mean(loglikloss).to('cpu')
 			kl_ml1 = torch.mean(kl1).to('cpu')
 			kl_ml2 = torch.mean(kl2).to('cpu')
-			
+
 			train_loss = torch.mean((kl1 + kl2)-loglikloss).to('cpu')
 			train_loss.backward()
 
@@ -209,14 +210,14 @@ def train(etm,data,epochs,l_rate):
 			loss_kl1 += kl_ml1.item()
 			loss_kl2 += kl_ml2.item()
 
-		if epoch % 10 == 0:  
+		if epoch % 10 == 0:
 			logger.info('====> Epoch: {} Average loss: {:.4f}'.format(epoch, loss/len(data)))
-		
+
 		loss_values.append(loss/len(data))
 		loss_values_sep.append((loss_ll/len(data),loss_kl1/len(data),
 		loss_kl2/len(data)))
-		
-	
+
+
 	return loss_values,loss_values_sep
 
 def get_latent(data,model,model_file):
@@ -254,4 +255,70 @@ def get_latent(data,model,model_file):
 
 	df_beta2 = pd.DataFrame(beta2.to('cpu').detach().numpy())
 	df_beta2.to_csv(model_file+'etm_beta2_data.tsv',sep='\t',index=False,compression='gzip')
+
+def run_model(args):
+
+	args_home = os.environ['args_home']
+	logger.info('Starting model training...')
+
+	data_file = args_home+args.input+args.nbr_model['sparse_data']
+	meta_file = args_home+args.input+args.nbr_model['sparse_label']
+	immuneindex_file = args_home+args.input+args.nbr_model['sparse_immune_label']
+
+	batch_size = args.nbr_model['train']['batch_size']
+	l_rate = args.nbr_model['train']['l_rate']
+	epochs = args.nbr_model['train']['epochs']
+	layers1 = args.nbr_model['train']['layers1']
+	layers2 = args.nbr_model['train']['layers2']
+	latent_dims = args.nbr_model['train']['latent_dims']
+
+	device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
+	data = load_sparse_data(data_file,meta_file,immuneindex_file, device,batch_size)
+
+	input_dims1 = len(data.dataset.immuneindx)
+	input_dims2 = data.dataset.shape[1] - input_dims1
+	logging.info('Input dimension - immune is '+ str(input_dims1))
+	logging.info('Input dimension - others is '+ str(input_dims2))
+
+	model = ETM(input_dims1,input_dims2,latent_dims,layers1,layers2).to(device)
+	logging.info(model)
+	loss_values = train(model,data,epochs,l_rate)
+
+	torch.save(model.state_dict(), model_file+'etm.torch')
+	dflv = pd.DataFrame(loss_values[0])
+	dflv.to_csv(model_file+'loss.txt',index=False)
+	dflv = pd.DataFrame(loss_values[1])
+	dflv.to_csv(model_file+'loss2.txt',index=False)
+
+def eval_model(args):
+
+	logging.info('Starting model inference...')
+
+	data_file = args_home+args.input+args.nbr_model['sparse_data']
+	meta_file = args_home+args.input+args.nbr_model['sparse_label']
+	immuneindex_file = args_home+args.input+args.nbr_model['sparse_immune_label']
+
+	batch_size = args.nbr_model['eval']['batch_size']
+	layers1 = args.nbr_model['train']['layers1']
+	layers2 = args.nbr_model['train']['layers2']
+	latent_dims = args.nbr_model['train']['latent_dims']
+
+	model_file = args_home+args.output+args.nbr_model['out']+args.nbr_model['mfile']
+
+	device = 'cpu'
+
+	data = load_sparse_data(data_file,meta_file,immuneindex_file, device,batch_size)
+
+	print('data size is -',data.dataset.shape)
+
+	input_dims1 = len(data.dataset.immuneindx)
+	input_dims2 = data.dataset.shape[1] - input_dims1
+
+	model = ETM(input_dims1,input_dims2,latent_dims,layers1,layers2).to(device)
+	model.load_state_dict(torch.load(model_file+'etm.torch'))
+	model.eval()
+
+	dfloss = pd.read_csv(model_file+'loss.txt')
+
+	get_latent(data,model,model_file)
 
