@@ -17,7 +17,9 @@ rule all:
 
         expand(model_file + 'cell_topic_struct_plot_pbmc.pdf'),
         
-        expand(model_file + 'topic_gene_weight_hmap.pdf')
+        expand(model_file + 'topic_gene_weight_hmap.pdf'),
+
+        expand(model_file + 'marker_gene_weight_hmap.pdf')
         
 
 
@@ -36,7 +38,9 @@ rule eval_model:
         out_umap_topic = model_file + 'umap_zz_topic_label.png',
         out_umap_topic_celllabel = model_file + 'umap_zz_scanpy_cluster_label.png',
         out_sample_topic = model_file + 'hh_cell_topic_sample.tsv',
-        out_topic_topgenes = model_file + 'top_5_genes_topic.tsv'
+        out_topic_topgenes = model_file + 'top_5_genes_topic.tsv',
+        out_topic_markergenes = model_file + 'marker_genes_topic.tsv'
+
     shell: 
         'python {input.script}'
 
@@ -53,5 +57,13 @@ rule plt_wthmap:
         script = r_scripts + 'fig_1_hmap.R'
     output:
         out_loss = model_file + 'topic_gene_weight_hmap.pdf'
+    shell: 
+        'Rscript {input.script}'
+
+rule plt_markerg_hmap:
+    input:
+        script = r_scripts + 'fig_1_hmap_mg.R'
+    output:
+        out_loss = model_file + 'marker_gene_weight_hmap.pdf'
     shell: 
         'Rscript {input.script}'

@@ -26,14 +26,23 @@ class ApproxNN():
 		self.index.build(number_of_trees)
 
 	def query(self, vector, k):
-		return self.index.get_nns_by_vector(vector.tolist(),k)
+		indexes = self.index.get_nns_by_vector(vector.tolist(),k)
+		return [self.labels[i][0] for i in indexes]
+
+def get_NNmodels(df):
+	model_list = {}
+	for i in range(len(df['topic'].unique())):
+		model_ann = ApproxNN(df.loc[df['topic']=='hh'+str(i),['hh'+str(x) for x in range(len(df['topic'].unique()))]].to_numpy(),df.loc[df['topic']=='hh'+str(i),['index']].values )
+		model_ann.build()
+		model_list['h'+str(i)] = model_ann
+	return model_list
 
 class LRDataset(Dataset):
-	def __init__(self,lmat,rmat,Alr,nbrsize,hmat,model_ann) :
+	def __init__(self,lmat,rmat,Alr,nbrsize,hmat,model_list) :
 		self.lmat = lmat
 		self.rmat = rmat
 		self.lrmat = Alr
-		self.model_ann = model_ann
+		self.model_list = model_list
 		self.nbrsize = nbrsize
 		self.dflatent = hmat
 
@@ -48,11 +57,13 @@ class LRDataset(Dataset):
 		cm_lr = torch.mm(cm_l,self.lrmat).mul(cm_r)
 		cm_rl = torch.mm(cm_r,torch.t(self.lrmat)).mul(cm_l)
 
-		neighbours = self.model_ann.query(self.dflatent.iloc[idx,2:].values,k=45)
-		# nbr_idxs = self.dflatent.iloc[neighbours].groupby('topic').head(1).index
+		nbr_idxs = np.array([])
+		for i in range(len(self.dflatent['topic'].unique())):
+			neighbours = self.model_list['h'+str(i)].query(self.dflatent.iloc[idx,2:].values,k=self.nbrsize)
+			nbr_idxs = np.append(nbr_idxs,self.dflatent.loc[self.dflatent['index'].isin(neighbours)].index.values)
 
-		cn_l = self.lmat[neighbours]
-		cn_r = self.rmat[neighbours]
+		cn_l = self.lmat[nbr_idxs]
+		cn_r = self.rmat[nbr_idxs]
 
 		return 	cm_lr + torch.mm(cn_l,self.lrmat).mul(cn_r) , cm_rl + torch.mm(cn_r,torch.t(self.lrmat)).mul(cn_l)
 
@@ -86,8 +97,7 @@ class load_data(pl.LightningDataModule):
 		dflatent['cell'] = dflatent.iloc[:,2:].idxmax(axis=1)
 		dflatent = dflatent.rename(columns={'cell':'topic'})
 
-		model_ann = ApproxNN(dflatent.iloc[:,2:].to_numpy(), dflatent.iloc[:,0].values)
-		model_ann.build()
+		model_list = get_NNmodels(dflatent)
 
 		# h_mat = torch.tensor(dfjoin.iloc[:,2:].values.astype(np.float32),requires_grad=False).to(device)
 		lmat = torch.tensor(df_l.iloc[:,1:].values.astype(np.float32),requires_grad=False).to(device)
@@ -97,7 +107,7 @@ class load_data(pl.LightningDataModule):
 		df_lr = df_lr.loc[df_l.columns[1:],df_r.columns[1:]]
 		Alr = torch.tensor(df_lr.values.astype(np.float32),requires_grad=False).to(device)
 
-		return DataLoader(LRDataset(lmat,rmat,Alr,self.nbr_size,dflatent,model_ann), batch_size=self.batch_size, shuffle=True)
+		return DataLoader(LRDataset(lmat,rmat,Alr,self.nbr_size,dflatent,model_list), batch_size=self.batch_size, shuffle=True)
 
 def reparameterize(mean,lnvar):
 	sig = torch.exp(lnvar/2.)
@@ -141,8 +151,9 @@ class ETMEncoder(nn.Module):
 		self.z2_lnvar = nn.Linear(latent_dims,latent_dims)
 
 	def forward(self, xx1, xx2):
-		xx1 = xx1/torch.sum(xx1,dim=-1,keepdim=True)
-		xx2 = xx2/torch.sum(xx2,dim=-1,keepdim=True)
+
+		# xx1 = xx1/torch.sum(xx1,dim=-1,keepdim=True)
+		# xx2 = xx2/torch.sum(xx2,dim=-1,keepdim=True)
 
 		ss1 = self.fc1(torch.log1p(xx1))
 		ss2 = self.fc2(torch.log1p(xx2))
@@ -191,9 +202,10 @@ class ETM(nn.Module):
 
 class LitETM(pl.LightningModule):
 
-	def __init__(self,input_dims1,input_dims2,latent_dims,layers1, layers2):
+	def __init__(self,input_dims1,input_dims2,latent_dims,layers1, layers2,lossf):
 		super(LitETM,self).__init__()
 		self.etm = ETM(input_dims1,input_dims2,latent_dims,layers1,layers2)
+		self.lossf = lossf
 
 	def forward(self,xx1,xx2):
 		pr,m1,v1,m2,v2,h = self.etm(xx1,xx2)
@@ -206,6 +218,7 @@ class LitETM(pl.LightningModule):
 	def training_step(self,batch):
 
 		x1 , x2 = batch
+
 		x1 = x1.reshape(x1.shape[0]*x1.shape[1],x1.shape[2])
 		x2 = x2.reshape(x2.shape[0]*x2.shape[1],x2.shape[2])
 
@@ -219,9 +232,17 @@ class LitETM(pl.LightningModule):
 
 		self.log("train_loss", loss)
 
+		ll_l = torch.mean(loglikloss).to('cpu').item()
+		kl_ml1 = torch.mean(kl1).to('cpu').item()
+		kl_ml2 = torch.mean(kl2).to('cpu').item()
+
+		f = open(self.lossf, "a")
+		f.write(str(ll_l) + ';' + str(kl_ml1) + ';'+ str(kl_ml2) + '\n')
+		f.close()
+
 		return loss
 
-def run_model(args,):
+def run_model(args,model_file):
 
 	args_home = os.environ['args_home']
 
@@ -239,11 +260,11 @@ def run_model(args,):
 
 	train_dataloader =  dl.train_dataloader()
 
-	input_dims1 = 539
-	input_dims2 = 498
+	input_dims1 = 380
+	input_dims2 = 302
 	logging.info('Input dimension - ligand is '+ str(input_dims1))
 	logging.info('Input dimension - receptor is '+ str(input_dims2))
-	model = LitETM(input_dims1,input_dims2,latent_dims,layers1,layers2)
+	model = LitETM(input_dims1,input_dims2,latent_dims,layers1,layers2,model_file+'loss.txt')
 	logging.info(model)
 
 	trainer = pl.Trainer(
@@ -251,12 +272,36 @@ def run_model(args,):
 	accelerator='gpu',
 	plugins= DDPPlugin(find_unused_parameters=False),
 	precision=16,
-	progress_bar_refresh_rate=10)
+	progress_bar_refresh_rate=50,
+	enable_checkpointing=False)
 	
 	trainer.fit(model,train_dataloader)
 
-# if __name__ == '__main__':
-# 	mode=sys.argv[1]
-# 	run_model(mode)
+	torch.save(model.state_dict(), model_file+'etm.torch')
+
+def load_model(path):
+	
+
+	args_home = os.environ['args_home']
+
+
+	nbr_size = args.lr_model['train']['nbr_size']
+	batch_size = args.lr_model['train']['batch_size']
+	l_rate = args.lr_model['train']['l_rate']
+	epochs = args.lr_model['train']['epochs']
+	layers1 = args.lr_model['train']['layers1']
+	layers2 = args.lr_model['train']['layers2']
+	latent_dims = args.lr_model['train']['latent_dims']
+
+
+	input_dims1 = 380
+	input_dims2 = 302
+	model = LitETM(input_dims1,input_dims2,latent_dims,layers1,layers2)
+
+	model_file = args_home+args.output+args.lr_model['out']+args.lr_model['mfile']
+	model.load_state_dict(torch.load(model_file+'etm.torch'))
+	model.eval()
+
+
 
 

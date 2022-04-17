@@ -6,29 +6,36 @@ import logging
 import pandas as pd
 
 now = datetime.datetime.now()
-args_home = '/home/BCCRC.CA/ssubedi/projects/tumour_immune_interaction/'
+# args_home = '/home/BCCRC.CA/ssubedi/projects/tumour_immune_interaction/'
+args_home = '/home/sishirsubedi/projects/tumour_immune_interaction/'
 
 os.chdir(args_home)
 os.environ['args_home'] = args_home
 
 params = read_config(args_home+'/config/pbmc.yaml')
 args = namedtuple('Struct',params.keys())(*params.values())
-model_file = args_home+args.output+args.nbr_model['out']+args.nbr_model['mfile']+now.strftime('%Y%m%d%H%M')
+model_file = args_home+args.output+args.lr_model['out']+args.lr_model['mfile']+now.strftime('%Y%m%d%H%M')
 
 print(model_file)
-# logging.basicConfig(filename=model_file+'.log',
-# 						format='%(asctime)s %(levelname)-8s %(message)s',
-# 						level=logging.INFO,
-# 						datefmt='%Y-%m-%d %H:%M:%S')
+logging.basicConfig(filename=model_file+'.log',
+						format='%(asctime)s %(levelname)-8s %(message)s',
+						level=logging.INFO,
+						datefmt='%Y-%m-%d %H:%M:%S')
 
-##
-from plot import plt_umap 
-plt_umap.plot_umap_from_model(args)
 
-##
-from evals import res_pbmcs
-res_pbmcs.pbmc_sample_cells_with_latent(args)
+from model import litlrnet
+litlrnet.run_model(args,model_file)
 
-##
-from evals import results
-results.topic_top_genes(args)
+# ##
+# from plot import plt_umap 
+# plt_umap.plot_umap_from_model(args)
+
+# ##
+# from evals import results
+# results.topic_top_genes(args)
+
+# ##
+# from evals import res_pbmcs
+# res_pbmcs.pbmc_sample_cells_with_latent(args)
+# res_pbmcs.topic_celltype_marker_genes(args)
+
