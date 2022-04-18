@@ -93,6 +93,9 @@ class load_data(pl.LightningDataModule):
 		df_l = df_l[df_l["index"].isin(df_h["cell"].values)]
 		df_r = df_r[df_r["index"].isin(df_h["cell"].values)]
 
+		# df_l.iloc[:,1:]=(df_l.iloc[:,1:]-df_l.iloc[:,1:].mean())/df_l.iloc[:,1:].std()
+		# df_r.iloc[:,1:]=(df_r.iloc[:,1:]-df_r.iloc[:,1:].mean())/df_r.iloc[:,1:].std()
+
 		dflatent = pd.merge(df_l['index'],df_h,how='left',left_on='index',right_on='cell')
 		dflatent['cell'] = dflatent.iloc[:,2:].idxmax(axis=1)
 		dflatent = dflatent.rename(columns={'cell':'topic'})
@@ -154,6 +157,11 @@ class ETMEncoder(nn.Module):
 
 		# xx1 = xx1/torch.sum(xx1,dim=-1,keepdim=True)
 		# xx2 = xx2/torch.sum(xx2,dim=-1,keepdim=True)
+
+		# xx1 -= xx1.min(1, keepdim=True)[0]
+		# xx1 /= xx1.max(1, keepdim=True)[0]
+		# xx2 -= xx2.min(1, keepdim=True)[0]
+		# xx2 /= xx2.max(1, keepdim=True)[0]
 
 		ss1 = self.fc1(torch.log1p(xx1))
 		ss2 = self.fc2(torch.log1p(xx2))
@@ -246,7 +254,6 @@ def run_model(args,model_file):
 
 	args_home = os.environ['args_home']
 
-
 	nbr_size = args.lr_model['train']['nbr_size']
 	batch_size = args.lr_model['train']['batch_size']
 	l_rate = args.lr_model['train']['l_rate']
@@ -271,7 +278,7 @@ def run_model(args,model_file):
 	max_epochs=epochs,
 	accelerator='gpu',
 	plugins= DDPPlugin(find_unused_parameters=False),
-	precision=16,
+	gradient_clip_val=0.5,
 	progress_bar_refresh_rate=50,
 	enable_checkpointing=False)
 	
@@ -279,16 +286,11 @@ def run_model(args,model_file):
 
 	torch.save(model.state_dict(), model_file+'etm.torch')
 
-def load_model(path):
+def load_model(args):
 	
 
 	args_home = os.environ['args_home']
 
-
-	nbr_size = args.lr_model['train']['nbr_size']
-	batch_size = args.lr_model['train']['batch_size']
-	l_rate = args.lr_model['train']['l_rate']
-	epochs = args.lr_model['train']['epochs']
 	layers1 = args.lr_model['train']['layers1']
 	layers2 = args.lr_model['train']['layers2']
 	latent_dims = args.lr_model['train']['latent_dims']
@@ -296,11 +298,32 @@ def load_model(path):
 
 	input_dims1 = 380
 	input_dims2 = 302
-	model = LitETM(input_dims1,input_dims2,latent_dims,layers1,layers2)
+	model = LitETM(input_dims1,input_dims2,latent_dims,layers1,layers2,'temp.txt')
 
 	model_file = args_home+args.output+args.lr_model['out']+args.lr_model['mfile']
 	model.load_state_dict(torch.load(model_file+'etm.torch'))
 	model.eval()
+
+	beta1 =  None
+	beta2 =  None
+	for n,p in model.named_parameters():
+		print(n)
+		if n == 'etm.decoder.lbeta1':
+			beta1=p
+		elif n == 'etm.decoder.lbeta2':
+			beta2=p
+
+	beta_smax = nn.LogSoftmax(dim=-1)
+	beta1 = torch.exp(beta_smax(beta1))
+	beta2 = torch.exp(beta_smax(beta2))
+
+	df_beta1 = pd.DataFrame(beta1.to('cpu').detach().numpy())
+	df_beta1.to_csv(model_file+'etm_beta1_data.tsv',sep='\t',index=False,compression='gzip')
+
+	df_beta2 = pd.DataFrame(beta2.to('cpu').detach().numpy())
+	df_beta2.to_csv(model_file+'etm_beta2_data.tsv',sep='\t',index=False,compression='gzip')
+
+
 
 
 

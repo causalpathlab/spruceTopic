@@ -6,7 +6,7 @@ library(yaml)
 library(pheatmap)
 library(dendextend)
 library(RColorBrewer)
-source("Util.R")
+source("/home/BCCRC.CA/ssubedi/projects/tumour_immune_interaction/scripts/Util.R")
 
 config = "/home/BCCRC.CA/ssubedi/projects/tumour_immune_interaction/config/pbmc.yaml" 
 args = read_yaml(config)

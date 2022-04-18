@@ -6,16 +6,19 @@ library(yaml)
 library(pheatmap)
 library(dendextend)
 library(RColorBrewer)
-source("Util.R")
+source("/home/BCCRC.CA/ssubedi/projects/tumour_immune_interaction/scripts/Util.R")
 
-config = "/home/BCCRC.CA/ssubedi/projects/tumour_immune_interaction/config/scmetm.yaml" 
+config = "/home/BCCRC.CA/ssubedi/projects/tumour_immune_interaction/config/pbmc.yaml" 
 args = read_yaml(config)
 args_home ="/home/BCCRC.CA/ssubedi/projects/tumour_immune_interaction/"
 
 
 loss_plot <- function(args) {
-loss_file = paste(args_home,args$output,args$lr_model$out,args$lr_model$mfile,"loss2.txt",sep="")
-df = read.table(loss_file, sep = ",", header=TRUE)
+loss_file = paste(args_home,args$output,args$lr_model$out,args$lr_model$mfile,"loss.txt",sep="")
+df = read.table(loss_file, sep = ";", header=TRUE)
+
+df = df[seq(1, nrow(df), 100), ]
+
 colnames(df) = c("Log-likelihood","KL loss ligands","KL loss receptors")
 df$epoch <- 1:nrow(df)
 dfm = melt(df,id="epoch")

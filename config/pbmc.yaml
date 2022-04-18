@@ -39,16 +39,15 @@ nbr_model :
 lr_model : 
   out : model/lr_net/
   in : lr_tensor/
-  in_nbr_model : pbmc_200_200_100_15_ep2500_no_lr_202204081556etm_hh_data.tsv
   train :
     nbr_size : 4
     batch_size : 5
     l_rate : 0.01
-    epochs : 2500
+    epochs : 1000
     layers1 : [200,100,50]
     layers2 : [200,100,50]
     latent_dims : 50
   eval :
     batch_size : 1
-  mfile : pbmc_200_200_100_50_ep2500_no_lr_lrnet_
+  mfile : pbmc_200_200_100_50_ep1000_no_lr_lrnet_202204171851
 

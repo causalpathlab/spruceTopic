@@ -40,13 +40,15 @@ rule eval_model:
         out_sample_topic = model_file + 'hh_cell_topic_sample.tsv',
         out_topic_topgenes = model_file + 'top_5_genes_topic.tsv',
         out_topic_markergenes = model_file + 'marker_genes_topic.tsv'
-
+    params:
+        mode = 'nbr_net'
     shell: 
-        'python {input.script}'
+        'python {input.script} {params.mode}'
 
 rule plt_st:
     input:
-        script = r_scripts + 'fig_1_stplot.R'
+        script = r_scripts + 'fig_1_stplot.R',
+        latent = rules.eval_model.output.out_sample_topic
     output:
         out_loss = model_file + 'cell_topic_struct_plot_pbmc.pdf'
     shell: 
@@ -54,7 +56,9 @@ rule plt_st:
 
 rule plt_wthmap:
     input:
-        script = r_scripts + 'fig_1_hmap.R'
+        script = r_scripts + 'fig_1_hmap.R',
+        top_genes = rules.eval_model.output.out_topic_topgenes
+
     output:
         out_loss = model_file + 'topic_gene_weight_hmap.pdf'
     shell: 
@@ -62,7 +66,9 @@ rule plt_wthmap:
 
 rule plt_markerg_hmap:
     input:
-        script = r_scripts + 'fig_1_hmap_mg.R'
+        script = r_scripts + 'fig_1_hmap_mg.R',
+        top_mgenes = rules.eval_model.output.out_topic_markergenes
+
     output:
         out_loss = model_file + 'marker_gene_weight_hmap.pdf'
     shell: 

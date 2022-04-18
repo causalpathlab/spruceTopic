@@ -4,9 +4,9 @@ library(cowplot)
 library(reshape)
 library(yaml)
 library(pheatmap)
-source("Util.R")
+source("/home/BCCRC.CA/ssubedi/projects/tumour_immune_interaction/scripts/Util.R")
 
-config = "/home/BCCRC.CA/ssubedi/projects/tumour_immune_interaction/config/scmetm.yaml" 
+config = "/home/BCCRC.CA/ssubedi/projects/tumour_immune_interaction/config/pbmc.yaml" 
 args = read_yaml(config)
 args_home ="/home/BCCRC.CA/ssubedi/projects/tumour_immune_interaction/"
 
