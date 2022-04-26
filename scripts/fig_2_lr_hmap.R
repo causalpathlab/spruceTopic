@@ -6,7 +6,7 @@ library(yaml)
 library(pheatmap)
 source("/home/BCCRC.CA/ssubedi/projects/tumour_immune_interaction/scripts/Util.R")
 
-config = "/home/BCCRC.CA/ssubedi/projects/tumour_immune_interaction/config/pbmc.yaml" 
+config = "/home/BCCRC.CA/ssubedi/projects/tumour_immune_interaction/config/tcell.yaml" 
 args = read_yaml(config)
 args_home ="/home/BCCRC.CA/ssubedi/projects/tumour_immune_interaction/"
 

@@ -9,7 +9,7 @@ plt.rcParams['figure.autolayout'] = True
 import umap
 import umap.plot 
 
-def plot_umap_from_model(args):
+def plot_umap_pbmc(args):
 
 	cell_type={
 		0:'CD4T-Naive',
@@ -50,7 +50,7 @@ def plot_umap_from_model(args):
 
 
 
-def label_pcs(args):
+def plot_umap_tcell(args):
 	
 	args_home = os.environ['args_home'] 
 

@@ -1,6 +1,5 @@
 import torch; torch.manual_seed(0)
 import torch.nn as nn
-import torch.nn.functional as F
 from torch.utils.data import DataLoader
 from torch.utils.data import Dataset
 from scipy import sparse
@@ -89,7 +88,7 @@ class ETMDecoder(nn.Module):
 		return torch.mm(torch.exp(hh),torch.exp(beta)), hh
 
 class ETM(nn.Module):
-	def __init__(self,input_dims1,input_dims2,latent_dims,layers1, layers2) :
+	def __init__(self,input_dims1,input_dims2,latent_dims,layers1, layers2):
 		super(ETM,self).__init__()
 		self.encoder = ETMEncoder(input_dims1,input_dims2,latent_dims,layers1,layers2)
 		self.decoder = ETMDecoder(latent_dims, input_dims1, input_dims2)
@@ -256,7 +255,7 @@ def get_latent(data,model,model_file):
 	df_beta2 = pd.DataFrame(beta2.to('cpu').detach().numpy())
 	df_beta2.to_csv(model_file+'etm_beta2_data.tsv',sep='\t',index=False,compression='gzip')
 
-def run_model(args):
+def run_model(args,model_file):
 
 	args_home = os.environ['args_home']
 	logger.info('Starting model training...')
@@ -290,9 +289,11 @@ def run_model(args):
 	dflv = pd.DataFrame(loss_values[1])
 	dflv.to_csv(model_file+'loss2.txt',index=False)
 
-def eval_model(args):
+def eval_model(args,model_file):
 
 	logging.info('Starting model inference...')
+	args_home = os.environ['args_home']
+
 
 	data_file = args_home+args.input+args.nbr_model['sparse_data']
 	meta_file = args_home+args.input+args.nbr_model['sparse_label']
@@ -317,8 +318,6 @@ def eval_model(args):
 	model = ETM(input_dims1,input_dims2,latent_dims,layers1,layers2).to(device)
 	model.load_state_dict(torch.load(model_file+'etm.torch'))
 	model.eval()
-
-	dfloss = pd.read_csv(model_file+'loss.txt')
 
 	get_latent(data,model,model_file)
 

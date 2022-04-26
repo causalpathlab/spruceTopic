@@ -9,7 +9,7 @@ library(RColorBrewer)
 source("/home/BCCRC.CA/ssubedi/projects/tumour_immune_interaction/scripts/Util.R")
 
 
-config = "/home/BCCRC.CA/ssubedi/projects/tumour_immune_interaction/config/pbmc.yaml" 
+config = "/home/BCCRC.CA/ssubedi/projects/tumour_immune_interaction/config/tcell.yaml" 
 args = read_yaml(config)
 args_home ="/home/BCCRC.CA/ssubedi/projects/tumour_immune_interaction/"
 
@@ -28,16 +28,16 @@ df_tg$Topic <- gsub("k","",df_tg$Topic)
 # df_topic_i = as.matrix(cast( df_tg[df_tg$GeneType=="immune",] , Topic~Gene) )
 # df_topic_ni = as.matrix(cast( df_tg[df_tg$GeneType=="non-immune",] , Topic~Gene) )
 
-xlab = paste("Top","immune", "genes")
-p1 <- .gg.plot(df_tg[df_tg$GeneType=="immune",], aes(x = Gene, y = Topic, fill = Proportion)) +
+xlab = paste("Top","T cell", "genes")
+p1 <- .gg.plot(df_tg[df_tg$GeneType=="T cell",], aes(x = Gene, y = Topic, fill = Proportion)) +
         theme(axis.text.x = element_text(angle=70, vjust=1, hjust=1, size=6)) +
         theme(legend.position = "none") +
         xlab(xlab) + ylab("Topics") +
         geom_tile(colour = "black", size = .1) +
         scale_fill_distiller("",palette = "PuRd", direction = 1,trans="sqrt")
 
-xlab = paste("Top","non-immune", "genes")
-p2 <- .gg.plot(df_tg[df_tg$GeneType=="non-immune",], aes(x = Gene, y = Topic, fill = Proportion)) +
+xlab = paste("Top","non T cell", "genes")
+p2 <- .gg.plot(df_tg[df_tg$GeneType=="non T cell",], aes(x = Gene, y = Topic, fill = Proportion)) +
         theme(axis.text.x = element_text(angle=70, vjust=1, hjust=1, size=6)) +
         theme(legend.position = "none") +
         xlab(xlab) + ylab("Topics") +

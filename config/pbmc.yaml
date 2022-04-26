@@ -28,7 +28,7 @@ nbr_model :
   train :
     batch_size : 128
     l_rate : 0.01
-    epochs : 2500
+    epochs : 200
     layers1 : [200,200,100,15]
     layers2 : [200,200,100,15]
     latent_dims : 15
@@ -43,11 +43,13 @@ lr_model :
     nbr_size : 4
     batch_size : 5
     l_rate : 0.01
-    epochs : 1000
+    epochs : 2
     layers1 : [200,100,50]
     layers2 : [200,100,50]
     latent_dims : 50
+    input_dims1 : 380
+    input_dims2 : 302
   eval :
     batch_size : 1
-  mfile : pbmc_200_200_100_50_ep1000_no_lr_lrnet_202204171851
+  mfile : pbmc_200_200_100_50_ep2500_no_lr_lrnet_202204142214_202204190521
 

@@ -192,3 +192,25 @@ def get_lr_pair_topic_cd48_top_genes(args,top_n=1):
 	df_lr_topic.index=lr_pair
 	df_lr_topic.to_csv(args_home+args.output+args.lr_model['out']+args.lr_model['mfile']+'top_'+str(top_n)+'_lrpair_topic_cd4cd8_top_genes.tsv',sep='\t')
 
+def combine_topics_tcells(args):
+	
+	args_home = os.environ['args_home']
+	model_file = args_home+args.output+args.lr_model['out']+args.lr_model['mfile']
+
+	df_h_celltype = pd.read_csv(args_home+args.output+args.nbr_model['out']+args.nbr_model['mfile']+'etm_hh_data.tsv',sep='\t',compression='gzip')
+
+	df_h_state = pd.read_csv(model_file+'lrnet_interaction_states.tsv',sep='\t',compression='gzip')
+
+	df_h_state['state'] = [ pd.Series(vals).value_counts().index[0] for indx,vals in df_h_state.iterrows()]
+
+	df_h_celltype['topic'] = df_h_celltype.iloc[:,1:].idxmax(axis=1)
+
+	dflatent = pd.merge(df_h_state[['cell','state']],df_h_celltype[['cell','topic']],how='left',on='cell')
+
+	meta_path = args_home+ args.database +args.metadata
+	df_meta = pd.read_csv(meta_path,sep='\t')
+	dflatent['label'] = pd.merge(dflatent,df_meta,right_on='cellID',left_on='cell',how='left')['meta.cluster'].values
+
+	dfsummary = dflatent.groupby(['label','topic','state']).count()
+	dfsummary = dfsummary.reset_index()
+	dfsummary.to_csv(model_file+'model_summary.csv',index=False)

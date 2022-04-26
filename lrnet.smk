@@ -1,11 +1,11 @@
-configfile: '/home/BCCRC.CA/ssubedi/projects/tumour_immune_interaction/config/pbmc.yaml'
+configfile: '/home/BCCRC.CA/ssubedi/projects/tumour_immune_interaction/config/tcell.yaml'
 
 
 home_dir = config['home']
 p_scripts = os.path.join(home_dir, 'sprucetopic/')
 r_scripts = os.path.join(home_dir, 'scripts/')
 model_file = home_dir + config['output'] + config['lr_model']['out'] + config['lr_model']['mfile']
-
+print(home_dir)
 rule all:
     input:
         expand(model_file + 'loss_plot.pdf'),

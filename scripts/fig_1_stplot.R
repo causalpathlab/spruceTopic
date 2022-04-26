@@ -7,7 +7,7 @@ library(pheatmap)
 library(dendextend)
 library(RColorBrewer)
 
-config = "/home/BCCRC.CA/ssubedi/projects/tumour_immune_interaction/config/pbmc.yaml" 
+config = "/home/BCCRC.CA/ssubedi/projects/tumour_immune_interaction/config/tcell.yaml" 
 args = read_yaml(config)
 args_home ="/home/BCCRC.CA/ssubedi/projects/tumour_immune_interaction/"
 
@@ -150,4 +150,4 @@ ggplot(df_h_m, aes(x=cell, y=hvalue,fill=Topic)) +
 f = paste(args_home,args$output,args$nbr_model$out,args$nbr_model$mfile,"cell_topic_struct_plot_pbmc.pdf",sep="")
 ggsave(f,p,width = 45, height = 20)
 }
-struct_plot_pbmc(args)
+struct_plot_tclust(args)
