@@ -123,3 +123,65 @@ def combine_topics_pbmc(args):
 	dfsummary['label'] = [cell_type[int(x)] for x in dfsummary['label']]
 	dfsummary.to_csv(model_file+'model_summary.csv',index=False)
 
+def cell_interaction_example(args):
+	
+	from igraph import Graph
+	from igraph import plot as igplt
+	
+	args_home = os.environ['args_home']
+
+	model_file = args_home+args.output+args.lr_model['out']+args.lr_model['mfile']
+
+	df = pd.read_csv(model_file+'lrnet_interaction_states.tsv',sep='\t',compression='gzip')
+
+	df = df.sample(frac=1).reset_index(drop=True)
+
+	meta_path = args_home+args.scanpy_output+'pbmc_cluster.pkl'
+	df_meta = pd.read_pickle(meta_path)
+	df['label'] = pd.merge(df,df_meta,right_on='index',left_on='cell',how='left')['leiden'].values
+	df = df.dropna()
+	df['label'] = [cell_type[int(x)] for x in df['label']]
+
+	dfs = df.iloc[df.groupby('label').head(1).index,:]
+	cells = [x for x in list(dfs.label.values)]
+	states = ['s'+str(x) for x in pd.Series(dfs.iloc[:,1:-1].values.flatten()).unique()]
+
+	## construct graph
+	g = Graph()
+	g.add_vertices(cells+states)
+
+	gedges = []
+	for i,row in dfs.iterrows():
+		cell = row.label
+		for s in row.values[1:-1]:
+			interaction_state = 's'+str(s)
+			epair = cell + '_' + interaction_state
+
+			if epair not in gedges:
+				g.add_edge(cell,interaction_state,weight=0.10)
+				gedges.append(epair)
+			else:
+				eid = g.get_eid(cell,interaction_state)
+				g.es[eid]['weight'] += 0.10
+
+	to_delete_ids = [v.index for v in g.vs if v.degree()<1]
+	g.delete_vertices(to_delete_ids)
+
+	for v in g.vs:
+		if v['name'] in cell_type.values(): 
+			v['attr'] = 'cell'
+			v['size'] = 50
+			v['color'] = 'deeppink3'
+			v['shape'] = 'circle'
+
+		else: 
+			v['attr'] = 'state'
+			v['size'] = 20
+			v['color'] = 'yellow'
+			v['shape'] = 'square'
+		
+
+	return g
+
+
+

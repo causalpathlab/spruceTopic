@@ -127,19 +127,19 @@ def assign_gene_bias(args):
 
 
 	n = 25
-	l20 = list(df_beta1_bias.sort_values('val').head(n)['gene'].values) 
-	h20 = list(df_beta1_bias.sort_values('val',ascending=False).head(n)['gene'].values)
-	df_beta1_bias.loc[df_beta1_bias['gene'].isin(l20),['group']] = 'l20'
-	df_beta1_bias.loc[df_beta1_bias['gene'].isin(h20),['group']] = 'h20'
-	l20 = list(df_beta2_bias.sort_values('val').head(n)['gene'].values) 
-	h20 = list(df_beta2_bias.sort_values('val',ascending=False).head(n)['gene'].values)
-	df_beta2_bias.loc[df_beta2_bias['gene'].isin(l20),['group']] = 'l20'
-	df_beta2_bias.loc[df_beta2_bias['gene'].isin(h20),['group']] = 'h20'
+	l25 = list(df_beta1_bias.sort_values('val').head(n)['gene'].values) 
+	h25 = list(df_beta1_bias.sort_values('val',ascending=False).head(n)['gene'].values)
+	df_beta1_bias.loc[df_beta1_bias['gene'].isin(l25),['group']] = 'l25'
+	df_beta1_bias.loc[df_beta1_bias['gene'].isin(h25),['group']] = 'h25'
+	l25 = list(df_beta2_bias.sort_values('val').head(n)['gene'].values) 
+	h25 = list(df_beta2_bias.sort_values('val',ascending=False).head(n)['gene'].values)
+	df_beta2_bias.loc[df_beta2_bias['gene'].isin(l25),['group']] = 'l25'
+	df_beta2_bias.loc[df_beta2_bias['gene'].isin(h25),['group']] = 'h25'
 
 
 
-	df_beta1_bias.to_csv(args_home+args.output+args.lr_model['out']+args.lr_model['mfile']+'etm_beta1_bias_data.tsv',sep='\t',compression='gzip')
-	df_beta2_bias.to_csv(args_home+args.output+args.lr_model['out']+args.lr_model['mfile']+'etm_beta2_bias_data.tsv',sep='\t',compression='gzip')
+	df_beta1_bias.to_csv(args_home+args.output+args.lr_model['out']+args.lr_model['mfile']+'etm_beta1_bias_data_v2.tsv',sep='\t')
+	df_beta2_bias.to_csv(args_home+args.output+args.lr_model['out']+args.lr_model['mfile']+'etm_beta2_bias_data_v2.tsv',sep='\t')
 
 	# pd.DataFrame(pd.cut(df_beta1_bias[0],bins=10).reset_index().groupby(0)['index'].apply(','.join)).to_csv(args_home+args.output+args.lr_model['out']+args.lr_model['mfile']+'etm_beta1_bias_receptors_table.tsv',sep='\t')
 	# pd.DataFrame(pd.cut(df_beta2_bias[0],bins=10).reset_index().groupby(0)['index'].apply(','.join)).to_csv(args_home+args.output+args.lr_model['out']+args.lr_model['mfile']+'etm_beta2_bias_ligands_table.tsv',sep='\t')

@@ -44,12 +44,12 @@ lr_model :
     batch_size : 5
     l_rate : 0.01
     epochs : 1600
-    layers1 : [200,100,50]
-    layers2 : [200,100,50]
-    latent_dims : 50
+    layers1 : [200,100,10]
+    layers2 : [200,100,10]
+    latent_dims : 10
     input_dims1 : 380
     input_dims2 : 302
   eval :
     batch_size : 1
-  mfile : pbmc_200_200_100_50_ep1600_no_lr_lrnet_202204142214_202204262142
+  mfile : pbmc_200_200_100_10_ep1600_no_lr_lrnet_202204142214_202204270359
 

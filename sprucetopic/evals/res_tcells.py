@@ -214,3 +214,63 @@ def combine_topics_tcells(args):
 	dfsummary = dflatent.groupby(['label','topic','state']).count()
 	dfsummary = dfsummary.reset_index()
 	dfsummary.to_csv(model_file+'model_summary.csv',index=False)
+
+def cell_interaction_example(args):
+	
+	from igraph import Graph
+	from igraph import plot as igplt
+	
+	args_home = os.environ['args_home']
+
+	model_file = args_home+args.output+args.lr_model['out']+'10_ld/'+args.lr_model['mfile']
+
+	df = pd.read_csv(model_file+'lrnet_interaction_states.tsv',sep='\t',compression='gzip')
+
+	meta_path = args_home+ args.database +args.metadata
+	df_meta = pd.read_csv(meta_path,sep='\t')
+	df['label'] = pd.merge(df,df_meta,right_on='cellID',left_on='cell',how='left')['meta.cluster'].values
+	df = df.dropna()
+	df = df[df.label.str.contains('CD4')]
+	df = df[df.label.str.contains('Tn|Tm|Temra|Th|Treg')]
+
+	dfs = df.iloc[df.groupby('label').head(1).index,:]
+	cells = [x[0:8] for x in list(dfs.label.values)]
+	states = ['s'+str(x) for x in pd.Series(dfs.iloc[:,1:-1].values.flatten()).unique()]
+
+	## construct graph
+	g = Graph()
+	g.add_vertices(cells+states)
+
+	gedges = []
+	for i,row in dfs.iterrows():
+		cell = row.label[0:8] 
+		for s in row.values[1:-1]:
+			interaction_state = 's'+str(s)
+			epair = cell + '_' + interaction_state
+
+			if epair not in gedges:
+				g.add_edge(cell,interaction_state,weight=0.10)
+				gedges.append(epair)
+			else:
+				eid = g.get_eid(cell,interaction_state)
+				g.es[eid]['weight'] += 0.10
+
+	to_delete_ids = [v.index for v in g.vs if v.degree()<1]
+	g.delete_vertices(to_delete_ids)
+
+	for v in g.vs:
+		if 'CD' in v['name']: 
+			v['attr'] = 'cell'
+			v['size'] = 50
+			v['color'] = 'deeppink3'
+
+		else: 
+			v['attr'] = 'state'
+			v['size'] = 20
+			v['color'] = 'yellow'
+		
+
+	return g
+
+
+

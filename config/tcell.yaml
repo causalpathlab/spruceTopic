@@ -63,13 +63,13 @@ lr_model :
     nbr_size : 4
     batch_size : 64
     l_rate : 0.01
-    epochs : 2500
-    layers1 : [200,100,50]
-    layers2 : [200,100,50]
-    latent_dims : 50
+    epochs : 1600
+    layers1 : [200,100,10]
+    layers2 : [200,100,10]
+    latent_dims : 10
     input_dims1 : 539
     input_dims2 : 498
   eval :
     batch_size : 1
-  mfile : 200_200_100_50_ep2500_180k_17k_no_lr_202204081556_lrnet_202204211948
+  mfile : 200_200_100_10_ep1600_180k_17k_no_lr_202204081556_lrnet_202204280337
 
