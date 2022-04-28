@@ -6,12 +6,13 @@ library(yaml)
 library(pheatmap)
 library(dendextend)
 library(RColorBrewer)
-source("/home/BCCRC.CA/ssubedi/projects/tumour_immune_interaction/scripts/Util.R")
+setwd(box::file())
+source("Util.R")
 
-
-config = "/home/BCCRC.CA/ssubedi/projects/tumour_immune_interaction/config/tcell.yaml" 
-args = read_yaml(config)
+args = commandArgs(trailingOnly=TRUE)
 args_home ="/home/BCCRC.CA/ssubedi/projects/tumour_immune_interaction/"
+config = paste(args_home,"/config/",args[1],".yaml",sep="") 
+args = read_yaml(config)
 
 
 weightmat_phmap_plot_i <- function(args) {
@@ -29,7 +30,7 @@ mat_colors <- colorRampPalette(brewer.pal(n = 7, name = "PuRd"))(100)
 
 p1 <- pheatmap(df_tg,color = mat_colors,legend =FALSE,fontsize_row=2,fontsize_col=4)
 
-f = paste(args_home,args$output,args$lr_model$out,args$lr_model$mfile,"topic_lr_pair_topic.pdf",sep="")
+f = paste(args_home,args$output,args$lr_model$out,args$lr_model$mfile,"top5_lr_pair_topic_hmap.pdf",sep="")
 ggsave(f,p1)
 
 }

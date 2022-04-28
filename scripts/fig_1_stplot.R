@@ -6,11 +6,12 @@ library(yaml)
 library(pheatmap)
 library(dendextend)
 library(RColorBrewer)
+setwd(box::file())
 
-config = "/home/BCCRC.CA/ssubedi/projects/tumour_immune_interaction/config/tcell.yaml" 
-args = read_yaml(config)
+args = commandArgs(trailingOnly=TRUE)
 args_home ="/home/BCCRC.CA/ssubedi/projects/tumour_immune_interaction/"
-
+config = paste(args_home,"config/",args[1],".yaml",sep="") 
+args = read_yaml(config)
 
 struct_plot <- function(args) {
 

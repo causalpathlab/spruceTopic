@@ -4,11 +4,13 @@ library(cowplot)
 library(reshape)
 library(yaml)
 library(pheatmap)
-source("/home/BCCRC.CA/ssubedi/projects/tumour_immune_interaction/scripts/Util.R")
+setwd(box::file())
+source("Util.R")
 
-config = "/home/BCCRC.CA/ssubedi/projects/tumour_immune_interaction/config/tcell.yaml" 
-args = read_yaml(config)
+args = commandArgs(trailingOnly=TRUE)
 args_home ="/home/BCCRC.CA/ssubedi/projects/tumour_immune_interaction/"
+config = paste(args_home,"/config/",args[1],".yaml",sep="") 
+args = read_yaml(config)
 
 weightmat_lr_plot <- function(args) {
 topgenes_file = paste(args_home,args$output,args$lr_model$out,args$lr_model$mfile,"top_5_genes_topic.tsv",sep="")
@@ -40,7 +42,7 @@ plotlist[[2]] = p1
 
 stplt <- grid.arrange(grobs=plotlist,ncol=1,
 heights = c(1/2, 1/2))
-f = paste(args_home,args$output,args$lr_model$out,args$lr_model$mfile,"pp_weightmat_plot_lr.pdf",sep="")
+f = paste(args_home,args$output,args$lr_model$out,args$lr_model$mfile,"top5_genes_hmap.pdf",sep="")
 ggsave(f,stplt)
 }
 weightmat_lr_plot(args)

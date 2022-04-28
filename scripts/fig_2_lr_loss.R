@@ -3,21 +3,21 @@ library(gridExtra)
 library(cowplot)
 library(reshape)
 library(yaml)
-library(pheatmap)
-library(dendextend)
 library(RColorBrewer)
-source("/home/BCCRC.CA/ssubedi/projects/tumour_immune_interaction/scripts/Util.R")
+setwd(box::file())
+source("Util.R")
 
-config = "/home/BCCRC.CA/ssubedi/projects/tumour_immune_interaction/config/tcell.yaml" 
-args = read_yaml(config)
+args = commandArgs(trailingOnly=TRUE)
 args_home ="/home/BCCRC.CA/ssubedi/projects/tumour_immune_interaction/"
+config = paste(args_home,"/config/",args[1],".yaml",sep="") 
+args = read_yaml(config)
 
 
 loss_plot <- function(args) {
 loss_file = paste(args_home,args$output,args$lr_model$out,args$lr_model$mfile,"loss.txt",sep="")
 df = read.table(loss_file, sep = ";", header=TRUE)
 
-df = df[seq(1, nrow(df), 200), ]
+df = df[seq(1, nrow(df), 50), ]
 
 colnames(df) = c("Log-likelihood","KL loss ligands","KL loss receptors")
 df$epoch <- 1:nrow(df)

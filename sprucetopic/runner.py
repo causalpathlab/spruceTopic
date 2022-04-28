@@ -18,15 +18,17 @@ params = read_config(args_home+'config/pbmc.yaml')
 args = namedtuple('Struct',params.keys())(*params.values())
 
 
+
+
 if mode == 'nbr_net':
 
-    # model_file = args_home+args.output+args.nbr_model['out']+args.nbr_model['mfile']+now.strftime('%Y%m%d%H%M')
+    model_file = args_home+args.output+args.nbr_model['out']+args.nbr_model['mfile']+now.strftime('%Y%m%d%H%M')
 
 
-    # logging.basicConfig(filename=model_file+'.log',
-	# 					format='%(asctime)s %(levelname)-8s %(message)s',
-	# 					level=logging.INFO,
-	# 					datefmt='%Y-%m-%d %H:%M:%S')
+    logging.basicConfig(filename=model_file+'.log',
+					format='%(asctime)s %(levelname)-8s %(message)s',
+					level=logging.INFO,
+					datefmt='%Y-%m-%d %H:%M:%S')
 
     
     from plot import plt_umap 
@@ -41,23 +43,31 @@ if mode == 'nbr_net':
 
 elif mode == 'lr_net':
 
+    # model_file = args_home+args.output+args.lr_model['out']+args.lr_model['mfile']+now.strftime('%Y%m%d%H%M')
+    # print('log - '+model_file)
+
+    # logging.basicConfig(filename=model_file+'.log',
+	# 				format='%(asctime)s %(levelname)-8s %(message)s',
+	# 				level=logging.INFO,
+	# 				datefmt='%Y-%m-%d %H:%M:%S')
+
+
     # from model import interaction
     # interaction.run_model(args,model_file)
 
-    # from model import interaction
-    # interaction.load_model(args)
+    from model import interaction
+    interaction.load_model(args)
+
+
+    from evals import results
+    results.topic_top_lr_genes(args)
+    results.topic_top_lr_pair_genes(args)
+    results.assign_gene_bias(args)
+
 
     # from model import interaction
     # interaction.eval_model(args)
 
-
-    # from evals import results
-    # results.topic_top_lr_genes(args)
-    # results.topic_top_lr_pair_genes(args)
-
     from evals import res_pbmcs
     res_pbmcs.combine_topics_pbmc(args)
-
-    # from evals import res_pbmcs
-    # res_pbmcs.topic_celltype_marker_genes_lrnet(args)
 

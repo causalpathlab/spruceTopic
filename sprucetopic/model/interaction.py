@@ -409,14 +409,19 @@ def load_model(args):
 	model.load_state_dict(torch.load(model_file+'etm.torch'))
 	model.eval()
 
-	beta1 =  None
-	beta2 =  None
+	beta1,beta1_bias,beta2,beta2_bias =  None,None,None,None
+	
 	for n,p in model.named_parameters():
 		print(n)
 		if n == 'etm.decoder.lbeta1':
 			beta1=p
 		elif n == 'etm.decoder.lbeta2':
 			beta2=p
+		elif n == 'etm.decoder.lbeta1_bias':
+			beta1_bias=p
+		elif n == 'etm.decoder.lbeta2_bias':
+			beta2_bias=p
+		
 
 	beta_smax = nn.LogSoftmax(dim=-1)
 	beta1 = torch.exp(beta_smax(beta1))
@@ -427,6 +432,12 @@ def load_model(args):
 
 	df_beta2 = pd.DataFrame(beta2.to('cpu').detach().numpy())
 	df_beta2.to_csv(model_file+'etm_beta2_data.tsv',sep='\t',index=False,compression='gzip')
+	
+	df_beta1_bias = pd.DataFrame(beta1_bias.to('cpu').detach().numpy())
+	df_beta1_bias.to_csv(model_file+'etm_beta1_bias_data.tsv',sep='\t',index=False,compression='gzip')
+	
+	df_beta2_bias = pd.DataFrame(beta2_bias.to('cpu').detach().numpy())
+	df_beta2_bias.to_csv(model_file+'etm_beta2_bias_data.tsv',sep='\t',index=False,compression='gzip')
 
 
 def eval_model(args):
