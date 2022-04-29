@@ -14,7 +14,7 @@ args_home = '/home/BCCRC.CA/ssubedi/projects/tumour_immune_interaction/'
 # os.chdir(args_home)
 os.environ['args_home'] = args_home
 
-params = read_config(args_home+'config/pbmc.yaml')
+params = read_config(args_home+'config/tcell.yaml')
 args = namedtuple('Struct',params.keys())(*params.values())
 
 
@@ -70,17 +70,8 @@ elif mode == 'lr_net':
     # res_tcells.combine_topics_tcells(args)
 
 
-    from evals import res_pbmcs as ctr
-    # from evals import res_tcells as ctr
-    import igraph 
+    # from evals import res_pbmcs as ctr
+    from evals import res_tcells as ctr
 
-    g = ctr.cell_interaction_example(args)
-    visual_style={}
-    visual_style["vertex_label"] = g.vs["name"]
-    visual_style["vertex_size"] = g.vs['size']
-    visual_style["vertex_color"] = g.vs['color']
-    visual_style["vertex_label_size"] = 8
-    # visual_style["vertex_label_color"] = "darkblue"
-    visual_style["edge_width"] = g.es['weight']
-    visual_style["layout"] = g.layout_sugiyama()
-    igraph.plot(g, target="network.pdf",**visual_style)
+    ctr.cell_interaction_network(args)
+

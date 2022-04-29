@@ -215,11 +215,11 @@ def combine_topics_tcells(args):
 	dfsummary = dfsummary.reset_index()
 	dfsummary.to_csv(model_file+'model_summary.csv',index=False)
 
-def cell_interaction_example(args):
+def cell_interaction_network(args):
 	
-	from igraph import Graph
-	from igraph import plot as igplt
-	
+	import igraph
+	import seaborn as sns
+
 	args_home = os.environ['args_home']
 
 	model_file = args_home+args.output+args.lr_model['out']+'10_ld/'+args.lr_model['mfile']
@@ -229,48 +229,72 @@ def cell_interaction_example(args):
 	meta_path = args_home+ args.database +args.metadata
 	df_meta = pd.read_csv(meta_path,sep='\t')
 	df['label'] = pd.merge(df,df_meta,right_on='cellID',left_on='cell',how='left')['meta.cluster'].values
+
+	df['state'] = [ pd.Series(vals).value_counts().index[0] for indx,vals in df.iterrows()]
+
 	df = df.dropna()
 	df = df[df.label.str.contains('CD4')]
 	df = df[df.label.str.contains('Tn|Tm|Temra|Th|Treg')]
 
-	dfs = df.iloc[df.groupby('label').head(1).index,:]
-	cells = [x[0:8] for x in list(dfs.label.values)]
-	states = ['s'+str(x) for x in pd.Series(dfs.iloc[:,1:-1].values.flatten()).unique()]
+	df = df[df.state != 9]
+	df = df[df.state != 6]
+
+	dfs = df.groupby('label', group_keys=False).apply(pd.DataFrame.sample,frac=0.1)
+	cells = [x[5:10] for x in list(dfs.label.values)]
+
+	states = ['t'+str(x) for x in dfs['state'].unique()]
 
 	## construct graph
-	g = Graph()
+	if len(states)<=10:
+		colors = sns.color_palette("Paired")
+	elif len(states)>10:
+		colors = sns.color_palette('Spectral',dfs['state'].unique().max()+1)
+
+	g = igraph.Graph()
 	g.add_vertices(cells+states)
 
 	gedges = []
 	for i,row in dfs.iterrows():
-		cell = row.label[0:8] 
-		for s in row.values[1:-1]:
-			interaction_state = 's'+str(s)
-			epair = cell + '_' + interaction_state
+		cell = row.label[5:10]
+		s = row['state']
+		interaction_state = 't'+str(s)
+		epair = cell + '_' + interaction_state
 
-			if epair not in gedges:
-				g.add_edge(cell,interaction_state,weight=0.10)
-				gedges.append(epair)
-			else:
-				eid = g.get_eid(cell,interaction_state)
-				g.es[eid]['weight'] += 0.10
+		if epair not in gedges:
+			g.add_edge(cell,interaction_state,weight=0.1,color=colors[s])
+			gedges.append(epair)
+		else:
+			eid = g.get_eid(cell,interaction_state)
+			g.es[eid]['weight'] += 0.1
 
-	to_delete_ids = [v.index for v in g.vs if v.degree()<1]
-	g.delete_vertices(to_delete_ids)
 
+	to_delete_eids = [e.index for e in g.es if e['weight']<0.5 ]
+	g.delete_edges(to_delete_eids)
+
+	to_delete_vids = [v.index for v in g.vs if v.degree()<1]
+	g.delete_vertices(to_delete_vids)
+
+	
 	for v in g.vs:
-		if 'CD' in v['name']: 
+		if "." in v['name']: 
 			v['attr'] = 'cell'
 			v['size'] = 50
-			v['color'] = 'deeppink3'
-
+			v['color'] = 'deeppink2'
+			v['shape'] = 'circle'
 		else: 
 			v['attr'] = 'state'
 			v['size'] = 20
-			v['color'] = 'yellow'
+			v['color'] = colors[int(v['name'][1])]
+			v['shape'] = 'square'
 		
 
-	return g
-
-
+	visual_style={}
+	visual_style["vertex_label"] = g.vs["name"]
+	visual_style["vertex_size"] = g.vs['size']
+	visual_style["vertex_color"] = g.vs['color']
+	visual_style["vertex_label_size"] = 12
+	visual_style["edge_color"] = g.es['color']
+	visual_style["edge_width"] = [x/7 for x in g.es['weight']]
+	visual_style["layout"] = g.layout_kamada_kawai()
+	igraph.plot(g, target=model_file+"network.pdf",**visual_style,margin=40)
 
