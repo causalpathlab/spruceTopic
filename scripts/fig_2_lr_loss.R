@@ -8,16 +8,16 @@ setwd(box::file())
 source("Util.R")
 
 args = commandArgs(trailingOnly=TRUE)
-args_home ="/home/BCCRC.CA/ssubedi/projects/tumour_immune_interaction/"
+args_home ="/home/BCCRC.CA/ssubedi/projects/spruce_topic/"
 config = paste(args_home,"/config/",args[1],".yaml",sep="") 
 args = read_yaml(config)
 
 
 loss_plot <- function(args) {
-loss_file = paste(args_home,args$output,args$lr_model$out,args$lr_model$mfile,"loss.txt",sep="")
+loss_file = paste(args_home,args$output,args$lr_model$out,args$lr_model$mfile,"loss.txt.gz",sep="")
 df = read.table(loss_file, sep = ";", header=TRUE)
 
-df = df[seq(1, nrow(df), 50), ]
+df = df[seq(1, nrow(df), 300), ]
 
 colnames(df) = c("Log-likelihood","KL loss ligands","KL loss receptors")
 df$epoch <- 1:nrow(df)

@@ -8,12 +8,12 @@ setwd(box::file())
 source("Util.R")
 
 args = commandArgs(trailingOnly=TRUE)
-args_home ="/home/BCCRC.CA/ssubedi/projects/tumour_immune_interaction/"
+args_home ="/home/BCCRC.CA/ssubedi/projects/spruce_topic/"
 config = paste(args_home,"/config/",args[1],".yaml",sep="") 
 args = read_yaml(config)
 
 weightmat_lr_plot <- function(args) {
-topgenes_file = paste(args_home,args$output,args$lr_model$out,args$lr_model$mfile,"top_5_genes_topic.tsv",sep="")
+topgenes_file = paste(args_home,args$output,args$lr_model$out,args$lr_model$mfile,"_ietm_top_5_genes_topic.tsv",sep="")
 df_tg = read.table(topgenes_file, sep = "\t", header=TRUE)
 
 df_tg$Topic <- gsub("k","",df_tg$Topic)

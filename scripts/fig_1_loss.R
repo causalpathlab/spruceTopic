@@ -10,14 +10,16 @@ setwd(box::file())
 source("Util.R")
 
 args = commandArgs(trailingOnly=TRUE)
-args_home ="/home/BCCRC.CA/ssubedi/projects/tumour_immune_interaction/"
+args_home ="/home/BCCRC.CA/ssubedi/projects/spruce_topic/"
 config = paste(args_home,"config/",args[1],".yaml",sep="") 
 args = read_yaml(config)
 
 loss_plot <- function(args) {
-loss_file = paste(args_home,args$output,args$nbr_model$out,args$nbr_model$mfile,"loss2.txt",sep="")
+loss_file = paste(args_home,args$output,args$nbr_model$out,args$nbr_model$mfile,"_netm_loss2.txt.gz",sep="")
+print(loss_file)
 df = read.table(loss_file, sep = ",", header=TRUE)
-colnames(df) = c("Log-likelihood","KL loss immune","KL loss non immune")
+print(head(df))
+colnames(df) = c("Log-likelihood","KL loss")
 df$epoch <- 1:nrow(df)
 dfm = melt(df,id="epoch")
  
@@ -29,24 +31,19 @@ p1 <-
   
 
 p2 <-
-  .gg.plot(dfm[dfm$variable=="KL loss immune",], aes(x=epoch, y=value)) +   geom_point(stroke = 0, color="gray", size=1) +
+  .gg.plot(dfm[dfm$variable=="KL loss",], aes(x=epoch, y=value)) +   geom_point(stroke = 0, color="gray", size=1) +
   geom_smooth(color="red", se=FALSE, size=1) +
-  labs(x = "Optimization step", title = "", y = "KL loss immune marker genes")
+  labs(x = "Optimization step", title = "", y = "KL loss")
 
-p3 <-
-  .gg.plot(dfm[dfm$variable=="KL loss non immune",], aes(x=epoch, y=value)) +   geom_point(stroke = 0, color="gray", size=1) +
-  geom_smooth(color="red", se=FALSE, size=1) +
-  labs(x = "Optimization step", title = "", y = "KL loss other genes ")
 
 plotlist = list()
 plotlist[[1]] = p1 
 plotlist[[2]] = p2 
-plotlist[[3]] = p3 
 
-stplt <- grid.arrange(grobs=plotlist,ncol=3,
-heights = c(1/3, 1/3,1/3))
+stplt <- grid.arrange(grobs=plotlist,ncol=2,
+heights = c(1/2, 1/2))
 
-f = paste(args_home,args$output,args$nbr_model$out,args$nbr_model$mfile,"loss_plot.pdf",sep="")
+f = paste(args_home,args$output,args$nbr_model$out,args$nbr_model$mfile,"_netm_loss_plot.pdf",sep="")
 ggsave(f,stplt)
 }
 

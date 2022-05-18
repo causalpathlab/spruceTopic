@@ -11,12 +11,12 @@ setwd(box::file())
 source("Util.R")
 
 args = commandArgs(trailingOnly=TRUE)
-args_home ="/home/BCCRC.CA/ssubedi/projects/tumour_immune_interaction/"
+args_home ="/home/BCCRC.CA/ssubedi/projects/spruce_topic/"
 config = paste(args_home,"config/",args[1],".yaml",sep="") 
 args = read_yaml(config)
 
 
-f = paste(args_home,args$output,args$lr_model$out,args$lr_model$mfile,"etm_beta1_bias_data_v2.tsv",sep="")
+f = paste(args_home,args$output,args$lr_model$out,args$lr_model$mfile,"_ietm_beta1_bias_v2.tsv",sep="")
 df = read.table(f, sep = "\t", header=TRUE)
 p1 <- ggplot(df[df$group=='l25',], aes(x=group, y=gene,fill = val)) +
     geom_tile() +
@@ -39,7 +39,7 @@ stplt <- grid.arrange(grobs=plotlist,ncol=2,heights = c(1/2, 1/2))
 f = paste(args_home,args$output,args$lr_model$out,args$lr_model$mfile,"beta1_bias.pdf",sep="")
 ggsave(f,stplt)
 
-f = paste(args_home,args$output,args$lr_model$out,args$lr_model$mfile,"etm_beta2_bias_data_v2.tsv",sep="")
+f = paste(args_home,args$output,args$lr_model$out,args$lr_model$mfile,"_ietm_beta2_bias_v2.tsv",sep="")
 df = read.table(f, sep = "\t", header=TRUE)
 p1 <- ggplot(df[df$group=='l25',], aes(x=group, y=gene,fill = val)) +
     geom_tile() +
