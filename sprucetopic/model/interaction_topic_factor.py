@@ -6,6 +6,7 @@ import pytorch_lightning as pl
 from pytorch_lightning.plugins import DDPPlugin
 import numpy as np
 import pandas as pd
+from scipy import sparse
 import annoy
 import os
 import logging
@@ -58,7 +59,6 @@ def generate_neighbours(args):
 	
 	df_h = pd.read_csv(args_home+args.output+args.nbr_model['out']+args.nbr_model['mfile']+'_netm_h.tsv.gz',sep='\t',compression='gzip')
 
-
 	df_l = pd.read_pickle(l_fname)
 	df_r = pd.read_pickle(r_fname)
 	df_l = df_l[df_l['index'].isin(df_h['cell'].values)]
@@ -75,73 +75,100 @@ def generate_neighbours(args):
 
 	pd.DataFrame(nbr_dict).T.to_pickle(args_home+args.output+args.lr_model['out']+args.lr_model['mfile']+'_nbr.pkl')
 
-class LRDataset(Dataset):
-	def __init__(self,lmat,rmat,Alr,nbrmat) :
-		self.lmat = lmat
-		self.rmat = rmat
-		self.lrmat = Alr
+class SparseData():
+	def __init__(self,indptr,indices,vals,shape,label,nbrmat,device):
+		self.indptr = indptr
+		self.indices = indices
+		self.vals = vals
+		self.shape = shape
+		self.label = label
 		self.nbrmat = nbrmat
+		self.device = device
+
+class SparseDataset(Dataset):
+	def __init__(self, sparse_data):
+		self.indptr = sparse_data.indptr
+		self.indices = sparse_data.indices
+		self.sparsemat = sparse_data.vals
+		self.shape = sparse_data.shape
+		self.device = sparse_data.device
+		self.label = sparse_data.label
+		self.nbrmat = sparse_data.nbrmat
 
 	def __len__(self):
-		return len(self.nbrmat)
+		return self.shape[0]
 
 	def __getitem__(self, idx):
 
-		cm_l = self.lmat[idx].unsqueeze(0)
-		cm_r = self.rmat[idx].unsqueeze(0)
+		self.device = torch.cuda.current_device()
 
-		cm_lr = torch.mm(cm_l,self.lrmat).mul(cm_r)
-		cm_rl = torch.mm(cm_r,torch.t(self.lrmat)).mul(cm_l)
+		c_i = torch.zeros((self.shape[1],), dtype=torch.float32,requires_grad=False,device=self.device)
+		ind1,ind2 = self.indptr[idx],self.indptr[idx+1]
+		c_i[self.indices[ind1:ind2].long()] = self.sparsemat[ind1:ind2]
+		ci_mat = c_i.expand(self.nbrmat.shape[1],1,c_i.shape[0]).squeeze(1)
 
 		nbr_idxs = self.nbrmat[idx]
-		
-		cn_l = self.lmat[nbr_idxs]
-		cn_r = self.rmat[nbr_idxs]
+		cj_mat = []
+		for i1,i2 in zip(self.indptr[nbr_idxs],self.indptr[nbr_idxs+1]):
+			c_j = torch.zeros((self.shape[1],), dtype=torch.float32, requires_grad=False,device=self.device)
+			c_j[self.indices[i1:i2].long()] = self.sparsemat[i1:i2]
+			cj_mat.append(c_j)
+		cj_mat = torch.stack(cj_mat).to(self.device)
 
-		return 	cm_lr + torch.mm(cn_l,self.lrmat).mul(cn_r) , cm_rl + torch.mm(cn_r,torch.t(self.lrmat)).mul(cn_l)
+		return ci_mat,cj_mat 
 
-class load_data(pl.LightningDataModule):
 
-	def __init__(self, args,nbr_size, batch_size):
+class load_data_lit(pl.LightningDataModule):
+
+	def __init__(self,sparse_data,sparse_label,neighbour_data, batch_size,device):
 		super().__init__()
-		self.args = args
-		self.nbr_size = nbr_size
+		self.sparse_data = sparse_data
+		self.sparse_label = sparse_label
+		self.neighbour_data = neighbour_data
 		self.batch_size = batch_size
+		self.device = device
 
 	def train_dataloader(self):
 
-		device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
+		npzarrs = np.load(self.sparse_data,allow_pickle=True)
+		s = sparse.csr_matrix( (npzarrs['val'].astype(np.int32), (npzarrs['idx'], npzarrs['idy']) ),shape=npzarrs['shape'] )
 
-		args_home = os.environ['args_home']
+		indptr = torch.tensor(s.indptr.astype(np.int32), dtype=torch.int32, device=self.device)
+		indices = torch.tensor(s.indices.astype(np.int32), dtype=torch.int32, device=self.device)
+		vals = torch.tensor(s.data.astype(np.int32), dtype=torch.int32, device=self.device)
+		shape = tuple(npzarrs['shape'])
 
-		l_fname = args_home+self.args.input+self.args.raw_l_data
-		r_fname = args_home+self.args.input+self.args.raw_r_data
-		lr_fname = args_home+self.args.input+self.args.raw_lr_data
+		metadat = np.load(self.sparse_label,allow_pickle=True)
+		label = metadat['idx']
 
+		df_nbr = pd.read_pickle(self.neighbour_data)
 
-		df_h = pd.read_csv(args_home+self.args.output+self.args.nbr_model['out']+self.args.nbr_model['mfile']+'_netm_h.tsv.gz',sep='\t',compression='gzip')
+		nbrmat = torch.tensor(df_nbr.values.astype(np.compat.long),requires_grad=False).to(self.device)
 
-		df_l = pd.read_pickle(l_fname)
-		df_r = pd.read_pickle(r_fname)
-		df_l = df_l[df_l['index'].isin(df_h['cell'].values)]
-		df_r = df_r[df_r['index'].isin(df_h['cell'].values)]
+		spdata = SparseData(indptr,indices,vals,shape,label,nbrmat,self.device)
 
-		dflatent = pd.merge(df_l['index'],df_h,how='left',left_on='index',right_on='cell')
-		dflatent['cell'] = dflatent.iloc[:,2:].idxmax(axis=1)
-		dflatent = dflatent.rename(columns={'cell':'topic'})
+		return DataLoader(SparseDataset(spdata), batch_size=self.batch_size, shuffle=True)
 
-		df_nbr = pd.read_pickle(args_home+self.args.output+self.args.lr_model['out']+self.args.nbr_model['mfile']+'_nbr.pkl')
+def load_data(sparse_data,sparse_label,neighbour_data, batch_size,device):
+
+		npzarrs = np.load(sparse_data,allow_pickle=True)
+		s = sparse.csr_matrix( (npzarrs['val'].astype(np.int32), (npzarrs['idx'], npzarrs['idy']) ),shape=npzarrs['shape'] )
+
+		indptr = torch.tensor(s.indptr.astype(np.int32), dtype=torch.int32, device=device)
+		indices = torch.tensor(s.indices.astype(np.int32), dtype=torch.int32, device=device)
+		vals = torch.tensor(s.data.astype(np.int32), dtype=torch.float32, device=device)
+		shape = tuple(npzarrs['shape'])
+
+		metadat = np.load(sparse_label,allow_pickle=True)
+		label = metadat['idx']
+
+		df_nbr = pd.read_pickle(neighbour_data)
 
 		nbrmat = torch.tensor(df_nbr.values.astype(np.compat.long),requires_grad=False).to(device)
 
-		lmat = torch.tensor(df_l.iloc[:,1:].values.astype(np.float32),requires_grad=False).to(device)
-		rmat = torch.tensor(df_r.iloc[:,1:].values.astype(np.float32),requires_grad=False).to(device)
+		spdata = SparseData(indptr,indices,vals,shape,label,nbrmat,device)
 
-		df_lr = pd.read_pickle(lr_fname)
-		df_lr = df_lr.loc[df_l.columns[1:],df_r.columns[1:]]
-		Alr = torch.tensor(df_lr.values.astype(np.float32),requires_grad=False).to(device)
-
-		return DataLoader(LRDataset(lmat,rmat,Alr,nbrmat), batch_size=self.batch_size, shuffle=True)
+		return DataLoader(SparseDataset(spdata), batch_size=batch_size, shuffle=True)
 
 def reparameterize(mean,lnvar):
 	sig = torch.exp(lnvar/2.)
@@ -209,24 +236,38 @@ class ETMDecoder(nn.Module):
 	def __init__(self,latent_dims,out_dims1, out_dims2,jitter=.1):
 		super(ETMDecoder, self).__init__()
 
-		self.lbeta1= nn.Parameter(torch.randn(latent_dims,out_dims1)*jitter)
-		self.lbeta2= nn.Parameter(torch.randn(latent_dims,out_dims2)*jitter)
+		self.l_smax = nn.LogSoftmax(dim=-1)
 
-		self.lbeta1_bias= nn.Parameter(torch.randn(1,out_dims1)*jitter)
-		self.lbeta2_bias= nn.Parameter(torch.randn(1,out_dims2)*jitter)
+		self.p_alpha= nn.Parameter(torch.randn(latent_dims,out_dims1)*jitter)
+		self.alpha_bias= nn.Parameter(torch.randn(1,out_dims1)*jitter)
 
-		self.beta = nn.LogSoftmax(dim=-1)
-		self.hid = nn.LogSoftmax(dim=-1)
+		# self.p_beta= nn.Parameter(torch.randn(latent_dims,out_dims1,out_dims2)*jitter)
+		# self.beta_bias= nn.Parameter(torch.randn(1,out_dims2)*jitter)
 
-	def forward(self, zz):
-		beta1 = self.beta(self.lbeta1_bias.add(self.lbeta1))
-		beta2 = self.beta(self.lbeta2_bias.add(self.lbeta2))
+		self.p_beta_l = nn.Parameter(torch.randn(latent_dims,out_dims1,10)*jitter)
+		self.p_beta_r = nn.Parameter(torch.randn(latent_dims,10,out_dims2)*jitter)
+		self.beta_bias = nn.Parameter(torch.randn(1,out_dims2)*jitter)
 
-		hh = self.hid(zz)
+	def forward(self,zz,xx1):
 
-		beta = torch.cat((beta1,beta2),1)
+		xx1 = xx1.reshape(xx1.shape[0]*xx1.shape[1],xx1.shape[2])
+		zz = zz.reshape(zz.shape[0]*zz.shape[1],zz.shape[2])
 
-		return torch.mm(torch.exp(hh),torch.exp(beta)), hh
+		hh = self.l_smax(zz)
+
+		alpha = self.l_smax(self.alpha_bias.add(self.p_alpha))
+		px = torch.mm(torch.exp(hh),torch.exp(alpha))
+			
+		# beta = self.l_smax(self.beta_bias.add(self.p_beta))
+		# beta_x = torch.matmul(xx1,torch.exp(beta)).sum(1)
+		# py = torch.mm(torch.exp(hh),beta_x)
+
+		p_beta = torch.matmul(self.p_beta_l,self.p_beta_r)
+		beta = self.l_smax(self.beta_bias.add(p_beta))
+		beta_x = torch.matmul(xx1,torch.exp(beta)).sum(1)
+		py = torch.mm(torch.exp(hh),beta_x)
+
+		return px,py,hh
 
 class ETM(nn.Module):
 	def __init__(self,input_dims1,input_dims2,latent_dims,layers1, layers2) :
@@ -236,8 +277,8 @@ class ETM(nn.Module):
 
 	def forward(self,xx1,xx2):
 		zz,m1,v1,m2,v2 = self.encoder(xx1,xx2)
-		pr,h = self.decoder(zz)
-		return pr,m1,v1,m2,v2,h
+		px,py,h = self.decoder(zz,xx1)
+		return px,py,m1,v1,m2,v2,h
 
 class LitETM(pl.LightningModule):
 
@@ -247,8 +288,8 @@ class LitETM(pl.LightningModule):
 		self.lossf = lossf
 
 	def forward(self,xx1,xx2):
-		pr,m1,v1,m2,v2,h = self.etm(xx1,xx2)
-		return pr,m1,v1,m2,v2,h
+		px,py,m1,v1,m2,v2,h = self.etm(xx1,xx2)
+		return px,py,m1,v1,m2,v2,h
 
 	def configure_optimizers(self):
 		optimizer = torch.optim.Adam(self.parameters(), lr=0.01)
@@ -258,13 +299,11 @@ class LitETM(pl.LightningModule):
 
 		x1 , x2 = batch
 
-		x1 = x1.reshape(x1.shape[0]*x1.shape[1],x1.shape[2])
-		x2 = x2.reshape(x2.shape[0]*x2.shape[1],x2.shape[2])
+		px,py,m1,v1,m2,v2,h = self.etm(x1,x2)
 
-		recon,m1,v1,m2,v2,h = self.etm(x1,x2)
-
-		x = torch.cat((x1,x2),1)
-		loglikloss = etm_llik(x,recon)
+		loglikloss_x = etm_llik(x1,px)
+		loglikloss_y = etm_llik(x2,py)
+		loglikloss = loglikloss_x + loglikloss_y
 		kl1 = kl_loss(m1,v1)
 		kl2 = kl_loss(m2,v2)
 		loss = torch.mean((kl1 + kl2)-loglikloss)
@@ -281,7 +320,7 @@ class LitETM(pl.LightningModule):
 
 		return loss
 
-def run_model(args,model_file):
+def run_model_lit(args,model_file):
 
 	nbr_size = args.lr_model['train']['nbr_size']
 	batch_size = args.lr_model['train']['batch_size']
@@ -293,7 +332,15 @@ def run_model(args,model_file):
 	input_dims1 = args.lr_model['train']['input_dims1']
 	input_dims2 = args.lr_model['train']['input_dims2']
 
-	dl = load_data(args,nbr_size,batch_size)
+
+	args_home = os.environ['args_home']
+	device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
+
+	sparse_data = args_home+args.input+args.nbr_model['sparse_data']
+	sparse_label = args_home+args.input+args.nbr_model['sparse_label']
+	neighbour_data = args_home+ args.output+ args.lr_model['out']+args.nbr_model['mfile']+'_nbr.pkl'
+
+	dl = load_data_lit(sparse_data,sparse_label,neighbour_data, batch_size, device)
 
 	train_dataloader =  dl.train_dataloader()
 
@@ -426,10 +473,62 @@ def eval_model(args):
 	df_it = df_it[['cell']+[x for x in df_it.columns[:-1]]]
 	df_it.to_csv(model_file+'_ietm_interaction_states.tsv.gz',sep='\t',index=False,compression='gzip')
 
+def train(etm, data, device, epochs,l_rate):
+	logger.info("Starting training....")
+	opt = torch.optim.Adam(etm.parameters(),lr=l_rate)
+	loss_values = []
+	for epoch in range(epochs):
+		loss = 0
+		for x1,x2 in data:
+			x1 = x1.squeeze(0)
+			x2 = x2.squeeze(0)
+			opt.zero_grad()
+			px,py,m1,v1,m2,v2,h = etm(x1,x2)
+
+			loglikloss_x = etm_llik(x1,px)
+			loglikloss_y = etm_llik(x2,py)
+			loglikloss = loglikloss_x + loglikloss_y
+			kl1 = kl_loss(m1,v1)
+			kl2 = kl_loss(m2,v2)
+			kl = kl1+kl2
+
+			train_loss = torch.mean(kl-loglikloss).to("cpu")
+			train_loss.backward()
+			opt.step()
+			loss += train_loss.item()
+		logger.info('====> Epoch: {} Average loss: {:.4f}'.format(epoch, loss/len(data)))
+		
+		loss_values.append(loss/len(data))
+	
+	return loss_values
 
 
+def run_model(args,model_file):
+
+	nbr_size = args.lr_model['train']['nbr_size']
+	batch_size = args.lr_model['train']['batch_size']
+	l_rate = args.lr_model['train']['l_rate']
+	epochs = args.lr_model['train']['epochs']
+	layers1 = args.lr_model['train']['layers1']
+	layers2 = args.lr_model['train']['layers2']
+	latent_dims = args.lr_model['train']['latent_dims']
+	input_dims1 = args.lr_model['train']['input_dims1']
+	input_dims2 = args.lr_model['train']['input_dims2']
 
 
+	args_home = os.environ['args_home']
+	device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
 
+	sparse_data = args_home+args.input+args.nbr_model['sparse_data']
+	sparse_label = args_home+args.input+args.nbr_model['sparse_label']
+	neighbour_data = args_home+ args.output+ args.lr_model['out']+args.nbr_model['mfile']+'_nbr.pkl'
 
+	dl = load_data(sparse_data,sparse_label,neighbour_data, batch_size, device)
 
+	model = ETM(input_dims1,input_dims2,latent_dims,layers1,layers2).to(device)
+	logging.info(model)
+	loss_values = train(model,dl,device,epochs,l_rate)
+
+	torch.save(model.state_dict(), model_file+"etm.torch")
+	dflv = pd.DataFrame(loss_values)
+	dflv.to_csv(model_file+"loss.txt",index=False)
