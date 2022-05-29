@@ -1,0 +1,69 @@
+home : /home/BCCRC.CA/ssubedi/projects/spruce_topic/
+database : database/
+sample : GSEmix
+tenx_data : input/GSEmix/raw_data/
+input : input/GSEmix/
+output : output/GSEmix/
+scanpy_output : output/GSEmix/scanpy/
+
+
+raw_data : GSEmix.counts.FILTERED.pkl
+raw_data_genes : GSEmix.counts.FILTERED.GENES.pkl
+
+sparse_data : GSEmix_coo_matrix.npz
+sparse_data_ids : GSEmix_ids.npz
+
+cell_topic : 
+  in : input/GSEmix/
+  out : model/cell_topic/
+  train :
+    batch_size : 128
+    l_rate : 0.01
+    epochs : 1
+    layers : [200,200,100,25]
+    latent_dims : 25
+    device : cuda:0
+  eval :
+    batch_size : 155913
+  model_info : GSEmix_200_200_100_25_ep1
+  model_id : _202205290330
+  model : cell_topic.torch
+  latent_z : cell_topic_z.tsv.gz
+  latent_h : cell_topic_h.tsv.gz
+
+
+lr_db : celltalkdb_v20220131_human_lr_pair.txt
+raw_l_data : GSEmix.ligands.pkl
+raw_l_data_genes : GSEmix.ligands.GENES.pkl
+raw_r_data : GSEmix.receptors.pkl
+raw_r_data_genes : GSEmix.receptors.GENES.pkl
+raw_lr_data : GSEmix.ligands_receptors_mat_815_780.pkl
+
+
+interaction_topic : 
+  out : model/interaction_topic/
+  train :
+    nbr_size : 4
+    batch_size : 32
+    l_rate : 0.01
+    epochs : 1
+    layers1 : [200,100,25]
+    layers2 : [200,100,25]
+    latent_dims : 25
+
+    # for lr alpha beta
+    input_dims1 : 648
+    input_dims2 : 672
+
+    # for all gene factor
+    # input_dims1 : 20265
+    # input_dims2 : 20265
+
+    # for lr augmentation
+    # input_dims1 : 672
+    # input_dims2 : 648
+  eval :
+    batch_size : 1
+  model_info : GSEmix_200_200_100_25_ep1_202205290330
+
+
