@@ -156,7 +156,7 @@ class Spruce:
 
         return df_beta1,df_beta2,df_beta1_bias,df_beta2_bias
 
-    def interactions_summary(self,input_dims1,input_dims2,latent_dims,layers1,layers2):
+    def interactions_prob(self,input_dims1,input_dims2,latent_dims,layers1,layers2):
 
         model = _interaction_topic.LitETM(input_dims1,input_dims2,latent_dims,layers1,layers2,'_txt_')
         model.load_state_dict(self.interaction_topic.model)
@@ -170,7 +170,7 @@ class Spruce:
         df_r = df_r[df_r['index'].isin(df_h['cell'].values)]
         df_lr = self.data.raw_lr_data
         df_lr = df_lr.loc[df_l.columns[1:],df_r.columns[1:]]
-        df_nbr = self.data.raw_lr_data
+        df_nbr = self.data.neighbour
 
         # device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
         device='cpu'
@@ -179,7 +179,7 @@ class Spruce:
         rmat = torch.tensor(df_r.iloc[:,1:].values.astype(np.float32),requires_grad=False).to(device)
         lrmat = torch.tensor(df_lr.values.astype(np.float32),requires_grad=False).to(device)
 
-        topics = []
+        topics_prob = []
         for idx in range(df_nbr.shape[0]):
 
             cm_l = lmat[idx].unsqueeze(0)
@@ -200,13 +200,10 @@ class Spruce:
             h_smax = nn.LogSoftmax(dim=-1)
             h = torch.exp(h_smax(h))
 
-            topics.append(list(pd.DataFrame(h.detach().numpy()).idxmax(axis=1).values))
+            topics_prob.append(h.detach().numpy())
         
-        df_it = pd.DataFrame(topics)
-        df_it['cell'] = df_l['index']
-        df_it = df_it[['cell']+[x for x in df_it.columns[:-1]]]
-        df_it.to_csv(self.model_id+'_ietm_interaction_states.tsv.gz',sep='\t',index=False,compression='gzip')
-
+        return topics_prob
+    
     def run_interaction_topic_ddb(self,batch_size,epochs,layers1,layers2,latent_dims,input_dims1,input_dims2,device,f_loss):
 
         dl = _lr_ddb.load_data(self.data.cell_topic_h, self.data.raw_l_data, self.data.raw_r_data, self.data.neighbour, batch_size,device)
@@ -263,9 +260,6 @@ class Spruce:
         beta_bias = beta_bias.to('cpu').detach().numpy()
 
         return df_alpha,beta,df_alpha_bias,beta_bias
-
-
-
 
 
         
