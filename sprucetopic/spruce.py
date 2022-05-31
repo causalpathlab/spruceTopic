@@ -27,7 +27,6 @@ class Spruce:
             self.raw_r_data_genes = None
             self.raw_lr_data = None
 
-            self.cell_topic_h = None
             self.neighbour = None
 
     class cell_topic:
@@ -157,14 +156,13 @@ class Spruce:
 
         return df_beta1,df_beta2,df_beta1_bias,df_beta2_bias
 
-    def eval_spruce(self,input_dims1,input_dims2,latent_dims,layers1,layers2):
+    def interactions_summary(self,input_dims1,input_dims2,latent_dims,layers1,layers2):
 
         model = _interaction_topic.LitETM(input_dims1,input_dims2,latent_dims,layers1,layers2,'_txt_')
-
         model.load_state_dict(self.interaction_topic.model)
         model.eval()
 
-        df_h = self.eval_cell_topic.h
+        df_h = self.cell_topic.h
 
         df_l = self.data.raw_l_data
         df_r = self.data.raw_r_data

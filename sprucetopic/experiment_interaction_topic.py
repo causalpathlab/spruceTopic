@@ -35,7 +35,7 @@ if mode =='train':
 	spruce.data.raw_l_data = args_home+args.input+args.raw_l_data
 	spruce.data.raw_r_data = args_home+args.input+args.raw_r_data
 	spruce.data.raw_lr_data = args_home+args.input+args.raw_lr_data
-	spruce.data.cell_topic_h = args_home+args.output+args.cell_topic['out']+args.cell_topic['model_info']+args.cell_topic['model_id']+'_cell_topic_h.tsv.gz'
+	spruce.cell_topic.h = args_home+args.output+args.cell_topic['out']+args.cell_topic['model_info']+args.cell_topic['model_id']+'_cell_topic_h.tsv.gz'
 	spruce.data.neighbour = args_home+args.output+args.interaction_topic['out']+args.cell_topic['model_info']+args.cell_topic['model_id']+'_nbr.pkl'
 
 	spruce.model_id = model_id
@@ -78,4 +78,28 @@ elif mode=='eval':
 	df_beta1_bias.to_csv(spruce.model_id+'_ietm_beta1_bias.tsv.gz',sep='\t',index=False,compression='gzip')
 	df_beta2_bias.to_csv(spruce.model_id+'_ietm_beta2_bias.tsv.gz',sep='\t',index=False,compression='gzip')
 
+
+elif mode=='results':
+	spruce = spruce.Spruce()
+	model_info = args_home+args.output+args.interaction_topic['out']+args.cell_topic['model_info']+args.cell_topic['model_id']
+	id = '202205122100'
+	model_id = model_info+'_'+id
+	
+	spruce.model_id = model_id
+	spruce.interaction_topic.model = torch.load(spruce.model_id + '_interaction_topic.torch')
+
+	spruce.data.raw_l_data = args_home+args.input+args.raw_l_data
+	spruce.data.raw_r_data = args_home+args.input+args.raw_r_data
+	spruce.data.raw_lr_data = args_home+args.input+args.raw_lr_data
+	spruce.cell_topic.h = pd.read_csv(args_home+args.output+args.cell_topic['out']+args.cell_topic['model_info']+args.cell_topic['model_id']+'_cell_topic_h.tsv.gz',sep='\t',compression='gzip')
+	spruce.data.neighbour = pd.read_pickle(args_home+args.output+args.interaction_topic['out']+args.cell_topic['model_info']+args.cell_topic['model_id']+'_nbr.pkl')
+
+	layers1 = args.interaction_topic['train']['layers1']
+	layers2 = args.interaction_topic['train']['layers2']
+	latent_dims = args.interaction_topic['train']['latent_dims']
+	input_dims1 = args.interaction_topic['train']['input_dims1']
+	input_dims2 = args.interaction_topic['train']['input_dims2']
+	device = 'cpu'
+
+	spruce.interactions_summary(input_dims1,input_dims2,latent_dims,layers1,layers2)
 

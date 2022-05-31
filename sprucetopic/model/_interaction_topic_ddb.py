@@ -65,37 +65,42 @@ class ETMDecoder(nn.Module):
 
 		self.l_smax = nn.LogSoftmax(dim=-1)
 
-		self.p_alpha= nn.Parameter(torch.randn(latent_dims,out_dims1)*jitter)
-		self.alpha_bias= nn.Parameter(torch.randn(1,out_dims1)*jitter)
 
-		self.p_beta= nn.Parameter(torch.randn(latent_dims,out_dims1,out_dims2)*jitter)
-		self.beta_bias= nn.Parameter(torch.randn(latent_dims,1,out_dims2)*jitter)
-
-
-		# self.p_alpha= nn.Parameter(torch.randn(latent_dims,out_dims2,out_dims1)*jitter)
-		# self.alpha_bias= nn.Parameter(torch.randn(latent_dims,1,out_dims1)*jitter)
+		########## model r | l 
 		
-		# self.p_beta= nn.Parameter(torch.randn(latent_dims,out_dims2)*jitter)
-		# self.beta_bias= nn.Parameter(torch.randn(1,out_dims2)*jitter)
+		# self.p_alpha= nn.Parameter(torch.randn(latent_dims,out_dims1)*jitter)
+		# self.alpha_bias= nn.Parameter(torch.randn(1,out_dims1)*jitter)
+
+		# self.p_beta= nn.Parameter(torch.randn(latent_dims,out_dims1,out_dims2)*jitter)
+		# self.beta_bias= nn.Parameter(torch.randn(latent_dims,1,out_dims2)*jitter)
 
 
-	def forward(self,zz,xx1):
+		self.p_alpha= nn.Parameter(torch.randn(latent_dims,out_dims2,out_dims1)*jitter)
+		self.alpha_bias= nn.Parameter(torch.randn(latent_dims,1,out_dims1)*jitter)
+		
+		self.p_beta= nn.Parameter(torch.randn(latent_dims,out_dims2)*jitter)
+		self.beta_bias= nn.Parameter(torch.randn(1,out_dims2)*jitter)
+
+
+	def forward(self,zz,xx2):
 
 		hh = self.l_smax(zz)			
+
+		########## model r | l 
+
+		# alpha = self.l_smax(self.alpha_bias.add(self.p_alpha))
+		# px = torch.mm(torch.exp(hh),torch.exp(alpha))
+		
+		# beta = self.l_smax(self.beta_bias.add(self.p_beta))
+		# beta_x = torch.matmul(xx1,torch.exp(beta)).sum(1)
+		# py = torch.mm(torch.exp(hh),beta_x)
+
+		beta = self.l_smax(self.beta_bias.add(self.p_beta))
+		py = torch.mm(torch.exp(hh),torch.exp(beta))
 		
 		alpha = self.l_smax(self.alpha_bias.add(self.p_alpha))
-		px = torch.mm(torch.exp(hh),torch.exp(alpha))
-		
-		beta = self.l_smax(self.beta_bias.add(self.p_beta))
-		beta_x = torch.matmul(xx1,torch.exp(beta)).sum(1)
-		py = torch.mm(torch.exp(hh),beta_x)
-
-		# beta = self.l_smax(self.beta_bias.add(self.p_beta))
-		# py = torch.mm(torch.exp(hh),torch.exp(beta))
-		
-		# alpha = self.l_smax(self.alpha_bias.add(self.p_alpha))
-		# alpha_x = torch.matmul(xx2,torch.exp(alpha)).sum(1)
-		# px = torch.mm(torch.exp(hh),alpha_x)
+		alpha_x = torch.matmul(xx2,torch.exp(alpha)).sum(1)
+		px = torch.mm(torch.exp(hh),alpha_x)
 
 		return px,py,hh
 
@@ -107,7 +112,12 @@ class ETM(nn.Module):
 
 	def forward(self,xx1,xx2):
 		zz,m1,v1,m2,v2 = self.encoder(xx1,xx2)
-		px,py,h = self.decoder(zz,xx1)
+
+		########## model r | l 
+		# px,py,h = self.decoder(zz,xx1)
+		
+		px,py,h = self.decoder(zz,xx2)
+		
 		return px,py,m1,v1,m2,v2,h
 
 class LitETM(pl.LightningModule):

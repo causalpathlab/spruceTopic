@@ -21,9 +21,9 @@ args = namedtuple('Struct',params.keys())(*params.values())
 
 
 if mode =='train':
-	model_info = args_home+args.output+args.interaction_topic['out']+args.cell_topic['model_info']+args.cell_topic['model_id']
-	id = now.strftime('%Y%m%d%H%M')
-	model_id = model_info+'_'+id
+	model_info = args_home+args.output+args.interaction_topic['out']+args.cell_topic['model_info']+args.cell_topic['model_id'] +args.interaction_topic['model_info']
+	id = now.strftime('%Y%m%d%H')
+	model_id = model_info+'_Lmodel_'+id
 
 
 	logging.basicConfig(filename=model_id+'.log',
