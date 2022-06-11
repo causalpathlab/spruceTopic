@@ -5,8 +5,7 @@ def reparameterize(mean,lnvar):
 	eps = t.randn_like(sig)
 	return eps.mul_(sig).add_(mean)
 
-def log_likelihood(x,theta,beta):
-	alpha = t.exp(t.clamp(t.mm(theta,beta),-10,10))
+def log_likelihood(x,alpha):
 	a = t.lgamma(alpha.sum(1)) - t.lgamma(alpha).sum(1)
 	b = t.lgamma(x + alpha).sum(1) - t.lgamma( (x + alpha).sum(1))
 	return a + b 

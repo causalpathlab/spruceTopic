@@ -202,9 +202,9 @@ class Spruce:
         
         return topics_prob
     
-    def interactions_state_summary(self,input_dims1,input_dims2,latent_dims,layers1,layers2):
+    def interactions_state_summary(self,batch_size,input_dims1,input_dims2,latent_dims,layers1,layers2):
 
-        model = _interaction_topic.LitETM(input_dims1,input_dims2,latent_dims,layers1,layers2,'_txt_')
+        model = _interaction_topic.LitETM(batch_size,input_dims1,input_dims2,latent_dims,layers1,layers2,'_txt_')
         model.load_state_dict(self.interaction_topic.model)
         model.eval()
 
@@ -241,16 +241,15 @@ class Spruce:
 
             lprime,rprime =  cm_lr + torch.mm(cn_l,lrmat).mul(cn_r) , cm_rl + torch.mm(cn_r,torch.t(lrmat)).mul(cn_l)
 
-            m1,v1,m2,v2,theta,beta = model.etm(lprime,rprime)
+            m1,v1,m2,v2,b1m,b1v,b2m,b2v,theta,beta = model.etm(lprime,rprime)
 
-            h_smax = nn.LogSoftmax(dim=-1)
-            theta = torch.exp(h_smax(theta))
+            theta = torch.exp(theta)
 
             topics.append(list(pd.DataFrame(theta.detach().numpy()).idxmax(axis=1).values))
         
         df_it = pd.DataFrame(topics)
         df_it['cell'] = df_l['index']
         df_it = df_it[['cell']+[x for x in df_it.columns[:-1]]]
-        df_it.to_csv(self.model_id+'_ietm_interaction_states.tsv.gz',sep='\t',index=False,compression='gzip')
+        df_it.to_csv(self.model_id+'_cell_interaction_states.tsv.gz',sep='\t',index=False,compression='gzip')
  
    

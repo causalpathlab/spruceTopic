@@ -39,7 +39,6 @@ def plot_umap(sp):
 	plt.close()
 
 
-
 def plot_umap_with_annotation_mix(sp,label_index=8):
 	
 	dfz = sp.cell_topic.z

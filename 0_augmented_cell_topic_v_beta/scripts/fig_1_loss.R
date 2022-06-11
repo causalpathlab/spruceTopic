@@ -2,14 +2,12 @@ library(ggplot2)
 library(gridExtra)
 library(reshape)
 library(yaml)
-library(pheatmap)
-library(dendextend)
 library(RColorBrewer)
 setwd(box::file())
 source("Util.R")
 
 args = commandArgs(trailingOnly=TRUE)
-args_home ="/home/BCCRC.CA/ssubedi/projects/experiments/spruce_topic/0_augmented_lr_multinomial_v_beta/"
+args_home ="/home/sishirsubedi/projects/experiments/spruce_topic/0_augmented_cell_topic_v_beta/"
 config = paste(args_home,"config/",args[1],".yaml",sep="") 
 args = read_yaml(config)
 

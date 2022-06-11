@@ -8,9 +8,7 @@ def reparameterize(mean,lnvar):
 def multinm_log_likelihood(xx,pr, eps=1e-8):
 	return torch.sum(xx * torch.log(pr+eps),dim=-1)
 
-def multi_dir_log_likelihood(x,theta,beta):
-
-	alpha = torch.exp(torch.clamp(torch.mm(theta,beta),-10,10))
+def multi_dir_log_likelihood(x,alpha):
 	a = torch.lgamma(alpha.sum(1)) - torch.lgamma(alpha).sum(1)
 	b = torch.lgamma(x + alpha).sum(1) - torch.lgamma( (x + alpha).sum(1))
 	return a + b 

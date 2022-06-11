@@ -46,23 +46,20 @@ class ETMDecoder(nn.Module):
 		super(ETMDecoder, self).__init__()
 		
 		self.beta_bias= nn.Parameter(torch.randn(1,out_dims)*jitter)
-
 		self.beta_mean = nn.Parameter(torch.randn(latent_dims,out_dims)*jitter)
 		self.beta_lnvar = nn.Parameter(torch.zeros(latent_dims,out_dims))
 
 		self.lsmax = nn.LogSoftmax(dim=-1)
 
 	def forward(self, zz):
-
 		theta = self.lsmax(zz)
 		z_beta = self.get_beta()
-		beta = self.beta_bias.add(z_beta)
-
-		return self.beta_mean,self.beta_lnvar,theta,beta
+		return self.beta_mean,self.beta_lnvar,theta,z_beta
 
 	def get_beta(self):
-		lv = torch.clamp(self.beta_lnvar,-2.0,2.0)
-		z_beta = st.reparameterize(self.beta_mean,lv)
+		lv = torch.clamp(self.beta_lnvar,-5.0,5.0)
+		mean = self.beta_bias.add(self.beta_mean)
+		z_beta = st.reparameterize(mean,lv)
 		return z_beta
 
 class ETM(nn.Module):
@@ -81,6 +78,7 @@ def train(etm,data,epochs,l_rate,batch_size):
 	opt = torch.optim.Adam(etm.parameters(),lr=l_rate)
 	loss_values = []
 	loss_values_sep = []
+	data_size = data.dataset.shape[0]
 	for epoch in range(epochs):
 		loss = 0
 		loss_ll = 0
@@ -89,23 +87,24 @@ def train(etm,data,epochs,l_rate,batch_size):
 		for x,y in data:
 			opt.zero_grad()
 			m,v,bm,bv,theta,beta = etm(x)
-			loglikloss = st.multi_dir_log_likelihood(x,theta,beta)
+			alpha = torch.exp(torch.clamp(torch.mm(theta,beta),-10,10))
+			loglikloss = st.multi_dir_log_likelihood(x,alpha)
 			kl = st.kl_loss(m,v)
 			klb = st.kl_loss(bm,bv)
-			
-			train_loss = torch.mean(kl -loglikloss).add(torch.mean(klb)/batch_size).to('cpu')
+
+			train_loss = torch.mean(kl -loglikloss).add(torch.sum(klb)/data_size)
 			train_loss.backward()
 
 			opt.step()
 
 			ll_l = torch.mean(loglikloss).to('cpu')
 			kl_l = torch.mean(kl).to('cpu')
-			klb_l = torch.mean(klb).to('cpu')
+			klb_l = torch.sum(klb).to('cpu')
 
 			loss += train_loss.item()
 			loss_ll += ll_l.item()
 			loss_kl += kl_l.item()
-			loss_klb += klb_l.item()/batch_size
+			loss_klb += klb_l.item()/data_size
 
 		if epoch % 10 == 0:
 			logger.info('====> Epoch: {} Average loss: {:.4f}'.format(epoch, loss/len(data)))

@@ -11,8 +11,8 @@ import torch
 
 mode= sys.argv[1]
 now = datetime.datetime.now()
-args_home = '/home/BCCRC.CA/ssubedi/projects/experiments/spruce_topic/0_augmented_lr_multinomial_v_beta/'
-# args_home = '/home/sishirsubedi/projects/spruce_topic/'
+# args_home = '/home/BCCRC.CA/ssubedi/projects/experiments/spruce_topic/0_augmented_cell_topic_v_beta/'
+args_home = '/home/sishirsubedi/projects/experiments/spruce_topic/0_augmented_cell_topic_v_beta/'
 
 params = read_config(args_home+'config/bcmix.yaml')
 args = namedtuple('Struct',params.keys())(*params.values())
@@ -20,7 +20,7 @@ args = namedtuple('Struct',params.keys())(*params.values())
 
 if mode =='train':
 	model_info = args_home+args.output+args.cell_topic['out']+args.cell_topic['model_info']
-	id = now.strftime('%Y%m%d%H%M')
+	id = now.strftime('%Y%m%d')
 	model_id = model_info+'_'+id
 
 
@@ -71,9 +71,8 @@ elif mode=='plots':
 	 
 	sp.data.raw_data_genes = pd.read_pickle(args.home+args.input+args.raw_data_genes)[0].values
 
-	# sp.cell_topic.beta = pd.read_csv(sp.model_id+'_cell_topic_beta.tsv.gz',sep='\t',compression='gzip')
+	sp.cell_topic.beta = pd.read_csv(sp.model_id+'_cell_topic_beta.tsv.gz',sep='\t',compression='gzip')
 
-	# _topics.topic_top_genes(sp)
 
 	sp.cell_topic.z = pd.read_csv(sp.model_id+'_cell_topic_z.tsv.gz',sep='\t',compression='gzip')
 	sp.cell_topic.h = pd.read_csv(sp.model_id+'_cell_topic_h.tsv.gz',sep='\t',compression='gzip')

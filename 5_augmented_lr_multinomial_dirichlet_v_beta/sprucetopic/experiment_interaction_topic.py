@@ -11,8 +11,8 @@ import torch
 
 mode= sys.argv[1]
 now = datetime.datetime.now()
-# args_home = '/home/BCCRC.CA/ssubedi/projects/spruce_topic/'
-args_home = '/home/sishirsubedi/projects/experiments/spruce_topic/5_augmented_lr_multinomial_dirichlet_beta_spike/'
+# args_home = '/home/BCCRC.CA/ssubedi/projects/experiments/spruce_topic/5_augmented_lr_multinomial_dirichlet_v_beta/'
+args_home = '/home/sishirsubedi/projects/experiments/spruce_topic/5_augmented_lr_multinomial_dirichlet_v_beta/'
 
 # os.chdir(args_home)
 os.environ['args_home'] = args_home
@@ -81,7 +81,7 @@ elif mode=='eval':
 elif mode=='results':
 	sp = spruce.Spruce()
 	model_info = args_home+args.output+args.interaction_topic['out']+args.cell_topic['model_info']+args.cell_topic['model_id']
-	id = '2022060805'
+	id = '2022060901'
 	model_id = model_info+'_'+id
 	
 	sp.model_id = model_id
@@ -93,6 +93,7 @@ elif mode=='results':
 	sp.cell_topic.h = pd.read_csv(args_home+args.output+args.cell_topic['out']+args.cell_topic['model_info']+args.cell_topic['model_id']+'_cell_topic_h.tsv.gz',sep='\t',compression='gzip')
 	sp.data.neighbour = pd.read_pickle(args_home+args.output+args.cell_topic['out']+args.cell_topic['model_info']+args.cell_topic['model_id']+'_nbr.pkl')
 
+	batch_size = args.interaction_topic['train']['batch_size']
 	layers1 = args.interaction_topic['train']['layers1']
 	layers2 = args.interaction_topic['train']['layers2']
 	latent_dims = args.interaction_topic['train']['latent_dims']
@@ -103,7 +104,7 @@ elif mode=='results':
 	# topics_prob = sp.interactions_prob(input_dims1,input_dims2,latent_dims,layers1,layers2)
 	# _topics.interaction_summary(sp,topics_prob)
 
-	sp.interactions_state_summary(input_dims1,input_dims2,latent_dims,layers1,layers2)
+	sp.interactions_state_summary(batch_size,input_dims1,input_dims2,latent_dims,layers1,layers2)
 
 
 elif mode=='plots':
