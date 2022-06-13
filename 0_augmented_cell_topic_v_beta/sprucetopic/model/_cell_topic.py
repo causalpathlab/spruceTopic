@@ -58,8 +58,7 @@ class ETMDecoder(nn.Module):
 
 	def get_beta(self):
 		lv = torch.clamp(self.beta_lnvar,-5.0,5.0)
-		mean = self.beta_bias.add(self.beta_mean)
-		z_beta = st.reparameterize(mean,lv)
+		z_beta = st.reparameterize(self.beta_mean,lv) - self.beta_bias
 		return z_beta
 
 class ETM(nn.Module):
@@ -106,7 +105,7 @@ def train(etm,data,epochs,l_rate,batch_size):
 			loss_kl += kl_l.item()
 			loss_klb += klb_l.item()/data_size
 
-		if epoch % 10 == 0:
+		if epoch % 1 == 0:
 			logger.info('====> Epoch: {} Average loss: {:.4f}'.format(epoch, loss/len(data)))
 
 		loss_values.append(loss/len(data))

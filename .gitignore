@@ -16,6 +16,8 @@
 *.sh
 *.yaml
 
+nohup.out
+
 
 io.py
 scratch.py

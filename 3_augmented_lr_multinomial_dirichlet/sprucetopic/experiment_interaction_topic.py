@@ -112,13 +112,13 @@ elif mode=='plots':
 
 	sp = spruce.Spruce()
 	model_info = args_home+args.output+args.interaction_topic['out']+args.cell_topic['model_info']+args.cell_topic['model_id']
-	id = '202206020622'
+	id = '2022060616'
 	model_id = model_info+'_'+id
 	
 	sp.model_id = model_id
 
-	sp.data.raw_l_data_genes = pd.read_pickle(args_home+args.input+args.raw_l_data_genes)[0].values
-	sp.data.raw_r_data_genes = pd.read_pickle(args_home+args.input+args.raw_r_data_genes)[0].values
+	sp.data.raw_l_data_genes = pd.read_pickle(args.home+args.input+args.raw_l_data_genes)[0].values
+	sp.data.raw_r_data_genes = pd.read_pickle(args.home+args.input+args.raw_r_data_genes)[0].values
 
 	sp.interaction_topic.beta1 = pd.read_csv(sp.model_id+'_ietm_beta1.tsv.gz',sep='\t',compression='gzip')
 	sp.interaction_topic.beta2 = pd.read_csv(sp.model_id+'_ietm_beta2.tsv.gz',sep='\t',compression='gzip')

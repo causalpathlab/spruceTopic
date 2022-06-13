@@ -42,8 +42,8 @@ col_order = col.order(df_beta_t,row_order)
 df_beta = df_beta[,col_order]
 df_beta = df_beta[row_order,]
 
-mat_colors <- colorRampPalette(brewer.pal(n = 7, name = "RdYlBu"))(100)
-p1 <- pheatmap(df_beta,color = mat_colors,fontsize_row=2,fontsize_col=4,cluster_rows=FALSE,cluster_cols=FALSE,show_colnames=FALSE)
+mat_colors <- colorRampPalette(brewer.pal(n = 7, name = "Spectral"))(100)
+p1 <- pheatmap(df_beta,color = mat_colors,fontsize_row=2,fontsize_col=4,cluster_rows=FALSE,cluster_cols=FALSE,show_colnames=F)
 
 
 f = paste(args_home,args$output,args$cell_topic$out,args$cell_topic$model_info,args$cell_topic$model_id,"_cell_topic_gene_weight_hmap_all_genes.pdf",sep="")

@@ -7,7 +7,7 @@ setwd(box::file())
 source("Util.R")
 
 args = commandArgs(trailingOnly=TRUE)
-args_home ="/home/sishirsubedi/projects/experiments/spruce_topic/5_augmented_lr_multinomial_dirichlet_beta_spike/"
+args_home ="/home/sishirsubedi/projects/experiments/spruce_topic/5_augmented_lr_multinomial_dirichlet_v_beta/"
 config = paste(args_home,"/config/",args[1],".yaml",sep="") 
 args = read_yaml(config)
 

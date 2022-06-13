@@ -50,7 +50,7 @@ def plot_umap_with_annotation_mix(sp,label_index=8):
 
 	dfz['label'] = [x.split('_')[len(x.split('_'))-1] for x in dfz['cell']]
 
-	f='/home/BCCRC.CA/ssubedi/projects/data/GSE176078mix/GSE176078_metadata.csv.gz'
+	f='/home/sishirsubedi/projects/data/GSE176078mix/GSE176078_metadata.csv.gz'
 	dfl = pd.read_csv(f,compression='gzip')
 	dfl = dfl.rename(columns={'Unnamed: 0':'cell'})
 

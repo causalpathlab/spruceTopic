@@ -3,6 +3,7 @@ import sys
 import datetime
 from util._io import read_config
 from collections import namedtuple
+from analysis import _topics
 import logging
 import pandas as pd
 import spruce
@@ -10,11 +11,8 @@ import torch
 
 mode= sys.argv[1]
 now = datetime.datetime.now()
-# args_home = '/home/BCCRC.CA/ssubedi/projects/spruce_topic/'
+# args_home = '/home/BCCRC.CA/ssubedi/projects/experiments/spruce_topic/0_augmented_cell_topic_v_beta/'
 args_home = '/home/sishirsubedi/projects/experiments/spruce_topic/0_augmented_lr_multinomial/'
-
-# os.chdir(args_home)
-os.environ['args_home'] = args_home
 
 params = read_config(args_home+'config/bcmix.yaml')
 args = namedtuple('Struct',params.keys())(*params.values())
@@ -22,7 +20,7 @@ args = namedtuple('Struct',params.keys())(*params.values())
 
 if mode =='train':
 	model_info = args_home+args.output+args.cell_topic['out']+args.cell_topic['model_info']
-	id = now.strftime('%Y%m%d%H%M')
+	id = now.strftime('%Y%m%d')
 	model_id = model_info+'_'+id
 
 
@@ -32,7 +30,7 @@ if mode =='train':
 					datefmt='%Y-%m-%d %H:%M:%S')
 
 	sp = spruce.Spruce()
-	sp.data.sparse_data = arg.home + args.input + args.sparse_data 
+	sp.data.sparse_data = args.home + args.input + args.sparse_data 
 	sp.data.sparse_data_ids = args.home + args.input + args.sparse_data_ids
 	sp.model_id = model_id
 
@@ -52,12 +50,9 @@ if mode =='train':
 
 elif mode=='eval':
 	sp = spruce.Spruce()
-	sp.data.sparse_data = args_home + args.input + args.sparse_data 
-	sp.data.sparse_data_ids = args_home + args.input + args.sparse_data_ids
-	model_info = args_home+args.output+args.cell_topic['out']+args.cell_topic['model_info']
-	id = '202205290330'
-	model_id = model_info+'_'+id
-	sp.model_id = model_id
+	sp.data.sparse_data = args.home + args.input + args.sparse_data 
+	sp.data.sparse_data_ids = args.home + args.input + args.sparse_data_ids
+	sp.model_id = args_home+args.output+args.cell_topic['out']+args.cell_topic['model_info']+args.cell_topic['model_id']
 
 	sp.cell_topic.model = torch.load(sp.model_id + '_cell_topic.torch')
 	batch_size = args.cell_topic['eval']['batch_size']
@@ -68,4 +63,19 @@ elif mode=='eval':
 	df_z.to_csv(sp.model_id+'_cell_topic_z.tsv.gz',sep='\t',index=False,compression='gzip')
 	df_h.to_csv(sp.model_id+'_cell_topic_h.tsv.gz',sep='\t',index=False,compression='gzip')
 	df_beta1.to_csv(sp.model_id+'_cell_topic_beta.tsv.gz',sep='\t',index=False,compression='gzip')
-	
+
+elif mode=='plots':
+
+	sp = spruce.Spruce()
+	sp.model_id = args.home+args.experiment+args.output+args.cell_topic['out']+args.cell_topic['model_info']+args.cell_topic['model_id']	
+	 
+	sp.data.raw_data_genes = pd.read_pickle(args.home+args.input+args.raw_data_genes)[0].values
+
+	sp.cell_topic.beta = pd.read_csv(sp.model_id+'_cell_topic_beta.tsv.gz',sep='\t',compression='gzip')
+
+
+	sp.cell_topic.z = pd.read_csv(sp.model_id+'_cell_topic_z.tsv.gz',sep='\t',compression='gzip')
+	sp.cell_topic.h = pd.read_csv(sp.model_id+'_cell_topic_h.tsv.gz',sep='\t',compression='gzip')
+
+	_topics.topic_top_genes(sp)
+

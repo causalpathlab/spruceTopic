@@ -37,7 +37,7 @@ def topic_top_genes(args,top_n=5):
 
 	df_top_genes.to_csv(args_home+args.output+args.nbr_model['out']+args.nbr_model['mfile']+'_netm_top_'+str(top_n)+'_genes_topic.tsv.gz',sep='\t',index=False)
 
-def topic_top_lr_genes(sp,top_n=5):
+def topic_top_lr_genes(sp,top_n=20):
 
 	sp.interaction_topic.beta1.columns = sp.data.raw_r_data_genes
 	sp.interaction_topic.beta2.columns = sp.data.raw_l_data_genes
@@ -49,7 +49,7 @@ def topic_top_lr_genes(sp,top_n=5):
 	df_top_genes = pd.DataFrame(top_genes,columns=['Topic','GeneType','Genes','Gene','Proportion'])
 	df_top_genes.to_csv(sp.model_id+'_ietm_top_'+str(top_n)+'_genes_topic.tsv.gz',sep='\t',index=False)
 
-def topic_top_lr_pair_genes(args,top_n=5):
+def topic_top_lr_pair_genes(args,top_n=20):
 
 	args_home = os.environ['args_home']
 	l_fname = args_home+args.input+args.raw_l_data_genes

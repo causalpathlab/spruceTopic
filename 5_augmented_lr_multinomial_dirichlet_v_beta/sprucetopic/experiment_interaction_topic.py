@@ -81,7 +81,7 @@ elif mode=='eval':
 elif mode=='results':
 	sp = spruce.Spruce()
 	model_info = args_home+args.output+args.interaction_topic['out']+args.cell_topic['model_info']+args.cell_topic['model_id']
-	id = '2022060901'
+	id = '2022061216'
 	model_id = model_info+'_'+id
 	
 	sp.model_id = model_id
@@ -111,7 +111,7 @@ elif mode=='plots':
 
 	sp = spruce.Spruce()
 	model_info = args_home+args.output+args.interaction_topic['out']+args.cell_topic['model_info']+args.cell_topic['model_id']
-	id = '2022060802'
+	id = '2022061216'
 	model_id = model_info+'_'+id
 	
 	sp.model_id = model_id

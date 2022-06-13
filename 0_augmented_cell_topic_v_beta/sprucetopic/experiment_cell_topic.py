@@ -3,7 +3,7 @@ import sys
 import datetime
 from util._io import read_config
 from collections import namedtuple
-from analysis import _topics
+from analysis import _topics,_umap_viz
 import logging
 import pandas as pd
 import spruce
@@ -77,5 +77,6 @@ elif mode=='plots':
 	sp.cell_topic.z = pd.read_csv(sp.model_id+'_cell_topic_z.tsv.gz',sep='\t',compression='gzip')
 	sp.cell_topic.h = pd.read_csv(sp.model_id+'_cell_topic_h.tsv.gz',sep='\t',compression='gzip')
 
-	_topics.topic_top_genes(sp)
-
+	print('processing...',sp.model_id)
+	# _topics.topic_top_genes(sp)
+	_umap_viz.plot_umap_with_annotation_mix(sp)

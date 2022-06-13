@@ -9,7 +9,7 @@ setwd(box::file())
 source("Util.R")
 
 args = commandArgs(trailingOnly=TRUE)
-args_home ="/home/BCCRC.CA/ssubedi/projects/spruce_topic/"
+args_home ="/home/sishirsubedi/projects/experiments/spruce_topic/3_augmented_lr_multinomial_dirichlet/"
 config = paste(args_home,"/config/",args[1],".yaml",sep="") 
 args = read_yaml(config)
 
@@ -24,7 +24,7 @@ print(top_genes)
 
 
 beta1 = paste(args_home,args$output,args$interaction_topic$out,args$interaction_topic$model_info,"_ietm_beta2.tsv.gz",sep="")
-beta1_cols = read.table(paste(args_home,args$input,'ligands.csv.gz',sep=''),header=TRUE)
+beta1_cols = read.table(paste(args$home,args$input,'ligands.csv.gz',sep=''),header=TRUE)
 
 df_beta1 = read.table(beta1, sep = "\t", header=TRUE)
 
@@ -44,11 +44,11 @@ col_order = col.order(df_beta_t,row_order)
 df_beta1 = df_beta1[,col_order]
 df_beta1 = df_beta1[row_order,]
 
-mat_colors <- colorRampPalette(brewer.pal(n = 7, name = "PuRd"))(100)
+mat_colors <- colorRampPalette(brewer.pal(n = 7, name = "RdYlBu"))(100)
 
 
 
-p1 <- pheatmap(df_beta1,color = mat_colors,legend =FALSE,fontsize_row=2,fontsize_col=4,cluster_rows=FALSE,cluster_cols=FALSE)
+p1 <- pheatmap(df_beta1,color = mat_colors,legend =TRUE,fontsize_row=2,fontsize_col=4,cluster_rows=FALSE,cluster_cols=FALSE,show_colnames=FALSE)
 
 f = paste(args_home,args$output,args$interaction_topic$out,args$interaction_topic$model_info,"hmap_clust_ligands_tg.pdf",sep="")
 ggsave(f,p1)

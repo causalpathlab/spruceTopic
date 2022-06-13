@@ -88,11 +88,8 @@ class ETMDecoder(nn.Module):
 		lv1 = torch.clamp(self.p_beta1_lnvar,-5.0,5.0) 
 		lv2 = torch.clamp(self.p_beta2_lnvar,-5.0,5.0)
 
-		bm1 = self.p_beta1_bias.add(self.p_beta1_mean)
-		bm2 = self.p_beta2_bias.add(self.p_beta2_mean)
-
-		z_beta1 = dirmult.reparameterize(bm1,lv1)
-		z_beta2 = dirmult.reparameterize(bm2,lv2)
+		z_beta1 = dirmult.reparameterize(self.p_beta1_mean,lv1) - self.p_beta1_bias
+		z_beta2 = dirmult.reparameterize(self.p_beta2_mean,lv2) - self.p_beta2_bias
 
 		return z_beta1, z_beta2
 
@@ -113,7 +110,7 @@ class LitETM(pl.LightningModule):
 	def __init__(self,batch_size,input_dims1,input_dims2,latent_dims,layers1, layers2,lossf):
 		super(LitETM,self).__init__()
 		self.etm = ETM(input_dims1,input_dims2,latent_dims,layers1,layers2)
-		self.batch_size = batch_size
+		self.batch_size = 155e3 * 100
 		self.lossf = lossf
 
 	def forward(self,xx1,xx2):
@@ -141,14 +138,14 @@ class LitETM(pl.LightningModule):
 		klb1 = dirmult.kl_loss(b1m,b1v)
 		klb2 = dirmult.kl_loss(b2m,b2v)
 
-		loss = torch.mean((kl1 + kl2)-loglikloss) + torch.mean(klb1)/self.batch_size + torch.mean(klb2)/self.batch_size
+		loss = torch.mean((kl1 + kl2)-loglikloss) + torch.sum(klb1)/self.batch_size + torch.sum(klb2)/self.batch_size
 
 		f = open(self.lossf, 'a')
 		f.write(str(torch.mean(loglikloss).to('cpu').item()) + '\t' +
 		        str( torch.mean(kl1).to('cpu').item()) + '\t' + 
 		        str( torch.mean(kl2).to('cpu').item()) + '\t' + 
-				str((torch.mean(klb1)/self.batch_size).to('cpu').item()) + '\t'+ 
-				str((torch.mean(klb2)/self.batch_size).to('cpu').item()) + '\n')
+				str((torch.sum(klb1)/self.batch_size).to('cpu').item()) + '\t'+ 
+				str((torch.sum(klb2)/self.batch_size).to('cpu').item()) + '\n')
 		f.close()
 
 		return loss
