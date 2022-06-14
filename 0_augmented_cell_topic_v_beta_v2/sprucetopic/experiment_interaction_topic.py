@@ -11,8 +11,8 @@ import torch
 
 mode= sys.argv[1]
 now = datetime.datetime.now()
-# args_home = '/home/BCCRC.CA/ssubedi/projects/experiments/spruce_topic/5_augmented_lr_multinomial_dirichlet_v_beta/'
-args_home = '/home/sishirsubedi/projects/experiments/spruce_topic/5_augmented_lr_multinomial_dirichlet_v_beta/'
+args_home = '/home/BCCRC.CA/ssubedi/projects/spruce_topic/'
+# args_home = '/home/sishirsubedi/projects/spruce_topic/'
 
 # os.chdir(args_home)
 os.environ['args_home'] = args_home
@@ -23,7 +23,7 @@ args = namedtuple('Struct',params.keys())(*params.values())
 
 if mode =='train':
 	model_info = args_home+args.output+args.interaction_topic['out']+args.cell_topic['model_info']+args.cell_topic['model_id']
-	id = now.strftime('%Y%m%d%H')
+	id = now.strftime('%Y%m%d%H%M')
 	model_id = model_info+'_'+id
 
 
@@ -33,11 +33,11 @@ if mode =='train':
 					datefmt='%Y-%m-%d %H:%M:%S')
 
 	sp = spruce.Spruce()
-	sp.data.raw_l_data = args.home+args.input+args.raw_l_data
-	sp.data.raw_r_data = args.home+args.input+args.raw_r_data
-	sp.data.raw_lr_data = args.home+args.input+args.raw_lr_data
+	sp.data.raw_l_data = args_home+args.input+args.raw_l_data
+	sp.data.raw_r_data = args_home+args.input+args.raw_r_data
+	sp.data.raw_lr_data = args_home+args.input+args.raw_lr_data
 	sp.cell_topic.h = args_home+args.output+args.cell_topic['out']+args.cell_topic['model_info']+args.cell_topic['model_id']+'_cell_topic_h.tsv.gz'
-	sp.data.neighbour = args_home+args.output+args.cell_topic['out']+args.cell_topic['model_info']+args.cell_topic['model_id']+'_nbr.pkl'
+	sp.data.neighbour = args_home+args.output+args.interaction_topic['out']+args.cell_topic['model_info']+args.cell_topic['model_id']+'_nbr.pkl'
 
 	sp.model_id = model_id
 	
@@ -58,10 +58,12 @@ if mode =='train':
 
 elif mode=='eval':
 	sp = spruce.Spruce()
-	sp.model_id = args_home+args.output+args.interaction_topic['out']+args.interaction_topic['model_info']
+	model_info = args_home+args.output+args.interaction_topic['out']+args.cell_topic['model_info']+args.cell_topic['model_id']
+	id = '202206020622'
+	model_id = model_info+'_'+id
+	sp.model_id = model_id
 
 	sp.interaction_topic.model = torch.load(sp.model_id + '_interaction_topic.torch')
-	batch_size = args.interaction_topic['train']['batch_size']
 
 	layers1 = args.interaction_topic['train']['layers1']
 	layers2 = args.interaction_topic['train']['layers2']
@@ -70,7 +72,7 @@ elif mode=='eval':
 	input_dims2 = args.interaction_topic['train']['input_dims2']
 	device = 'cpu'
 
-	df_beta1,df_beta2,df_beta1_bias,df_beta2_bias = sp.eval_interaction_topic(batch_size,input_dims1,input_dims2,latent_dims,layers1,layers2)
+	df_beta1,df_beta2,df_beta1_bias,df_beta2_bias = sp.eval_interaction_topic(input_dims1,input_dims2,latent_dims,layers1,layers2)
 
 	df_beta1.to_csv(sp.model_id+'_ietm_beta1.tsv.gz',sep='\t',index=False,compression='gzip')
 	df_beta2.to_csv(sp.model_id+'_ietm_beta2.tsv.gz',sep='\t',index=False,compression='gzip')
@@ -80,17 +82,19 @@ elif mode=='eval':
 
 elif mode=='results':
 	sp = spruce.Spruce()
-	sp.model_id = args_home+args.output+args.interaction_topic['out']+args.interaction_topic['model_info']
-
+	model_info = args_home+args.output+args.interaction_topic['out']+args.cell_topic['model_info']+args.cell_topic['model_id']
+	id = '202206020622'
+	model_id = model_info+'_'+id
+	
+	sp.model_id = model_id
 	sp.interaction_topic.model = torch.load(sp.model_id + '_interaction_topic.torch')
 
-	sp.data.raw_l_data = pd.read_pickle(args.home+args.input+args.raw_l_data)
-	sp.data.raw_r_data = pd.read_pickle(args.home+args.input+args.raw_r_data)
-	sp.data.raw_lr_data = pd.read_pickle(args.home+args.input+args.raw_lr_data)
+	sp.data.raw_l_data = pd.read_pickle(args_home+args.input+args.raw_l_data)
+	sp.data.raw_r_data = pd.read_pickle(args_home+args.input+args.raw_r_data)
+	sp.data.raw_lr_data = pd.read_pickle(args_home+args.input+args.raw_lr_data)
 	sp.cell_topic.h = pd.read_csv(args_home+args.output+args.cell_topic['out']+args.cell_topic['model_info']+args.cell_topic['model_id']+'_cell_topic_h.tsv.gz',sep='\t',compression='gzip')
-	sp.data.neighbour = pd.read_pickle(args_home+args.output+args.cell_topic['out']+args.cell_topic['model_info']+args.cell_topic['model_id']+'_nbr.pkl')
+	sp.data.neighbour = pd.read_pickle(args_home+args.output+args.interaction_topic['out']+args.cell_topic['model_info']+args.cell_topic['model_id']+'_nbr.pkl')
 
-	batch_size = args.interaction_topic['train']['batch_size']
 	layers1 = args.interaction_topic['train']['layers1']
 	layers2 = args.interaction_topic['train']['layers2']
 	latent_dims = args.interaction_topic['train']['latent_dims']
@@ -98,19 +102,23 @@ elif mode=='results':
 	input_dims2 = args.interaction_topic['train']['input_dims2']
 	device = 'cpu'
 
-	# topics_prob = sp.interactions_prob(input_dims1,input_dims2,latent_dims,layers1,layers2)
-	# _topics.interaction_summary(sp,topics_prob)
+	topics_prob = sp.interactions_prob(input_dims1,input_dims2,latent_dims,layers1,layers2)
+	_topics.interaction_summary(sp,topics_prob)
 
-	sp.interactions_state_summary(batch_size,input_dims1,input_dims2,latent_dims,layers1,layers2)
+	sp.interactions_state_summary(input_dims1,input_dims2,latent_dims,layers1,layers2)
 
 
 elif mode=='plots':
 
 	sp = spruce.Spruce()
-	sp.model_id = args_home+args.output+args.interaction_topic['out']+args.interaction_topic['model_info']
+	model_info = args_home+args.output+args.interaction_topic['out']+args.cell_topic['model_info']+args.cell_topic['model_id']
+	id = '202206020622'
+	model_id = model_info+'_'+id
+	
+	sp.model_id = model_id
 
-	sp.data.raw_l_data_genes = pd.read_pickle(args.home+args.input+args.raw_l_data_genes)[0].values
-	sp.data.raw_r_data_genes = pd.read_pickle(args.home+args.input+args.raw_r_data_genes)[0].values
+	sp.data.raw_l_data_genes = pd.read_pickle(args_home+args.input+args.raw_l_data_genes)[0].values
+	sp.data.raw_r_data_genes = pd.read_pickle(args_home+args.input+args.raw_r_data_genes)[0].values
 
 	sp.interaction_topic.beta1 = pd.read_csv(sp.model_id+'_ietm_beta1.tsv.gz',sep='\t',compression='gzip')
 	sp.interaction_topic.beta2 = pd.read_csv(sp.model_id+'_ietm_beta2.tsv.gz',sep='\t',compression='gzip')

@@ -49,6 +49,8 @@ class ETMDecoder(nn.Module):
 		self.beta_mean = nn.Parameter(torch.randn(latent_dims,out_dims)*jitter)
 		self.beta_lnvar = nn.Parameter(torch.zeros(latent_dims,out_dims))
 
+		self.lmbda = nn.Parameter(torch.randn(1,1)*jitter)
+
 		self.lsmax = nn.LogSoftmax(dim=-1)
 
 	def forward(self, zz):
@@ -56,9 +58,12 @@ class ETMDecoder(nn.Module):
 		theta = torch.exp(self.lsmax(zz))
 		
 		z_beta = self.get_beta()
-		beta = z_beta.add(self.beta_bias)
+		beta = torch.exp(z_beta.add(self.beta_bias))
 
-		return self.beta_mean,self.beta_lnvar,theta,beta
+		alpha = torch.exp(self.lmbda)*torch.mm(theta,beta)
+
+
+		return self.beta_mean,self.beta_lnvar,alpha
 
 	def get_beta(self):
 		lv = torch.clamp(self.beta_lnvar,-5.0,5.0)
@@ -73,8 +78,8 @@ class ETM(nn.Module):
 
 	def forward(self,xx):
 		zz,m,v = self.encoder(xx)
-		bm,bv,theta,beta = self.decoder(zz)
-		return m,v,bm,bv,theta,beta
+		bm,bv,alpha = self.decoder(zz)
+		return m,v,bm,bv,alpha
 
 def train(etm,data,epochs,l_rate,batch_size):
 	logger.info('Starting training....')
@@ -89,8 +94,7 @@ def train(etm,data,epochs,l_rate,batch_size):
 		loss_klb = 0
 		for x,y in data:
 			opt.zero_grad()
-			m,v,bm,bv,theta,beta = etm(x)
-			alpha = torch.exp(torch.clamp(torch.mm(theta,beta),-10,10))
+			m,v,bm,bv,alpha = etm(x)
 			loglikloss = st.multi_dir_log_likelihood(x,alpha)
 			kl = st.kl_loss(m,v)
 			klb = st.kl_loss(bm,bv)

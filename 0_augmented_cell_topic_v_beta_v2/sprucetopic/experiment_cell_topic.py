@@ -12,7 +12,7 @@ import torch
 mode= sys.argv[1]
 now = datetime.datetime.now()
 # args_home = '/home/BCCRC.CA/ssubedi/projects/experiments/spruce_topic/0_augmented_cell_topic_v_beta/'
-args_home = '/home/sishirsubedi/projects/experiments/spruce_topic/0_augmented_cell_topic_v_beta/'
+args_home = '/home/sishirsubedi/projects/experiments/spruce_topic/0_augmented_cell_topic_v_beta_v2/'
 
 params = read_config(args_home+'config/bcmix.yaml')
 args = namedtuple('Struct',params.keys())(*params.values())
@@ -59,11 +59,10 @@ elif mode=='eval':
 	layers = args.cell_topic['train']['layers']
 	latent_dims = args.cell_topic['train']['latent_dims']
 	device = 'cpu'
-	df_z,df_h,df_beta,df_beta_var = sp.eval_cell_topic(batch_size,layers,latent_dims,device)
+	df_z,df_h,df_beta1 = sp.eval_cell_topic(batch_size,layers,latent_dims,device)
 	df_z.to_csv(sp.model_id+'_cell_topic_z.tsv.gz',sep='\t',index=False,compression='gzip')
 	df_h.to_csv(sp.model_id+'_cell_topic_h.tsv.gz',sep='\t',index=False,compression='gzip')
-	df_beta.to_csv(sp.model_id+'_cell_topic_beta.tsv.gz',sep='\t',index=False,compression='gzip')
-	df_beta_var.to_csv(sp.model_id+'_cell_topic_beta_var.tsv.gz',sep='\t',index=False,compression='gzip')
+	df_beta1.to_csv(sp.model_id+'_cell_topic_beta.tsv.gz',sep='\t',index=False,compression='gzip')
 
 elif mode=='plots':
 
@@ -79,9 +78,6 @@ elif mode=='plots':
 	sp.cell_topic.h = pd.read_csv(sp.model_id+'_cell_topic_h.tsv.gz',sep='\t',compression='gzip')
 
 	print('processing...',sp.model_id)
-	_umap_viz.plot_umap_with_annotation_mix(sp)
-	# _topics.topic_top_genes(sp,5)
-	# _topics.topic_top_genes(sp,10)
-	# _topics.topic_top_genes(sp,25)
-	# _topics.sample_cells_with_latent(sp)
-	# _umap_viz.plot_umap(sp)
+	# _topics.topic_top_genes(sp)
+	# _umap_viz.plot_umap_with_annotation_mix(sp)
+	_umap_viz.plot_umap(sp)

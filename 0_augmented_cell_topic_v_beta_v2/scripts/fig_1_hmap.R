@@ -9,15 +9,15 @@ setwd(box::file())
 source("Util.R")
 
 args = commandArgs(trailingOnly=TRUE)
-args_home ="/home/sishirsubedi/projects/experiments/spruce_topic/0_augmented_cell_topic_v_beta/"
+args_home ="/home/sishirsubedi/projects/experiments/spruce_topic/0_augmented_cell_topic_v_beta_v2/"
 config = paste(args_home,"config/",args[1],".yaml",sep="") 
 args = read_yaml(config)
 
 weightmat_phmap_plot_i <- function(args) {
 
-topgenes_file = paste(args_home,args$output,args$cell_topic$out,args$cell_topic$model_info,args$cell_topic$model_id,"_cell_topic_top_5_genes_topic.tsv.gz",sep="")
-df_tg = read.table(topgenes_file, sep = "\t", header=TRUE)
-top_genes = unique(df_tg$Gene)
+# topgenes_file = paste(args_home,args$output,args$cell_topic$out,args$cell_topic$model_info,args$cell_topic$model_id,"_cell_topic_top_5_genes_topic.tsv.gz",sep="")
+# df_tg = read.table(topgenes_file, sep = "\t", header=TRUE)
+# top_genes = unique(df_tg$Gene)
 
 
 
@@ -28,7 +28,8 @@ df_beta = read.table(beta, sep = "\t", header=TRUE)
 
 colnames(df_beta) = beta_cols$X0
 
-df_beta = select(df_beta,all_of(top_genes))
+# df_beta = select(df_beta,all_of(top_genes))
+# print(colnames(df_beta))
 
 row_order = row.order(df_beta)
 
@@ -41,13 +42,11 @@ col_order = col.order(df_beta_t,row_order)
 df_beta = df_beta[,col_order]
 df_beta = df_beta[row_order,]
 
-df_beta[df_beta < -20] = -20
-df_beta[df_beta > 20] = 20
-
-p1 <- pheatmap(df_beta,colorRampPalette(c("navy", "white", "firebrick3"))(100),fontsize_row=8,fontsize_col=4,cluster_rows=FALSE,cluster_cols=FALSE,show_colnames=T)
+mat_colors <- colorRampPalette(brewer.pal(n = 7, name = "RdBu"))(100)
+p1 <- pheatmap(df_beta,color = mat_colors,fontsize_row=2,fontsize_col=4,cluster_rows=FALSE,cluster_cols=FALSE,show_colnames=F)
 
 
-f = paste(args_home,args$output,args$cell_topic$out,args$cell_topic$model_info,args$cell_topic$model_id,"_cell_topic_gene_weight_hmap_tp_genes.pdf",sep="")
+f = paste(args_home,args$output,args$cell_topic$out,args$cell_topic$model_info,args$cell_topic$model_id,"_cell_topic_gene_weight_hmap_all_genes.pdf",sep="")
 ggsave(f,p1)
 
 }

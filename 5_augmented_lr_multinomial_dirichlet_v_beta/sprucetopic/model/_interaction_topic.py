@@ -76,10 +76,12 @@ class ETMDecoder(nn.Module):
 
 	def forward(self,zz):
 
-		theta = self.l_smax(zz)
+		theta = torch.exp(self.l_smax(zz))
 
 		z_beta1, z_beta2 = self.get_beta()
-		beta = torch.cat((z_beta1,z_beta2),1)
+		z_beta1_bias = z_beta1.add(self.p_beta1_bias)
+		z_beta2_bias = z_beta2.add(self.p_beta2_bias)
+		beta = torch.cat((z_beta1_bias,z_beta2_bias),1)
 
 		return self.p_beta1_mean, self.p_beta1_lnvar, self.p_beta2_mean, self.p_beta2_lnvar, theta, beta
 	
@@ -88,8 +90,8 @@ class ETMDecoder(nn.Module):
 		lv1 = torch.clamp(self.p_beta1_lnvar,-5.0,5.0) 
 		lv2 = torch.clamp(self.p_beta2_lnvar,-5.0,5.0)
 
-		z_beta1 = dirmult.reparameterize(self.p_beta1_mean,lv1) - self.p_beta1_bias
-		z_beta2 = dirmult.reparameterize(self.p_beta2_mean,lv2) - self.p_beta2_bias
+		z_beta1 = dirmult.reparameterize(self.p_beta1_mean,lv1) 
+		z_beta2 = dirmult.reparameterize(self.p_beta2_mean,lv2) 
 
 		return z_beta1, z_beta2
 
@@ -131,7 +133,9 @@ class LitETM(pl.LightningModule):
 		m1,v1,m2,v2,b1m,b1v,b2m,b2v,theta,beta = self.etm(x1,x2)
 
 		x = torch.cat((x1,x2),1)
+
 		alpha = torch.exp(torch.clamp(torch.mm(theta,beta),-10,10))
+		
 		loglikloss = dirmult.log_likelihood(x,alpha)
 		kl1 = dirmult.kl_loss(m1,v1)
 		kl2 = dirmult.kl_loss(m2,v2)

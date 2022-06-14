@@ -6,6 +6,7 @@ import matplotlib.pylab as plt
 plt.rcParams['figure.figsize'] = [12.50, 10.50]
 plt.rcParams['figure.autolayout'] = True
 import umap
+import umap.plot 
 import igraph
 import colorcet as cc
 import seaborn as sns
@@ -38,7 +39,7 @@ def plot_umap(sp):
 	plt.close()
 
 
-def plot_umap_with_annotation_mix(sp,label_index=7):
+def plot_umap_with_annotation_mix(sp,label_index=8):
 	
 	dfz = sp.cell_topic.z
 
@@ -58,7 +59,6 @@ def plot_umap_with_annotation_mix(sp,label_index=7):
 	dflabel['l2'] =  [x.replace('_GSE176078','') for x in dfz[dfz['label']=='GSE176078']['cell']]
 	dflabel = pd.merge(dflabel,dfl,right_on='cell',left_on='l2',how='left')
 
-	print(dfl.columns)
 	label = dfl.columns[label_index]
 
 	dfz = pd.merge(dfz,dflabel[['l1',label]],right_on='l1',left_on='cell',how='left')

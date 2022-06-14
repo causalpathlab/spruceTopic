@@ -20,7 +20,7 @@ def generate_gene_vals(df,top_n,top_genes,label):
 
 	return top_genes
 
-def topic_top_genes(sp,top_n=5):
+def topic_top_genes(sp,top_n):
 
 	sp.cell_topic.beta.columns = sp.data.raw_data_genes
 
@@ -117,10 +117,9 @@ def assign_gene_bias(args):
 	df_beta1_bias.to_csv(args_home+args.output+args.interaction_model['out']+args.interaction_model['mfile']+'_ietm_beta1_bias_v2.tsv.gz',sep='\t')
 	df_beta2_bias.to_csv(args_home+args.output+args.interaction_model['out']+args.interaction_model['mfile']+'_ietm_beta2_bias_v2.tsv.gz',sep='\t')
 
-def sample_cells_with_latent(args,cell_n=50):
+def sample_cells_with_latent(sp,cell_n=50):
 
-	args_home = os.environ['args_home']
-	dfh = pd.read_csv(args_home+args.output+args.nbr_model['out']+args.nbr_model['mfile']+'_netm_h.tsv.gz',sep='\t',compression='gzip')
+	dfh = sp.cell_topic.h
 	dfh.columns = [ x.replace('h','') for x in dfh.columns]
 	# dfh['Topic'] = dfh.iloc[:,1:].idxmax(axis=1)
 
@@ -130,7 +129,7 @@ def sample_cells_with_latent(args,cell_n=50):
 	dfz=dfh
 	dfz['label'] = [x.split('_')[len(x.split('_'))-1] for x in dfz['cell']]
 
-	f='/home/sishirsubedi/projects/spruce_topic/input/GSEmix/GSE176078_metadata.csv.gz'
+	f='/home/sishirsubedi/projects/data/GSE176078mix/GSE176078_metadata.csv.gz'
 	dfl = pd.read_csv(f,compression='gzip')
 	dfl = dfl.rename(columns={'Unnamed: 0':'cell'})
 
@@ -149,7 +148,7 @@ def sample_cells_with_latent(args,cell_n=50):
 
 	df_h_sample = df_h_sample.rename(columns={label:'Topic'})
 	df_h_sample = df_h_sample.drop(columns=['label','l1'])
-	df_h_sample.to_csv(args_home+args.output+args.nbr_model['out']+args.nbr_model['mfile']+'_netm_h_topic_sample.tsv',sep='\t',index=False)
+	df_h_sample.to_csv(sp.model_id+'_netm_h_topic_sample.tsv',sep='\t',index=False)
 
 def topics_summary_v1(args):
 	

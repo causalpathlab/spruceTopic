@@ -79,7 +79,6 @@ class Spruce:
         for xx,y in data: break
         zz,m,v = model.encoder(xx)
         bm,bv,theta,beta  = model.decoder(zz)
-        theta = _cell_topic.torch.exp(theta)
 
         df_z = pd.DataFrame(zz.to('cpu').detach().numpy())
         df_z.columns = ['z'+str(i)for i in df_z.columns]
@@ -93,13 +92,17 @@ class Spruce:
 
 
         beta_mean =  None
+        beta_var = None
         for n,p in model.named_parameters():
             if n == 'decoder.beta_mean':
-                beta_mean=p
+                beta_mean = p
+            if n == 'decoder.beta_lnvar':
+                beta_var = p
 
         df_beta = pd.DataFrame(beta_mean.to('cpu').detach().numpy())
+        df_beta_var = pd.DataFrame(beta_var.to('cpu').detach().numpy())
 
-        return df_z,df_h,df_beta
+        return df_z,df_h,df_beta,df_beta_var
     
     def run_interaction_topic(self,batch_size,epochs,layers1,layers2,latent_dims,input_dims1,input_dims2,device,f_loss):
 
