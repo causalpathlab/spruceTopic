@@ -98,7 +98,7 @@ class Spruce:
             if n == 'decoder.beta_mean':
                 beta_mean = p
             if n == 'decoder.beta_lnvar':
-                beta_var = p
+                beta_var = torch.exp(p)
 
         df_beta = pd.DataFrame(beta_mean.to('cpu').detach().numpy())
         df_beta_var = pd.DataFrame(beta_var.to('cpu').detach().numpy())
@@ -113,7 +113,7 @@ class Spruce:
 
         logging.info('Input dimension - ligand is '+ str(input_dims1))
         logging.info('Input dimension - receptor is '+ str(input_dims2))
-        model = _interaction_topic.LitETM(input_dims1,input_dims2,latent_dims,layers1,layers2,f_loss)
+        model = _interaction_topic.LitETM(batch_size,input_dims1,input_dims2,latent_dims,layers1,layers2,f_loss)
         logging.info(model)
 
         trainer = _interaction_topic.pl.Trainer(
@@ -128,39 +128,35 @@ class Spruce:
         
         return model 
 
-    def eval_interaction_topic(self,input_dims1,input_dims2,latent_dims,layers1,layers2):
+    def eval_interaction_topic(self,batch_size,input_dims1,input_dims2,latent_dims,layers1,layers2):
 
-        model = _interaction_topic.LitETM(input_dims1,input_dims2,latent_dims,layers1,layers2,'temp.txt')
+        model = _interaction_topic.LitETM(batch_size,input_dims1,input_dims2,latent_dims,layers1,layers2,'temp.txt')
 
         model.load_state_dict(self.interaction_topic.model)
         model.eval()
 
-        beta1,beta1_bias,beta2,beta2_bias =  None,None,None,None
+        betal,betal_bias,betar,betar_bias =  None,None,None,None
         
         for n,p in model.named_parameters():
             print(n)
-            if n == 'etm.decoder.lbeta1':
-                beta1=p
-            elif n == 'etm.decoder.lbeta2':
-                beta2=p
-            elif n == 'etm.decoder.lbeta1_bias':
-                beta1_bias=p
-            elif n == 'etm.decoder.lbeta2_bias':
-                beta2_bias=p
+            if n == 'etm.decoder.p_beta_l_mean':
+                betal=p
+            elif n == 'etm.decoder.p_beta_r_mean':
+                betar=p
+            elif n == 'etm.decoder.p_beta_l_bias':
+                betal_bias=p
+            elif n == 'etm.decoder.p_beta_r_bias':
+                betar_bias=p
             
 
-        beta_smax = _interaction_topic.nn.LogSoftmax(dim=-1)
-        beta1 = _interaction_topic.torch.exp(beta_smax(beta1))
-        beta2 = _interaction_topic.torch.exp(beta_smax(beta2))
-
-        df_beta1 = pd.DataFrame(beta1.to('cpu').detach().numpy())
-        df_beta2 = pd.DataFrame(beta2.to('cpu').detach().numpy())
-        df_beta1_bias = pd.DataFrame(beta1_bias.to('cpu').detach().numpy())
-        df_beta2_bias = pd.DataFrame(beta2_bias.to('cpu').detach().numpy())
+        df_beta1 = pd.DataFrame(betal.to('cpu').detach().numpy())
+        df_beta2 = pd.DataFrame(betar.to('cpu').detach().numpy())
+        df_beta1_bias = pd.DataFrame(betal_bias.to('cpu').detach().numpy())
+        df_beta2_bias = pd.DataFrame(betar_bias.to('cpu').detach().numpy())
 
         return df_beta1,df_beta2,df_beta1_bias,df_beta2_bias
 
-    def interactions_prob(self,input_dims1,input_dims2,latent_dims,layers1,layers2):
+    def interaction_topic_prob(self,input_dims1,input_dims2,latent_dims,layers1,layers2):
 
         model = _interaction_topic.LitETM(input_dims1,input_dims2,latent_dims,layers1,layers2,'_txt_')
         model.load_state_dict(self.interaction_topic.model)
@@ -176,7 +172,8 @@ class Spruce:
         df_lr = df_lr.loc[df_l.columns[1:],df_r.columns[1:]]
         df_nbr = self.data.neighbour
 
-        device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
+        # device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
+        device='cpu'
         nbrmat = torch.tensor(df_nbr.values.astype(np.compat.long),requires_grad=False).to(device)
         lmat = torch.tensor(df_l.iloc[:,1:].values.astype(np.float32),requires_grad=False).to(device)
         rmat = torch.tensor(df_r.iloc[:,1:].values.astype(np.float32),requires_grad=False).to(device)
@@ -198,20 +195,16 @@ class Spruce:
 
             lprime,rprime =  cm_lr + torch.mm(cn_l,lrmat).mul(cn_r) , cm_rl + torch.mm(cn_r,torch.t(lrmat)).mul(cn_l)
 
-            pr,m1,v1,m2,v2,h = model.etm(lprime,rprime)
+            pr,m1,v1,m2,v2,theta,beta = model.etm(lprime,rprime)
 
             h_smax = nn.LogSoftmax(dim=-1)
-            h = torch.exp(h_smax(h))
+            theta = torch.exp(h_smax(theta))
 
-            topics_prob.append(h.detach().numpy())
+            topics_prob.append(theta.detach().numpy())
         
         return topics_prob
-
-    def interactions_state_summary(self,input_dims1,input_dims2,latent_dims,layers1,layers2):
-
-        model = _interaction_topic.LitETM(input_dims1,input_dims2,latent_dims,layers1,layers2,'_txt_')
-        model.load_state_dict(self.interaction_topic.model)
-        model.eval()
+    
+    def interaction_topic_states(self):
 
         df_h = self.cell_topic.h
 
@@ -246,15 +239,13 @@ class Spruce:
 
             lprime,rprime =  cm_lr + torch.mm(cn_l,lrmat).mul(cn_r) , cm_rl + torch.mm(cn_r,torch.t(lrmat)).mul(cn_l)
 
-            pr,m1,v1,m2,v2,h = model.etm(lprime,rprime)
+            m1,v1,m2,v2,blm,blv,brm,brv,theta,alpha_l,alpha_r  = self.interaction_topic.model.etm(lprime,rprime)
 
-            h_smax = nn.LogSoftmax(dim=-1)
-            h = torch.exp(h_smax(h))
-
-            topics.append(list(pd.DataFrame(h.detach().numpy()).idxmax(axis=1).values))
+            topics.append(list(pd.DataFrame(theta.detach().numpy()).idxmax(axis=1).values))
         
         df_it = pd.DataFrame(topics)
         df_it['cell'] = df_l['index']
         df_it = df_it[['cell']+[x for x in df_it.columns[:-1]]]
-        df_it.to_csv(self.model_id+'_ietm_interaction_states.tsv.gz',sep='\t',index=False,compression='gzip')
-            
+        return df_it
+ 
+   

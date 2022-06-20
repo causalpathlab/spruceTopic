@@ -1,0 +1,186 @@
+---
+title: "Single-cell Pairwise Relationships Untangled by Composite Topic models"
+author: "Park Lab"
+date: "`r format(Sys.time(), ' %X, %b %d, %Y')`"
+fontsize: 11pt
+output:
+  pdf_document:
+    latex_engine: xelatex
+    citation_package: natbib
+    fig_caption: true
+# bibliography: references.bib 
+link-citations: yes
+tables: yes
+always_allow_html: true
+header-includes:
+ - \usepackage{fontspec}
+ - \usepackage{booktabs}
+ - \usepackage{longtable}
+ - \usepackage{array}
+ - \usepackage{multirow}
+ - \usepackage{wrapfig}
+ - \usepackage{float}
+ - \usepackage{colortbl}
+ - \usepackage{pdflscape}
+ - \usepackage{tabu}
+ - \usepackage{threeparttable}
+ - \usepackage{threeparttablex}
+ - \usepackage{makecell}
+ - \usepackage{amsmath}
+ - \usepackage{amssymb}
+ - \usepackage{setspace}\doublespacing
+
+params:
+  ct_model_id : '/home/BCCRC.CA/ssubedi/projects/experiments/spruce_topic/2_cell_topic_v_beta/output/cell_topic/2022061422_ld_50_ep_1000/GSE176078mix_2022061422'
+  it_model_id : '/home/BCCRC.CA/ssubedi/projects/experiments/spruce_topic/2_cell_topic_v_beta/output/interaction_topic/20220619/GSE176078mix_2022061422'
+
+---
+
+# Cell topic analysis
+
+
+Multinomial-Dirichlet:
+
+
+$$p(\mathbf{y}_{i}|\mathbf{q}_{i}) = \frac{(\sum_{g} Y_{ig})!}{\prod_{g} Y_{ig}!} \prod_{g} q_{ig}^{Y_{ig}}$$
+
+$$\mathbf{q}_{i} \sim \textsf{Dir}(\mathbf{q}_{i}|\rho_{i}) = \frac{\Gamma(\sum_{g}\rho_{ig})}{\prod_{g} \Gamma(\rho_{ig})} \prod_{g} q_{ig}^{\rho_{ig} - 1}$$
+
+
+Single-cell generative model:
+$$p(\mathbf{x}_{j}| \cdot ) = 
+\frac{\Gamma(\sum_{g} \lambda_{jg})} {\sum_{g} \Gamma(\lambda_{jg})} \frac{\Gamma(\sum_{g} \lambda_{jg} + X_{jg})}{\sum_{g} \Gamma(\lambda_{jg} + X_{jg})}$$
+
+where
+
+$$\lambda_{jg} = \exp\left( \sum_{t=1}^{T} \theta_{jt} ( \beta_{tg} + \delta_{g} ) \right)$$
+
+
+Bayesian regularization of the model parameters
+
+$$\beta_{tg} \sim \mathcal{N}\!\left(0, 1\right)$$
+
+Total Expected log-likelihood Lower-bound (ELBO):
+
+\begin{eqnarray*}
+\frac{J}{n} 
+    &=& \frac{1}{n}\sum_{i=1}^{n} \log p(\mathbf{x}_{i}|\theta_{i}(\mathbf{z}_{i}), \beta) \\
+	& & + \frac{1}{n}\sum_{i=1}^{n} \sum_{t=1}^{T} D_{\textsf{KL}}\left( q(z_{it}) \| p(z_{it}) \right) \\
+	& & + \frac{1}{n}\sum_{t=1}^{T}\sum_{g=1}^{G} D_{\textsf{KL}}\left( q(\beta_{tg}) \| p(\beta_{tg}) \right) \\
+	&\approx&
+	\frac{1}{B}\sum_{i=1}^{B} \log p(\mathbf{x}_{i}|\theta_{i}(\mathbf{z}_{i}), \beta) \\
+	& & + \frac{1}{B}\sum_{i=1}^{B} \sum_{t=1}^{T} D_{\textsf{KL}}\left( q(z_{it}) \| p(z_{it}) \right) \\
+	& & + \frac{1}{n}\sum_{t=1}^{T}\sum_{g=1}^{G} D_{\textsf{KL}}\left( q(\beta_{tg}) \| p(\beta_{tg}) \right)
+\end{eqnarray*}
+where $B$ is the mini-batch size.
+
+
+
+
+
+\newpage
+
+
+
+`r sprintf("![Topic sum](%s)", paste(params$ct_model_id,'_ct_h_sum.png',sep=''))`
+
+`r sprintf("![Topic argmax](%s)", paste(params$ct_model_id,'_ct_h_argmax.png',sep=''))`
+
+`r sprintf("![UMAP cell-type](%s)", paste(params$ct_model_id,'_ct_umap_celltype_label.png',sep=''))`
+
+`r sprintf("![UMAP topic](%s)", paste(params$ct_model_id,'_ct_umap_h_argmax_label.png',sep=''))`
+
+`r sprintf("![UMAP-kmeans (k=50)](%s)", paste(params$ct_model_id,'_ct_h_kmeans.png',sep=''))`
+
+`r sprintf("![UMAP-kmeans(k=50) cell-type](%s)", paste(params$ct_model_id,'_ct_h_kmeans_celltype.png',sep=''))`
+
+`r sprintf("![Structure plot cell-type](%s)", paste(params$ct_model_id,'_ct_struct_plot_celltype.png',sep=''))`
+
+`r sprintf("![Structure plot kmeans majority cell-type](%s)", paste(params$ct_model_id,'_ct_struct_plot_kmeans.png',sep=''))`
+
+`r sprintf("![Structure plot kmeans cluster ](%s)", paste(params$ct_model_id,'_ct_struct_plot_kmeans_cluster.png',sep=''))`
+
+
+
+\newpage
+
+### Interaction topic analysis
+
+
+Multinomial-Dirichlet:
+
+
+$$p(\mathbf{y}_{i}|\mathbf{q}_{i}) = \frac{(\sum_{g} Y_{ig})!}{\prod_{g} Y_{ig}!} \prod_{g} q_{ig}^{Y_{ig}}$$
+
+$$\mathbf{q}_{i} \sim \textsf{Dir}(\mathbf{q}_{i}|\rho_{i}) = \frac{\Gamma(\sum_{g}\rho_{ig})}{\prod_{g} \Gamma(\rho_{ig})} \prod_{g} q_{ig}^{\rho_{ig} - 1}$$
+
+
+Single-cell generative model:
+$$p(\mathbf{x}_{j}| \cdot ) = 
+\frac{\Gamma(\sum_{g} \lambda_{jg})} {\sum_{g} \Gamma(\lambda_{jg})} \frac{\Gamma(\sum_{g} \lambda_{jg} + X_{jg})}{\sum_{g} \Gamma(\lambda_{jg} + X_{jg})}$$
+
+where
+
+$$\lambda_{jg} =  \lambda_{0}  \exp\left( \sum_{t=1}^{T} \theta_{jt} ( \beta_{tg} + \delta_{g} ) \right)$$
+
+$$\lambda_{0} = \exp(\tilde{\lambda}_{0})$$
+
+
+$\sum_{t} \theta_{jt} = 1$ 
+
+Bayesian regularization of the model parameters
+
+$$\beta_{tg} \sim \mathcal{N}\!\left(0, 1\right)$$
+
+Total Expected log-likelihood Lower-bound (ELBO):
+
+\begin{eqnarray*}
+\frac{J}{n} 
+    &=& \frac{1}{n}\sum_{i=1}^{n} \log p(\mathbf{x}_{i}|\theta_{i}(\mathbf{z}_{i}), \beta) \\
+	& & + \frac{1}{n}\sum_{i=1}^{n} \sum_{t=1}^{T} D_{\textsf{KL}}\left( q(z_{it}) \| p(z_{it}) \right) \\
+	& & + \frac{1}{n}\sum_{t=1}^{T}\sum_{l=1}^{L} D_{\textsf{KL}}\left( q(\beta_{tl}) \| p(\beta_{tl}) \right) \\
+	& & + \frac{1}{n}\sum_{t=1}^{T}\sum_{r=1}^{R} D_{\textsf{KL}}\left( q(\beta_{tr}) \| p(\beta_{tr}) \right) 
+\end{eqnarray*}
+
+### Neighbour cells calculation
+
+- removed self neighbour pair 
+
+- 18 topics with cell count less than 100 were removed during generating annoy model list. Topics were not removed during generating neighbours, only selected topics were used to create a model list. 
+
+```json
+h35       57
+h11       50
+h10       39
+h8        36
+h44       34
+h42       20
+h29       18
+h3        16
+h5        13
+h16       12
+h36        7
+h25        6
+h47        6
+h41        5
+h49        4
+h15        3
+h18        2
+h13        2
+```
+- Neighbours are calculated from the remaining 32 topics and 5 neighbours from each topic - 159 neighbours for each cell.  
+  
+\newpage
+
+
+`r sprintf("![Loss plot](%s)", paste(params$it_model_id,'_it_model_loss.png',sep=''))`
+
+`r sprintf("![Beta - top receptor genes](%s)", paste(params$it_model_id,'_it_beta_r_hmap_tp.png',sep=''))`
+
+`r sprintf("![Beta - all receptor genes](%s)", paste(params$it_model_id,'_it_beta_r_hmap_all.png',sep=''))`
+
+`r sprintf("![Beta - top ligand genes](%s)", paste(params$it_model_id,'_it_beta_l_hmap_tp.png',sep=''))`
+
+`r sprintf("![Beta - all ligand genes](%s)", paste(params$it_model_id,'_it_beta_l_hmap_all.png',sep=''))`
+
+`r sprintf("![Beta - top lr pair genes](%s)", paste(params$it_model_id,'_it_beta_lr_pair_hmap.png',sep=''))`

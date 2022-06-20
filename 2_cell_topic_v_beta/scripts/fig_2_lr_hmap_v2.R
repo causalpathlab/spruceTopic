@@ -3,58 +3,46 @@ library(gridExtra)
 library(reshape)
 library(yaml)
 library(pheatmap)
-library(RColorBrewer)
 library(dplyr)
 setwd(box::file())
 source("Util.R")
 
-args = commandArgs(trailingOnly=TRUE)
-args_home ="/home/sishirsubedi/projects/experiments/spruce_topic/0_augmented_cell_topic_v_beta/"
-config = paste(args_home,"/config/",args[1],".yaml",sep="") 
-args = read_yaml(config)
 
-weightmat_lr_plot <- function(args) {
 
-topgenes_file = paste(args_home,args$output,args$interaction_topic$out,args$interaction_topic$model_info,"_ietm_top_5_genes_topic.tsv.gz",sep="")
-df_tg = read.table(topgenes_file, sep = "\t", header=TRUE)
-print(head(df_tg))
-df_tg = df_tg[df_tg$GeneType=="ligands",]
+weightmat_lr_plot <- function(df_beta,tag,p_top_genes,topgenes_file,f) {
+
+if (p_top_genes){
+df_tg = read.table(topgenes_file, sep = ",", header=TRUE)
+df_tg = df_tg[df_tg$GeneType==tag,]
 top_genes = unique(df_tg$Gene)
-print(top_genes)
+df_beta = select(df_beta,all_of(top_genes))
+}
 
+row_order = row.order(df_beta)
 
-beta1 = paste(args_home,args$output,args$interaction_topic$out,args$interaction_topic$model_info,"_ietm_beta2.tsv.gz",sep="")
-beta1_cols = read.table(paste(args$home,args$data,args$sample_id,'ligands.csv.gz',sep=''),header=TRUE)
-
-df_beta1 = read.table(beta1, sep = "\t", header=TRUE)
-
-colnames(df_beta1) = beta1_cols$X0
-
-df_beta1 = select(df_beta1,all_of(top_genes))
-print(colnames(df_beta1))
-
-row_order = row.order(df_beta1)
-
-df_beta_t = df_beta1
-df_beta_t$topic = rownames(df_beta1)
+df_beta_t = df_beta
+df_beta_t$topic = rownames(df_beta)
 df_beta_t = melt(df_beta_t)
 colnames(df_beta_t)=c('row','col','weight')
 col_order = col.order(df_beta_t,row_order)
 
-df_beta1 = df_beta1[,col_order]
-df_beta1 = df_beta1[row_order,]
-
-mat_colors <- colorRampPalette(brewer.pal(n = 7, name = "RdBu"))(100)
+df_beta = df_beta[,col_order]
+df_beta = df_beta[row_order,]
 
 
+df_beta[df_beta < -20] = -20
+df_beta[df_beta > 20] = 20
 
-p1 <- pheatmap(df_beta1,color = mat_colors,legend =FALSE,fontsize_row=2,fontsize_col=4,cluster_rows=FALSE,cluster_cols=FALSE)
-
-f = paste(args_home,args$output,args$interaction_topic$out,args$interaction_topic$model_info,"hmap_clust_ligands_tg.pdf",sep="")
-ggsave(f,p1)
-
+if(p_top_genes){
+p1 <- pheatmap(df_beta,color = colorRampPalette(c("navy", "white", "firebrick3"))(100),fontsize_row=8,fontsize_col=8,cluster_rows=FALSE,cluster_cols=FALSE,show_colnames=T)
 }
-weightmat_lr_plot(args)
+else{
+p1 <- pheatmap(df_beta,color = colorRampPalette(c("navy", "white", "firebrick3"))(100),fontsize_row=8,fontsize_col=8,cluster_rows=FALSE,cluster_cols=FALSE,show_colnames=F)
+}
+
+ggsave(f,p1)
+}
+
 
 
 

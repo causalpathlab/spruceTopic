@@ -109,7 +109,7 @@ def train(etm,data,epochs,l_rate,batch_size):
 			loss_kl += kl_l.item()
 			loss_klb += klb_l.item()/data_size
 
-		if epoch % 1 == 0:
+		if epoch % 10 == 0:
 			logger.info('====> Epoch: {} Average loss: {:.4f}'.format(epoch, loss/len(data)))
 
 		loss_values.append(loss/len(data))

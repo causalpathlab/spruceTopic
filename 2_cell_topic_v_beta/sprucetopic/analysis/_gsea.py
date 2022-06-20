@@ -22,5 +22,5 @@ def hypergeom_test(sp,df_gset):
 			k = len(t_deg)
 			q = len([x for x in t_deg if x in pathway_genes])
 			pval = 1- hypergeom.cdf(q,N,m,k)
-			gse.append([pathway,ti,pval])
-	return pd.DataFrame(gse,columns=['pathway','topic','pval'])
+			gse.append([pathway,ti,m,k,q,pval])
+	return pd.DataFrame(gse,columns=['pathway','topic','m','k','q','pval'])

@@ -24,7 +24,7 @@ setwd(box::file())
 source("Util.R")
 
 args = commandArgs(trailingOnly=TRUE)
-args_home ="/home/BCCRC.CA/ssubedi/projects/experiments/spruce_topic/0_augmented_cell_topic_v_beta/"
+args_home ="/home/BCCRC.CA/ssubedi/projects/experiments/spruce_topic/2_cell_topic_v_beta/"
 config = paste(args_home,"config/",args[1],".yaml",sep="") 
 args = read_yaml(config)
 
@@ -34,7 +34,7 @@ weightmat_phmap_plot_i <- function(args) {
 
 beta = paste(args_home,args$output,args$cell_topic$out,args$cell_topic$model_info,args$cell_topic$model_id,"_cmark_hypergeom_test.tsv.gz",sep="")
 
-df_beta = read.table(beta, sep = ",", header=TRUE)
+df_beta = read.table(beta, sep = "\t", header=TRUE)
 
 df_beta = cast(df_beta,pathway~topic,value.var='pval')
 df_beta = as.data.frame(df_beta)
@@ -56,9 +56,9 @@ df_beta = df_beta[,col_order]
 df_beta = df_beta[row_order,]
 
 # df_beta[df_beta < 0.01] = 0
-df_beta[df_beta > 1e-5] = 1
+# df_beta[df_beta > 1e-5] = 1
 
-p1 <- pheatmap(t(df_beta),colorRampPalette(c("navy", "grey"))(100),fontsize_row=8,fontsize_col=8,cluster_rows=FALSE,cluster_cols=FALSE,show_colnames=T)
+p1 <- pheatmap(t(df_beta),colorRampPalette(c("navy", "grey","white"))(100),fontsize_row=8,fontsize_col=8,cluster_rows=FALSE,cluster_cols=FALSE,show_colnames=T)
 
 
 f = paste(args_home,args$output,args$cell_topic$out,args$cell_topic$model_info,args$cell_topic$model_id,"_cell_topic_cmark.pdf",sep="")

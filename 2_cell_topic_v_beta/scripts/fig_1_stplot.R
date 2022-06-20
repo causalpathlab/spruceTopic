@@ -1,23 +1,12 @@
 library(ggplot2)
 library(gridExtra)
 library(reshape)
-library(yaml)
 library(pheatmap)
 library(RColorBrewer)
-setwd(box::file())
 
-args = commandArgs(trailingOnly=TRUE)
-args_home ="/home/sishirsubedi/projects/experiments/spruce_topic/0_augmented_cell_topic_v_beta/"
-config = paste(args_home,"config/",args[1],".yaml",sep="") 
-args = read_yaml(config)
-
-struct_plot <- function(args) {
-
-hh_file = paste(args_home,args$output,args$cell_topic$out,args$cell_topic$model_info,args$cell_topic$model_id,"_netm_h_topic_sample.tsv",sep="")
-df_h = read.table(hh_file, sep = "\t", header=TRUE)
+struct_plot <- function(df_h,f) {
 
 df_h_m = melt(df_h,id=c("cell","Topic"))
-print(head(df_h_m))
 df_h_m$Topic <- factor(df_h_m$Topic)
 
 colnames(df_h_m) = c("cell", "cluster", "Topic", "hvalue")
@@ -25,7 +14,7 @@ colnames(df_h_m) = c("cell", "cluster", "Topic", "hvalue")
 df_h_m$Topic <- gsub("X","",df_h_m$Topic)
 # df_h_m$Topic <- factor(df_h_m$Topic, levels = c("0", "1", "2","3","4","5","6","7","8","9","10","11","12","13","14"))
 
-n <- 25
+n <- 50
 qual_col_pals = brewer.pal.info[brewer.pal.info$category == 'qual',]
 col_vector = unlist(mapply(brewer.pal, qual_col_pals$maxcolors, rownames(qual_col_pals)))
 # col_vector = c("#F0A3FF", "#0075DC","#808080" ,"#4C005C","#2BCE48","#FFCC99","#993F00","#94FFB5","#8F7C00","#9DCC00","#C20088","#003380","#FFA405","#FFA8BB","#426600","#FF0010","#5EF1F2","#00998F","#740AFF","#990000","#FFFF00")
@@ -52,8 +41,6 @@ ggplot(df_h_m, aes(x=cell, y=hvalue,fill=Topic)) +
     plot.background = element_rect(fill='transparent', color=NA))+
   guides(fill = guide_legend(nrow = 1))
 
-f = paste(args_home,args$output,args$cell_topic$out,args$cell_topic$model_info,args$cell_topic$model_id,"_netm_st_plot.pdf",sep="")
 ggsave(f,p,width = 60, height = 20,limitsize=F)
 }
 
-struct_plot(args)

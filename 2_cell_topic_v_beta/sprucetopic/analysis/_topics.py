@@ -22,14 +22,12 @@ def generate_gene_vals(df,top_n,top_genes,label):
 
 def topic_top_genes(sp,top_n):
 
-	sp.cell_topic.beta.columns = sp.data.raw_data_genes
-
 	top_genes = []
-	top_genes = generate_gene_vals(sp.cell_topic.beta,top_n,top_genes,'top_genes')
+	top_genes = generate_gene_vals(sp.cell_topic.beta_mean,top_n,top_genes,'top_genes')
 
-	df_top_genes = pd.DataFrame(top_genes,columns=['Topic','GeneType','Genes','Gene','Proportion'])
+	return pd.DataFrame(top_genes,columns=['Topic','GeneType','Genes','Gene','Proportion'])
 
-	df_top_genes.to_csv(sp.model_id+'_cell_topic_top_'+str(top_n)+'_genes_topic.tsv.gz',sep='\t',index=False)
+
 
 def topic_top_lr_genes(sp,top_n=5):
 
@@ -43,20 +41,10 @@ def topic_top_lr_genes(sp,top_n=5):
 	df_top_genes = pd.DataFrame(top_genes,columns=['Topic','GeneType','Genes','Gene','Proportion'])
 	df_top_genes.to_csv(sp.model_id+'_ietm_top_'+str(top_n)+'_genes_topic.tsv.gz',sep='\t',index=False)
 
-def topic_top_lr_pair_genes(args,top_n=5):
+def topic_top_lr_pair_genes(sp,df_db,top_n=5):
 
-	args_home = os.environ['args_home']
-	l_fname = args_home+args.input+args.raw_l_data_genes
-	r_fname = args_home+args.input+args.raw_r_data_genes
-
-	ligands = pd.read_pickle(l_fname)[0].values
-	receptors = pd.read_pickle(r_fname)[0].values
-
-	df_beta1 = pd.read_csv(args_home+args.output+args.interaction_model['out']+args.interaction_model['mfile']+'_ietm_beta1.tsv.gz',sep='\t',compression='gzip')
-	df_beta2 = pd.read_csv(args_home+args.output+args.interaction_model['out']+args.interaction_model['mfile']+'_ietm_beta2.tsv.gz',sep='\t',compression='gzip')
-
-	df_beta1.columns = receptors
-	df_beta2.columns = ligands
+	df_beta1 = sp.interaction_topic.beta_l
+	df_beta2 = sp.interaction_topic.beta_r
 
 	top_genes = []
 	top_genes = generate_gene_vals(df_beta1,top_n,top_genes,'receptors')
@@ -64,8 +52,6 @@ def topic_top_lr_pair_genes(args,top_n=5):
 
 	df_top_genes = pd.DataFrame(top_genes,columns=['Topic','GeneType','Genes','Gene','Proportion'])
 	top_genes = df_top_genes['Gene'].unique()
-
-	df_db = pd.read_csv( args_home + args.database+args.lr_db,sep='\t', usecols=['lr_pair'])
 
 	lr_topic = []
 	lr_pair = []
@@ -77,7 +63,8 @@ def topic_top_lr_pair_genes(args,top_n=5):
 			lr_pair.append(lr_p)
 	df_lr_topic = pd.DataFrame(lr_topic)
 	df_lr_topic.index=lr_pair
-	df_lr_topic.to_csv(args_home+args.output+args.interaction_model['out']+args.interaction_model['mfile']+'top_'+str(top_n)+'_lrpair_topic.tsv.gz',sep='\t')
+	return df_lr_topic
+
 
 def assign_gene_bias(args):
 	args_home = os.environ['args_home']
@@ -117,19 +104,14 @@ def assign_gene_bias(args):
 	df_beta1_bias.to_csv(args_home+args.output+args.interaction_model['out']+args.interaction_model['mfile']+'_ietm_beta1_bias_v2.tsv.gz',sep='\t')
 	df_beta2_bias.to_csv(args_home+args.output+args.interaction_model['out']+args.interaction_model['mfile']+'_ietm_beta2_bias_v2.tsv.gz',sep='\t')
 
-def sample_cells_with_latent(sp,cell_n=50):
+def sample_cells_with_celltype(sp,cell_n=50):
 
-	dfh = sp.cell_topic.h
-	dfh.columns = [ x.replace('h','') for x in dfh.columns]
-	# dfh['Topic'] = dfh.iloc[:,1:].idxmax(axis=1)
+	dfz = sp.cell_topic.h.copy()
+	dfz.columns = [ x.replace('h','') for x in dfz.columns]
 
-	# df_h_sample = dfh.groupby('Topic').sample(frac=0.1, random_state=1)
-	# df_h_sample.to_csv(args_home+args.output+args.nbr_model['out']+args.nbr_model['mfile']+'_netm_h_topic_sample.tsv',sep='\t',index=False)
-
-	dfz=dfh
 	dfz['label'] = [x.split('_')[len(x.split('_'))-1] for x in dfz['cell']]
 
-	f='/home/sishirsubedi/projects/data/GSE176078mix/GSE176078_metadata.csv.gz'
+	f='/home/BCCRC.CA/ssubedi/projects/data/GSE176078mix/GSE176078_metadata.csv.gz'
 	dfl = pd.read_csv(f,compression='gzip')
 	dfl = dfl.rename(columns={'Unnamed: 0':'cell'})
 
@@ -148,7 +130,8 @@ def sample_cells_with_latent(sp,cell_n=50):
 
 	df_h_sample = df_h_sample.rename(columns={label:'Topic'})
 	df_h_sample = df_h_sample.drop(columns=['label','l1'])
-	df_h_sample.to_csv(sp.model_id+'_netm_h_topic_sample.tsv',sep='\t',index=False)
+	return df_h_sample
+
 
 def topics_summary_v1(args):
 	

@@ -3,32 +3,17 @@ library(gridExtra)
 library(reshape)
 library(yaml)
 library(pheatmap)
-library(RColorBrewer)
 library(dplyr)
-setwd(box::file())
 source("Util.R")
+options(repr.plot.width = 7, repr.plot.height = 10, repr.plot.res = 300)
 
-args = commandArgs(trailingOnly=TRUE)
-args_home ="/home/sishirsubedi/projects/experiments/spruce_topic/0_augmented_cell_topic_v_beta/"
-config = paste(args_home,"config/",args[1],".yaml",sep="") 
-args = read_yaml(config)
 
-weightmat_phmap_plot_i <- function(args) {
+weightmat_plot <- function(df_beta,p_top_genes,df_tg) {
 
-topgenes_file = paste(args_home,args$output,args$cell_topic$out,args$cell_topic$model_info,args$cell_topic$model_id,"_cell_topic_top_5_genes_topic.tsv.gz",sep="")
-df_tg = read.table(topgenes_file, sep = "\t", header=TRUE)
+if (p_top_genes){
 top_genes = unique(df_tg$Gene)
-
-
-
-beta = paste(args_home,args$output,args$cell_topic$out,args$cell_topic$model_info,args$cell_topic$model_id,"_cell_topic_beta.tsv.gz",sep="")
-beta_cols = read.table(paste(args$home,args$data,args$sample_id,'genes.csv.gz',sep=''),header=TRUE)
-
-df_beta = read.table(beta, sep = "\t", header=TRUE)
-
-colnames(df_beta) = beta_cols$X0
-
 df_beta = select(df_beta,all_of(top_genes))
+}
 
 row_order = row.order(df_beta)
 
@@ -41,14 +26,32 @@ col_order = col.order(df_beta_t,row_order)
 df_beta = df_beta[,col_order]
 df_beta = df_beta[row_order,]
 
+
 df_beta[df_beta < -20] = -20
 df_beta[df_beta > 20] = 20
 
-p1 <- pheatmap(df_beta,colorRampPalette(c("navy", "white", "firebrick3"))(100),fontsize_row=8,fontsize_col=4,cluster_rows=FALSE,cluster_cols=FALSE,show_colnames=T)
-
-
-f = paste(args_home,args$output,args$cell_topic$out,args$cell_topic$model_info,args$cell_topic$model_id,"_cell_topic_gene_weight_hmap_tp_genes.pdf",sep="")
-ggsave(f,p1)
+if(p_top_genes){
+p1 <- pheatmap(df_beta,color = colorRampPalette(c("navy", "white", "firebrick3"))(100),fontsize_row=8,fontsize_col=4,cluster_rows=FALSE,cluster_cols=FALSE,show_colnames=T)
+}
+else{
+p1 <- pheatmap(df_beta,color = colorRampPalette(c("navy", "white", "firebrick3"))(100),fontsize_row=8,fontsize_col=8,cluster_rows=FALSE,cluster_cols=FALSE,show_colnames=F)
+}
 
 }
-weightmat_phmap_plot_i(args)
+
+# args_home ="/home/BCCRC.CA/ssubedi/projects/experiments/spruce_topic/2_cell_topic_v_beta/"
+# config = paste(args_home,"config.yaml",sep="") 
+# args = read_yaml(config)
+# model_id = paste(args_home,args$output,args$cell_topic$out,args$cell_topic$model_info,args$cell_topic$model_id,sep='')
+
+# topgenes_file = paste(model_id,"_cell_topic_top_5_genes_topic.tsv.gz",sep="")
+# df_tg = read.table(topgenes_file, sep = "\t", header=TRUE)
+
+# beta = paste(model_id,"_cell_topic_beta.tsv.gz",sep="")
+# beta_cols = read.table(paste(args_home,args$data,args$sample_id,'genes.csv.gz',sep=''),header=TRUE)
+# df_beta = read.table(beta, sep = "\t", header=TRUE)
+# colnames(df_beta) = beta_cols$X0
+
+
+# top_genes=TRUE
+# weightmat_lr_plot(df_beta,top_genes,topgenes_file)
