@@ -9,31 +9,33 @@ source("Util.R")
 
 
 
-weightmat_plot_lrpair <- function(df_tg,f) {
+weightmat_plot_lrpair <- function(df_lrpair,f) {
 
-df_tg = as.data.frame(df_tg)
-rownames(df_tg) = df_tg$X
-df_tg$X = NULL
+df_lrpair = as.data.frame(df_lrpair)
+rownames(df_lrpair) = df_lrpair$X
+df_lrpair$X = NULL
 
-row_order = row.order(df_tg)
+colnames(df_lrpair) = gsub("X","",as.character(colnames(df_lrpair)))
 
-df_tg_t = df_tg
-df_tg_t$topic = rownames(df_tg)
-df_tg_t = melt(df_tg_t)
-colnames(df_tg_t)=c('row','col','weight')
-col_order = col.order(df_tg_t,row_order)
+df_lrpair = t(df_lrpair)
 
-df_tg = df_tg[,col_order]
-df_tg = df_tg[row_order,]
 
-df_tg[df_tg < -20] = -20
-df_tg[df_tg > 20] = 20
+row_order = row.order(df_lrpair)
 
-colnames(df_tg) <- gsub("X","",colnames(df_tg))
+df_lrpair_t = df_lrpair
+df_lrpair_t = melt(df_lrpair_t)
+colnames(df_lrpair_t)=c('row','col','weight')
+col_order = col.order(df_lrpair_t,row_order)
+
+df_lrpair = df_lrpair[,col_order]
+df_lrpair = df_lrpair[row_order,]
+
+df_lrpair[df_lrpair < -20] = -20
+df_lrpair[df_lrpair > 20] = 20
 
 mat_colors <- colorRampPalette(brewer.pal(n = 7, name = "PuRd"))(100)
 
-p1 <- pheatmap(df_tg,color =colorRampPalette(c("navy", "white", "firebrick3"))(100),legend =TRUE,fontsize_row=4,fontsize_col=12)
+p1 <- pheatmap(t(df_lrpair),color =colorRampPalette(c("navy", "white", "firebrick3"))(100),legend =TRUE,fontsize_row=2,fontsize_col=5,cluster_rows=FALSE,cluster_cols=FALSE)
 
 ggsave(f,p1)
 
