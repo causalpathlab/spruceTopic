@@ -96,3 +96,35 @@ lr_pair_file = paste(it_model_id,'_it_beta_top_25_lrpair.csv.gz',sep="")
 df_lrpair = read.table(lr_pair_file,sep=',', header=TRUE)
 f = paste(it_model_id,"_it_beta_lr_pair_hmap.png",sep="")
 weightmat_plot_lrpair(df_lrpair,f)
+
+
+#########################################################
+
+source('fig_3_summary.R')
+summary_file = paste(it_model_id,'_it_model_summary.csv.gz',sep="")
+
+
+df_summary = read.table(summary_file,sep=',', header=TRUE)
+f = paste(it_model_id,"_it_model_summary.png",sep="")
+summary_plot_all(df_summary,f)
+
+source('fig_3_summary.R')
+df_summary = read.table(summary_file,sep=',', header=TRUE)
+df_others = df_summary[df_summary$celltype %in% c('PVL','Endothelial','T-cells','B-cells','Myeloid','CAFs','Plasmablasts','GSE156728-CD8'), ]
+f = paste(it_model_id,"_it_model_summary_others.png",sep="")
+summary_plot_all(df_others,f)
+
+source('fig_3_summary.R')
+df_summary = read.table(summary_file,sep=',', header=TRUE)
+df_normal = df_summary[df_summary$celltype %in% c('GSE164898','Normal Epithelial'), ]
+f = paste(it_model_id,"_it_model_summary_normal.png",sep="")
+summary_plot_all(df_normal,f)
+
+source('fig_3_summary.R')
+df_summary = read.table(summary_file,sep=',', header=TRUE)
+df_cancer = df_summary[df_summary$celltype %in% c('Cancer Epithelial'), ]
+f = paste(it_model_id,"_it_model_summary_cancer.png",sep="")
+summary_plot_all(df_cancer,f)
+
+
+#########################################################

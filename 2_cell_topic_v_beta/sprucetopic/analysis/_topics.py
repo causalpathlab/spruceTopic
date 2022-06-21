@@ -39,7 +39,7 @@ def topic_top_lr_genes(sp,top_n=5):
 	top_genes = generate_gene_vals(sp.interaction_topic.beta2,top_n,top_genes,'ligands')
 
 	df_top_genes = pd.DataFrame(top_genes,columns=['Topic','GeneType','Genes','Gene','Proportion'])
-	df_top_genes.to_csv(sp.model_id+'_ietm_top_'+str(top_n)+'_genes_topic.tsv.gz',sep='\t',index=False)
+	df_top_genes.to_csv(sp.interaction_topic.model_id+'_ietm_top_'+str(top_n)+'_genes_topic.tsv.gz',sep='\t',index=False)
 
 def topic_top_lr_pair_genes(sp,df_db,top_n=5):
 
@@ -133,77 +133,30 @@ def sample_cells_with_celltype(sp,cell_n=50):
 	return df_h_sample
 
 
-def topics_summary_v1(args):
-	
-	args_home = os.environ['args_home']
-	model_file = args_home+args.output+args.interaction_model['out']+args.interaction_model['mfile']
-
-	df_h_celltype = pd.read_csv(args_home+args.output+args.nbr_model['out']+args.nbr_model['mfile']+'_netm_h.tsv.gz',sep='\t',compression='gzip')
-
-	df_h_state = pd.read_csv(model_file+'_ietm_interaction_states.tsv.gz',sep='\t',compression='gzip')
-
+def get_topics(spr,df_kmeans):
+	df_h_state = spr.interaction_topic.neighbour_h
 	df_h_state['state'] = [ pd.Series(vals).value_counts().index[0] for indx,vals in df_h_state.iterrows()]
+	dflatent = pd.merge(df_h_state[['cell','state']],df_kmeans,how='left',on='cell')
+	return dflatent
 
+
+def topics_summary(spr,df_kmeans):
+
+	df_h_celltype = spr.cell_topic.h
 	df_h_celltype['topic'] = df_h_celltype.iloc[:,1:].idxmax(axis=1)
+
+	df_h_state = spr.interaction_topic.neighbour_h
+	df_h_state['state'] = [ pd.Series(vals).value_counts().index[0] for indx,vals in df_h_state.iterrows()]
 
 	dflatent = pd.merge(df_h_state[['cell','state']],df_h_celltype[['cell','topic']],how='left',on='cell')
 
-	dflatent['label'] = [x.split('_')[len(x.split('_'))-1] for x in dflatent['cell']]
+	dflatent = pd.merge(dflatent,df_kmeans[['cell','cluster']],how='left',on='cell')
 
-	f=args_home+args.input+'GSE176078_metadata.csv.gz'
-	dfm = pd.read_csv(f,compression='gzip')
-	dfm = dfm.rename(columns={'Unnamed: 0':'gse_cell'})
-
-	dflabel = pd.DataFrame()
-	dflabel['cell'] =  [x for x in dflatent[dflatent['label']=='GSE176078']['cell']]
-	dflabel['gse_cell'] =  [x.replace('_GSE176078','') for x in dflatent[dflatent['label']=='GSE176078']['cell']]
-	dflabel = pd.merge(dflabel,dfm,on='gse_cell',how='left')
-
-	dflatent = pd.merge(dflatent,dflabel,on='cell',how='left')
-	dflatent = dflatent[dflatent['label']=='GSE176078']
-
-	dflabel.to_csv(args_home+args.output+args.interaction_model['out']+args.interaction_model['mfile']+'_ietm_cell_label_topic_state_meta.tsv.gz',sep='\t',index=False,compression='gzip')
-
-def topics_summary(args):
-	
-	args_home = os.environ['args_home']
-	model_file = args_home+args.output+args.interaction_model['out']+args.interaction_model['mfile']
-
-	df_h_celltype = pd.read_csv(args_home+args.output+args.nbr_model['out']+args.nbr_model['mfile']+'_netm_h.tsv.gz',sep='\t',compression='gzip')
-
-	df_h_state = pd.read_csv(model_file+'_ietm_interaction_states.tsv.gz',sep='\t',compression='gzip')
-
-	df_h_state['state'] = [ pd.Series(vals).value_counts().index[0] for indx,vals in df_h_state.iterrows()]
-
-	df_h_celltype['topic'] = df_h_celltype.iloc[:,1:].idxmax(axis=1)
-
-	dflatent = pd.merge(df_h_state[['cell','state']],df_h_celltype[['cell','topic']],how='left',on='cell')
-
-	dflatent['label'] = [x.split('_')[len(x.split('_'))-1] for x in dflatent['cell']]
-
-	# f=args_home+args.input+'GSE176078_metadata.csv.gz'
-	f='/home/sishirsubedi/projects/spruce_topic/input/GSEmix/GSE176078_metadata.csv.gz'
-	dfl = pd.read_csv(f,compression='gzip')
-	dfl = dfl.rename(columns={'Unnamed: 0':'cell'})
-
-	dflabel = pd.DataFrame()
-	dflabel['l1'] =  [x for x in dflatent[dflatent['label']=='GSE176078']['cell']]
-	dflabel['l2'] =  [x.replace('_GSE176078','') for x in dflatent[dflatent['label']=='GSE176078']['cell']]
-	dflabel = pd.merge(dflabel,dfl,right_on='cell',left_on='l2',how='left')
-
-	label_index = 8
-	label = dfl.columns[label_index]
-
-	dflatent = pd.merge(dflatent,dflabel[['l1',label]],right_on='l1',left_on='cell',how='left')
-	dflatent[label] = dflatent[label].mask(dflatent[label].isna(), dflatent['label'])
-
-	dfsummary = dflatent.groupby([label,'topic','state']).count()
+	dfsummary = dflatent.groupby(['cluster','topic','state']).count()
 	dfsummary = dfsummary.reset_index()
-	dfsummary = dfsummary.iloc[:,:-2]
+	
+	return dfsummary
 
-	dfsummary = dfsummary.rename(columns={label:'label'})
-
-	dfsummary.to_csv(model_file+'model_summary.csv',index=False)
 
 def cancer_centric_view_lr(args):
 
@@ -269,4 +222,4 @@ def interaction_summary(sp,topics_prob):
 		if idx % 10000 == 0:
 			print(idx)
 	df = pd.DataFrame(summary,columns=['cell_i','cell_j','interaction_topic','interaction_probability'])
-	df.to_csv(sp.model_id+'_interaction_summary.tsv.gz',sep='\t',index=False,compression='gzip')
+	df.to_csv(sp.interaction_topic.model_id+'_interaction_summary.tsv.gz',sep='\t',index=False,compression='gzip')

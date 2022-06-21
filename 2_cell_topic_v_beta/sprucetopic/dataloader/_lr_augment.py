@@ -43,14 +43,14 @@ class load_data(pl.LightningDataModule):
 		self.device = device
 
 	def train_dataloader(self):
-		df_h = pd.read_csv(self.f_latent_h,sep='\t')
+		df_h = pd.read_csv(self.f_latent_h)
 		df_l = pd.read_pickle(self.f_l)
 		df_r = pd.read_pickle(self.f_r)
 		df_l = df_l[df_l['index'].isin(df_h['cell'].values)]
 		df_r = df_r[df_r['index'].isin(df_h['cell'].values)]
 
-		df_nbr = pd.read_pickle(self.f_neighbour)
-		nbrmat = torch.tensor(df_nbr.values.astype(np.compat.long),requires_grad=False).to(self.device)
+		df_nbr = pd.read_csv(self.f_neighbour)
+		nbrmat = torch.tensor(df_nbr.iloc[:,1:].values.astype(np.compat.long),requires_grad=False).to(self.device)
 
 		dflatent = pd.merge(df_l['index'],df_h,how='left',left_on='index',right_on='cell')
 		dflatent['cell'] = dflatent.iloc[:,2:].idxmax(axis=1)

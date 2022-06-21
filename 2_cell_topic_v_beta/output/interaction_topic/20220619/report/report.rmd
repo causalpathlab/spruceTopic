@@ -175,6 +175,8 @@ h13        2
 
 `r sprintf("![Loss plot](%s)", paste(params$it_model_id,'_it_model_loss.png',sep=''))`
 
+`r sprintf("![Interaction topic argmax](%s)", paste(params$it_model_id,'_it_h_argmax.png',sep=''))`
+
 `r sprintf("![Beta - top receptor genes](%s)", paste(params$it_model_id,'_it_beta_r_hmap_tp.png',sep=''))`
 
 `r sprintf("![Beta - all receptor genes](%s)", paste(params$it_model_id,'_it_beta_r_hmap_all.png',sep=''))`
@@ -184,3 +186,11 @@ h13        2
 `r sprintf("![Beta - all ligand genes](%s)", paste(params$it_model_id,'_it_beta_l_hmap_all.png',sep=''))`
 
 `r sprintf("![Beta - top lr pair genes](%s)", paste(params$it_model_id,'_it_beta_lr_pair_hmap.png',sep=''))`
+
+`r sprintf("![Model summary - cancer cells](%s)", paste(params$it_model_id,'_it_model_summary_cancer.png',sep=''))`
+
+`r sprintf("![Model summary - normal cells](%s)", paste(params$it_model_id,'_it_model_summary_normal.png',sep=''))`
+
+`r sprintf("![Model summary - others](%s)", paste(params$it_model_id,'_it_model_summary_others.png',sep=''))`
+
+`r sprintf("![Network plot](%s)", paste(params$it_model_id,'_it_model_network_plot.png',sep=''))`

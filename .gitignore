@@ -15,6 +15,7 @@
 *.log
 *.sh
 *.yaml
+*.rmd
 
 nohup.out
 

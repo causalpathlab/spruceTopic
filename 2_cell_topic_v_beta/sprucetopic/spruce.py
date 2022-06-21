@@ -12,7 +12,6 @@ class Spruce:
         self.data = self.data()
         self.cell_topic = self.cell_topic()
         self.interaction_topic = self.interaction_topic()
-        self.model_id = None
     
     class data:
         def __init__(self):
@@ -27,21 +26,21 @@ class Spruce:
             self.raw_r_data_genes = None
             self.raw_lr_data = None
 
-            self.neighbour = None
-
     class cell_topic:
         def __init__(self):
+            self.model_id = None
             self.model = None
             self.z = None
             self.h = None
             self.beta_mean = None
             self.beta_var = None
+            self.neighbour = None
 
     class interaction_topic:
         def __init__(self):
+            self.model_id = None
             self.model = None
-            self.z = None
-            self.h = None
+            self.neighbour_h = None
             self.beta1 = None
             self.beta2 = None
 
@@ -107,7 +106,7 @@ class Spruce:
     
     def run_interaction_topic(self,batch_size,epochs,layers1,layers2,latent_dims,input_dims1,input_dims2,device,f_loss):
 
-        dl = _lr_augment.load_data(self.cell_topic.h, self.data.raw_l_data, self.data.raw_r_data, self.data.raw_lr_data, self.data.neighbour, batch_size,device)
+        dl = _lr_augment.load_data(self.cell_topic.h, self.data.raw_l_data, self.data.raw_r_data, self.data.raw_lr_data, self.cell_topic.neighbour, batch_size,device)
 
         train_dataloader =  dl.train_dataloader()
 
@@ -170,7 +169,7 @@ class Spruce:
         df_r = df_r[df_r['index'].isin(df_h['cell'].values)]
         df_lr = self.data.raw_lr_data
         df_lr = df_lr.loc[df_l.columns[1:],df_r.columns[1:]]
-        df_nbr = self.data.neighbour
+        df_nbr = self.cell_topic.neighbour
 
         # device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
         device='cpu'
@@ -214,11 +213,11 @@ class Spruce:
         df_r = df_r[df_r['index'].isin(df_h['cell'].values)]
         df_lr = self.data.raw_lr_data
         df_lr = df_lr.loc[df_l.columns[1:],df_r.columns[1:]]
-        df_nbr = self.data.neighbour
+        df_nbr = self.cell_topic.neighbour
 
         # device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
         device='cpu'
-        nbrmat = torch.tensor(df_nbr.values.astype(np.compat.long),requires_grad=False).to(device)
+        nbrmat = torch.tensor(df_nbr.iloc[:,1:].values.astype(np.compat.long),requires_grad=False).to(device)
         lmat = torch.tensor(df_l.iloc[:,1:].values.astype(np.float32),requires_grad=False).to(device)
         rmat = torch.tensor(df_r.iloc[:,1:].values.astype(np.float32),requires_grad=False).to(device)
         lrmat = torch.tensor(df_lr.values.astype(np.float32),requires_grad=False).to(device)

@@ -7,42 +7,13 @@ import igraph
 import seaborn as sns
 
 
-def cell_interaction_network(args):
-	
+def cell_interaction_network(spr,df):
 
-	args_home = os.environ['args_home']
+	dfs = df.groupby('cluster', group_keys=False).apply(pd.DataFrame.sample,frac=0.1)
+	dfs['cluster'] = [str(x)+'-'+y for x,y in zip(dfs['cluster'],dfs['cluster_celltype'])]
 
-	model_file = args_home+args.output+args.lr_model['out']+args.lr_model['mfile']
 
-	df = pd.read_csv(model_file+'_ietm_interaction_states.tsv.gz',sep='\t',compression='gzip')
-	df['state'] = [ pd.Series(vals).value_counts().index[0] for indx,vals in df.iterrows()]
-	df['label'] = [x.split('_')[len(x.split('_'))-1] for x in df['cell']]
-
-	# meta_path = args_home+ args.input+args.metadata
-	f='/home/sishirsubedi/projects/spruce_topic/input/GSEmix/GSE176078_metadata.csv.gz'
-	df_meta = pd.read_csv(f)
-	df_meta = df_meta.rename(columns={'Unnamed: 0':'cell'})
-
-	dflabel = pd.DataFrame()
-	dflabel['l1'] =  [x for x in df[df['label']=='GSE176078']['cell']]
-	dflabel['l2'] =  [x.replace('_GSE176078','') for x in df[df['label']=='GSE176078']['cell']]
-
-	print(dflabel.columns)
-	print(df_meta.columns)
-	dflabel = pd.merge(dflabel,df_meta,right_on='cell',left_on='l2',how='left')
-	label = df_meta.columns[8]
-
-	df = pd.merge(df,dflabel[['l1',label]],right_on='l1',left_on='cell',how='left')
-	df[label] = df[label].mask(df[label].isna(), df['label'])
-
-	df = df.dropna()
-	dfs = df.groupby('label', group_keys=False).apply(pd.DataFrame.sample,frac=0.1)
-	# dfs = df.groupby('label', group_keys=False).apply(pd.DataFrame.sample,100)
-
-	dfs = dfs.drop(columns=['l1','label'])
-	dfs = dfs.rename(columns={label:'label'})
-
-	cells = [x for x in list(dfs.label.values)]
+	cells = [x for x in list(dfs['cluster'].values)]
 
 	states = ['state'+str(int(x)) for x in dfs['state'].unique()]
 	print(states)
@@ -58,7 +29,7 @@ def cell_interaction_network(args):
 
 	gedges = []
 	for i,row in dfs.iterrows():
-		cell = row.label
+		cell = row.cluster
 		s = int(row['state'])
 		interaction_state = 'state'+str(s)
 		epair = cell + '_' + interaction_state
@@ -71,7 +42,7 @@ def cell_interaction_network(args):
 			g.es[eid]['weight'] += 0.1
 
 
-	to_delete_eids = [e.index for e in g.es if e['weight']<5]
+	to_delete_eids = [e.index for e in g.es if e['weight']<10]
 	g.delete_edges(to_delete_eids)
 
 	to_delete_vids = [v.index for v in g.vs if v.degree()<1]
@@ -81,8 +52,8 @@ def cell_interaction_network(args):
 	for v in g.vs:
 		if "state" not in v['name']: 
 			v['attr'] = 'cell'
-			v['size'] = 50
-			v['color'] = 'deeppink2'
+			v['size'] = 10
+			v['color'] = 'aqua'
 			v['shape'] = 'circle'
 		else: 
 			v['attr'] = 'state'
@@ -93,13 +64,14 @@ def cell_interaction_network(args):
 
 	visual_style={}
 	visual_style["vertex_label"] = [ x.replace('state','s') for x in g.vs["name"]]
-	visual_style["vertex_size"] = g.vs['size']
-	visual_style["vertex_color"] = g.vs['color']
-	visual_style["vertex_label_size"] = 12
+	# visual_style["vertex_size"] = g.vs['size']
+	# visual_style["vertex_color"] = g.vs['color']
+	visual_style["vertex_label_size"] = 10
 	visual_style["edge_color"] = g.es['color']
 	visual_style["edge_width"] = [x/7 for x in g.es['weight']]
-	visual_style["layout"] = g.layout_kamada_kawai()
-	igraph.plot(g, target=model_file+"_network_10.pdf",**visual_style,margin=40)
+	# visual_style["layout"] = g.layout_circle()
+	visual_style["layout"] = g.layout_reingold_tilford_circular()
+	igraph.plot(g, target=spr.interaction_topic.model_id+"_it_model_network_plot.png",**visual_style,margin=40)
 
 def lr_network(sp):
 	for i in range(25):	
