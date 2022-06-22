@@ -34,10 +34,10 @@ df_beta[df_beta < -20] = -20
 df_beta[df_beta > 20] = 20
 
 if(p_top_genes){
-p1 <- pheatmap(df_beta,color = colorRampPalette(c("navy", "white", "firebrick3"))(100),fontsize_row=8,fontsize_col=8,cluster_rows=FALSE,cluster_cols=FALSE,show_colnames=T)
+p1 <- pheatmap(t(df_beta),color = colorRampPalette(c("navy", "white", "firebrick3"))(100),fontsize_row=6,fontsize_col=8,cluster_rows=FALSE,cluster_cols=FALSE,show_rownames=T)
 }
 else{
-p1 <- pheatmap(df_beta,color = colorRampPalette(c("navy", "white", "firebrick3"))(100),fontsize_row=8,fontsize_col=8,cluster_rows=FALSE,cluster_cols=FALSE,show_colnames=F)
+p1 <- pheatmap(t(df_beta),color = colorRampPalette(c("navy", "white", "firebrick3"))(100),fontsize_row=6,fontsize_col=8,cluster_rows=FALSE,cluster_cols=FALSE,show_rownames=F)
 }
 
 ggsave(f,p1)

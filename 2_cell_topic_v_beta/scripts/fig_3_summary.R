@@ -45,6 +45,6 @@ summary_plot_all <- function(df,f) {
 
     }
 
-  stplt <- grid.arrange(grobs=plotlist,ncol=1)
+  stplt <- grid.arrange(grobs=plotlist,ncol=4)
   ggsave(f,stplt,width =10, height = 5)
 }

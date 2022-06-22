@@ -30,16 +30,12 @@ def topic_top_genes(sp,top_n):
 
 
 def topic_top_lr_genes(sp,top_n=5):
-
-	sp.interaction_topic.beta1.columns = sp.data.raw_r_data_genes
-	sp.interaction_topic.beta2.columns = sp.data.raw_l_data_genes
-
 	top_genes = []
-	top_genes = generate_gene_vals(sp.interaction_topic.beta1,top_n,top_genes,'receptors')
-	top_genes = generate_gene_vals(sp.interaction_topic.beta2,top_n,top_genes,'ligands')
+	top_genes = generate_gene_vals(sp.interaction_topic.beta_l,top_n,top_genes,'receptors')
+	top_genes = generate_gene_vals(sp.interaction_topic.beta_r,top_n,top_genes,'ligands')
 
-	df_top_genes = pd.DataFrame(top_genes,columns=['Topic','GeneType','Genes','Gene','Proportion'])
-	df_top_genes.to_csv(sp.interaction_topic.model_id+'_ietm_top_'+str(top_n)+'_genes_topic.tsv.gz',sep='\t',index=False)
+	return pd.DataFrame(top_genes,columns=['Topic','GeneType','Genes','Gene','Proportion'])
+	
 
 def topic_top_lr_pair_genes(sp,df_db,top_n=5):
 
@@ -158,58 +154,21 @@ def topics_summary(spr,df_kmeans):
 	return dfsummary
 
 
-def cancer_centric_view_lr(args):
+def get_cell_neighbours_states(df_nbr,df_its,df):
 
-	args_home = os.environ['args_home']
-	l_fname = args_home+args.input+args.raw_l_data_genes
-	r_fname = args_home+args.input+args.raw_r_data_genes
+	cancer_cells = df[df['cluster_celltype']=='Cancer Epithelial']['cell'].values
+	cc_idxs = df_nbr[df_nbr['cell'].isin(cancer_cells)].index
 
-	ligands = pd.read_pickle(l_fname)[0].values
-	receptors = pd.read_pickle(r_fname)[0].values
+	res = []
+	for idx in cc_idxs:
+		cell = df_nbr.iloc[idx,0]
+		nbr_idxs = df_nbr.iloc[idx,1:].values
+		nbr_states = df_its.iloc[idx,1:].values
+		nbr_cells = df_its.iloc[nbr_idxs]['cell'].values
+		res.append([cell,nbr_cells,nbr_states])
 
-	df_beta1 = pd.read_csv(args_home+args.output+args.interaction_model['out']+args.interaction_model['mfile']+'_ietm_beta1.tsv.gz',sep='\t',compression='gzip')
-	df_beta2 = pd.read_csv(args_home+args.output+args.interaction_model['out']+args.interaction_model['mfile']+'_ietm_beta2.tsv.gz',sep='\t',compression='gzip')
+	return res
 
-	df_beta1.columns = receptors
-	df_beta2.columns = ligands
-
-	top_r_genes = []
-	top_r_genes = generate_gene_vals(df_beta1.iloc[[5],:],10,top_r_genes,'receptors')
-	top_r_genes = pd.Series([x[3] for x in top_r_genes]).unique()
-
-	top_l_genes = []
-	top_l_genes = generate_gene_vals(df_beta2.iloc[[5],:],10,top_l_genes,'ligands')
-	top_l_genes = pd.Series([x[3] for x in top_l_genes]).unique()
-
-
-	dfm = pd.read_csv(args_home+args.output+args.interaction_model['out']+args.interaction_model['mfile']+'_ietm_cell_label_topic_state_meta.tsv.gz',sep='\t',compression='gzip')
-	# cancer_cells = dfm[dfm.celltype_major=='Cancer Epithelial']['cell'].values
-	cancer_cells = dfm[dfm.celltype_major.isin(['Cancer Epithelial','T-cells','B-cells'])]['cell'].values
-
-	df_h_state = pd.read_csv(args_home+args.output+args.interaction_model['out']+args.interaction_model['mfile']+'_ietm_interaction_states.tsv.gz',sep='\t',compression='gzip')
-	df_h_state['state'] = [ pd.Series(vals).value_counts().index[0] for indx,vals in df_h_state.iterrows()]
-	df_h_state = df_h_state[['cell','state']]
-	# df_h_state = df_h_state[df_h_state['cell'].isin(cancer_cells)]
-
-	l_fname = args_home+args.input+args.raw_l_data
-	r_fname = args_home+args.input+args.raw_r_data
-
-	df_l = pd.read_pickle(l_fname)
-	df_r = pd.read_pickle(r_fname)
-
-	df_l = df_l[df_l['index'].isin(cancer_cells)]
-	df_r = df_r[df_r['index'].isin(cancer_cells)]
-
-	df_l = pd.merge(df_l,df_h_state,right_on='cell',left_on='index',how='left')
-	df_r = pd.merge(df_r,df_h_state,right_on='cell',left_on='index',how='left')
-
-
-	df_l = df_l[['cell','state']+list(top_l_genes)]
-	df_r = df_r[['cell','state']+list(top_r_genes)]
-
-	model_file = args_home+args.output+args.interaction_model['out']+args.interaction_model['mfile']
-	df_l.to_csv(model_file+'_s5_cv_ligands.tsv.gz',index=False,sep='\t',compression='gzip')
-	df_r.to_csv(model_file+'_s5_cv_receptors.tsv.gz',index=False,sep='\t',compression='gzip')
 
 def interaction_summary(sp,topics_prob):
 	summary = []

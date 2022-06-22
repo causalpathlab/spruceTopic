@@ -41,8 +41,8 @@ class Spruce:
             self.model_id = None
             self.model = None
             self.neighbour_h = None
-            self.beta1 = None
-            self.beta2 = None
+            self.beta_l = None
+            self.beta_r = None
 
     def run_cell_topic(self,batch_size,l_rate,epochs,layers,latent_dims,device):
 

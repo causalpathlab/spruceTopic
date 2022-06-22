@@ -23,6 +23,7 @@ df_lrpair = t(df_lrpair)
 row_order = row.order(df_lrpair)
 
 df_lrpair_t = df_lrpair
+# df_lrpair_t$topic = rownames(df_lrpair)
 df_lrpair_t = melt(df_lrpair_t)
 colnames(df_lrpair_t)=c('row','col','weight')
 col_order = col.order(df_lrpair_t,row_order)

@@ -194,3 +194,6 @@ h13        2
 `r sprintf("![Model summary - others](%s)", paste(params$it_model_id,'_it_model_summary_others.png',sep=''))`
 
 `r sprintf("![Network plot](%s)", paste(params$it_model_id,'_it_model_network_plot.png',sep=''))`
+
+`r sprintf("![Cancer centric view](%s)", paste(params$it_model_id,'_it_ccview_stplot.png',sep=''))`
+

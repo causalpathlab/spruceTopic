@@ -1,11 +1,5 @@
-
-
 #########################################################
-
-#########################################################
-
-
-################# set up 
+################################ set up 
 args_home ="/home/BCCRC.CA/ssubedi/projects/experiments/spruce_topic/2_cell_topic_v_beta/"
 setwd(paste(args_home,'scripts/',sep=''))
 library(yaml)
@@ -49,43 +43,50 @@ top_genes=TRUE
 weightmat_plot(df_beta,top_genes,df_tg)
 
 
+
+#########################################################
+##############    interaction topic
+#########################################################
+
+
 #########################################################
 source('fig_2_lr_loss.R')
 
-plot_loss(paste(model_id,'_it_model_lossm.txt.gz',sep=''),paste(model_id,'_it_model_loss.png',sep=''))
+plot_loss(paste(it_model_id,'_it_model_lossm.txt.gz',sep=''),paste(it_model_id,'_it_model_loss.png',sep=''))
 
 
 
 #########################################################
 source('fig_2_lr_hmap_v2.R')
-topgenes_file = paste(model_id,"_it_beta_weight_top_5_genes.csv.gz",sep="")
+topgenes_file = paste(it_model_id,"_it_beta_weight_top_10_genes.csv.gz",sep="")
 
-beta = paste(model_id,"_it_beta_l.tsv.gz",sep="")
+beta = paste(it_model_id,"_it_beta_l.csv.gz",sep="")
 beta_cols = read.table(paste(args_home,args$data,args$sample_id,'receptors.csv.gz',sep=''),header=TRUE)
-df_beta = read.table(beta, sep = "\t", header=TRUE)
+df_beta = read.table(beta, sep = ",", header=TRUE)
 colnames(df_beta) = beta_cols$X0
 
-f = paste(model_id,"_it_beta_r_hmap_tp.png",sep="")
+f = paste(it_model_id,"_it_beta_r_hmap_tp.png",sep="")
 tag='receptors'
 top_genes=TRUE
 weightmat_lr_plot(df_beta,tag,top_genes,topgenes_file,f)
 
-f = paste(model_id,"_it_beta_r_hmap_all.png",sep="")
+f = paste(it_model_id,"_it_beta_r_hmap_all.png",sep="")
 top_genes=FALSE
+weightmat_lr_plot(df_beta,tag,top_genes,topgenes_file,f)
 
 #########################################################
 
-beta = paste(model_id,"_it_beta_r.tsv.gz",sep="")
+beta = paste(it_model_id,"_it_beta_r.csv.gz",sep="")
 beta_cols = read.table(paste(args_home,args$data,args$sample_id,'ligands.csv.gz',sep=''),header=TRUE)
-df_beta = read.table(beta, sep = "\t", header=TRUE)
+df_beta = read.table(beta, sep = ",", header=TRUE)
 colnames(df_beta) = beta_cols$X0
 
-f = paste(model_id,"_it_beta_l_hmap_tp.png",sep="")
+f = paste(it_model_id,"_it_beta_l_hmap_tp.png",sep="")
 tag='ligands'
 top_genes=TRUE
 weightmat_lr_plot(df_beta,tag,top_genes,topgenes_file,f)
 
-f = paste(model_id,"_it_beta_l_hmap_all.png",sep="")
+f = paste(it_model_id,"_it_beta_l_hmap_all.png",sep="")
 top_genes=FALSE
 weightmat_lr_plot(df_beta,tag,top_genes,topgenes_file,f)
 
@@ -128,3 +129,10 @@ summary_plot_all(df_cancer,f)
 
 
 #########################################################
+
+
+
+source('fig_4_ccview.R')
+df = read.table(paste(it_model_id,'_it_cancercells_interactions.csv.gz',sep=""),sep=',', header=TRUE)
+f = paste(it_model_id,"_it_ccview_stplot.png",sep="")
+ccv_struct_plot(df,f)
