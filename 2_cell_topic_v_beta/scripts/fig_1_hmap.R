@@ -8,7 +8,7 @@ source("Util.R")
 options(repr.plot.width = 7, repr.plot.height = 10, repr.plot.res = 300)
 
 
-weightmat_plot <- function(df_beta,p_top_genes,df_tg) {
+weightmat_plot <- function(df_beta,p_top_genes,df_tg,f) {
 
 if (p_top_genes){
 top_genes = unique(df_tg$Gene)
@@ -31,12 +31,12 @@ df_beta[df_beta < -20] = -20
 df_beta[df_beta > 20] = 20
 
 if(p_top_genes){
-p1 <- pheatmap(df_beta,color = colorRampPalette(c("navy", "white", "firebrick3"))(100),fontsize_row=8,fontsize_col=4,cluster_rows=FALSE,cluster_cols=FALSE,show_colnames=T)
+p1 <- pheatmap(df_beta,color = colorRampPalette(c("navy", "white", "firebrick3"))(100),fontsize_row=8,fontsize_col=3,cluster_rows=FALSE,cluster_cols=FALSE,show_colnames=T)
 }
 else{
 p1 <- pheatmap(df_beta,color = colorRampPalette(c("navy", "white", "firebrick3"))(100),fontsize_row=8,fontsize_col=8,cluster_rows=FALSE,cluster_cols=FALSE,show_colnames=F)
 }
-
+ggsave(f,p1)
 }
 
 # args_home ="/home/BCCRC.CA/ssubedi/projects/experiments/spruce_topic/2_cell_topic_v_beta/"

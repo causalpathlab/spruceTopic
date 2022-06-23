@@ -169,6 +169,65 @@ def get_cell_neighbours_states(df_nbr,df_its,df):
 
 	return res
 
+def plt_cn(spr,df,cslist):
+
+    import matplotlib.pylab as plt
+    import colorcet as cc
+    import seaborn as sns
+    plt.rcParams['figure.figsize'] = [15, 4]
+    plt.rcParams['figure.autolayout'] = True
+
+    for i in cslist:
+        celltype = i[0]
+        state = i[1]
+        df_sel = df[df['cluster_celltype'] == celltype]
+        df_sel = df_sel.drop_duplicates(subset=['cancer_cell','state'])
+
+        # state = df.state.value_counts().head(1).index[0]
+        dfl,dfr = get_cell_neighbours_states_lr(spr,df_sel[df_sel['state']==state],state)
+        fig, ax = plt.subplots(2,1) 
+        sns.heatmap(pd.DataFrame(dfl),annot=False,ax=ax[0])
+        ax[0].set_title('Cancer_'+celltype+'_ligands')
+        sns.heatmap(pd.DataFrame(dfr),annot=False,ax=ax[1])
+        ax[1].set_title('Cancer_'+celltype+'_receptors')
+        plt.savefig(spr.interaction_topic.model_id+'_cancer_'+celltype+'_state_'+str(state)+'_lr.png')
+        plt.close()
+
+
+def get_cell_neighbours_states_lr(spr,df,state):
+	df_cancer_l = spr.data.raw_l_data[spr.data.raw_l_data['index'].isin(df['cancer_cell'].values)]
+	df_cancer_r = spr.data.raw_r_data[spr.data.raw_r_data['index'].isin(df['cancer_cell'].values)]
+
+	df_nbr_l = spr.data.raw_l_data[spr.data.raw_l_data['index'].isin(df['nbr'].values)]
+	df_nbr_r = spr.data.raw_r_data[spr.data.raw_r_data['index'].isin(df['nbr'].values)]
+
+	df_cancer_l.iloc[:,1:] = df_cancer_l.iloc[:,1:].div(df_cancer_l.iloc[:,1:].sum(axis=1), axis=0)
+	df_cancer_r.iloc[:,1:] = df_cancer_r.iloc[:,1:].div(df_cancer_r.iloc[:,1:].sum(axis=1), axis=0)
+
+	df_nbr_l.iloc[:,1:] = df_nbr_l.iloc[:,1:].div(df_nbr_l.iloc[:,1:].sum(axis=1), axis=0)
+	df_nbr_r.iloc[:,1:] = df_nbr_r.iloc[:,1:].div(df_nbr_r.iloc[:,1:].sum(axis=1), axis=0)
+
+	df_cancer_l = df_cancer_l.sample(n=df_nbr_l.shape[0])
+	df_cancer_r = df_cancer_r.sample(n=df_nbr_r.shape[0])
+
+
+	top_r = list(spr.interaction_topic.beta_l.iloc[state,:].sort_values(ascending=False).head(25).index)
+	top_l = list(spr.interaction_topic.beta_r.iloc[state,:].sort_values(ascending=False).head(25).index)
+	
+	df_cancer_l = df_cancer_l.loc[:,top_l]
+	df_cancer_r = df_cancer_r.loc[:,top_r]
+	df_nbr_l = df_nbr_l.loc[:,top_l]
+	df_nbr_r = df_nbr_r.loc[:,top_r]
+
+	df_cancer_l = df_cancer_l.mean()
+	df_cancer_r = df_cancer_r.mean()
+	df_nbr_l = df_nbr_l.mean()
+	df_nbr_r = df_nbr_r.mean()
+
+	dfl = pd.DataFrame([df_cancer_l,df_nbr_l],index=['cancer','nbr'])
+	dfr = pd.DataFrame([df_cancer_r,df_nbr_r],index=['cancer','nbr'])
+
+	return dfl,dfr
 
 def interaction_summary(sp,topics_prob):
 	summary = []

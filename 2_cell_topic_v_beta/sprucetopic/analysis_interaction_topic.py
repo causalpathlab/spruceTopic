@@ -109,10 +109,38 @@ res = _topics.get_cell_neighbours_states(df_nbr,df_its,df)
 df_res = pd.DataFrame(res,columns=['cancer_cell','nbr','state'])
 df_res = df_res.explode(['nbr','state'])
 df_res = pd.merge(df_res,df[['cell','cluster','cluster_celltype']],left_on='nbr',right_on='cell',how='left')
-df_res = df_res[df_res['cluster_celltype'] != 'Cancer Epithelial']
-df_res_grp = df_res.groupby(['cluster_celltype','state'])['state'].size().rename('count').reset_index()
-##normalize
-celltype_sum = dict(df_res_grp.groupby('cluster_celltype')['count'].sum())
-df_res_grp['ncount'] = [x/celltype_sum[y] for x,y in zip(df_res_grp['count'],df_res_grp['cluster_celltype'])]
+df_res.to_csv(spr.interaction_topic.model_id+'_it_model_all_topics_cancer_cells.csv.gz',index=False,compression='gzip')
 
-df_res_grp.to_csv(spr.interaction_topic.model_id+'_it_cancercells_interactions.csv.gz',index=False,compression='gzip')
+
+##### look at non cancer neighbours of cancer cells and check state distribution 
+df=pd.read_csv(spr.interaction_topic.model_id+'_it_model_all_topics_cancer_cells.csv.gz',compression='gzip')
+
+df = df[df['cluster_celltype'] != 'Cancer Epithelial']
+df_grp = df.groupby(['cluster_celltype','state'])['state'].size().rename('count').reset_index()
+##normalize
+celltype_sum = dict(df_grp.groupby('cluster_celltype')['count'].sum())
+df_grp['ncount'] = [x/celltype_sum[y] for x,y in zip(df_grp['count'],df_grp['cluster_celltype'])]
+df_grp.to_csv(spr.interaction_topic.model_id+'_it_cancercells_interactions.csv.gz',index=False,compression='gzip')
+
+### look at cancer neighbours of cancer cells
+
+
+from analysis import _topics
+import matplotlib.pylab as plt
+import colorcet as cc
+import seaborn as sns
+plt.rcParams['figure.figsize'] = [15, 4]
+plt.rcParams['figure.autolayout'] = True
+
+df=pd.read_csv(spr.interaction_topic.model_id+'_it_model_all_topics_cancer_cells.csv.gz',compression='gzip')
+
+cslist = [ 
+('Normal Epithelial',10),
+('Normal Epithelial',4),
+('B-cells',22),
+('T-cells',22),
+('PVL',18),
+('Myeloid',24),
+('Endothelial',2)
+]
+_topics.plt_cn(spr,df,cslist)

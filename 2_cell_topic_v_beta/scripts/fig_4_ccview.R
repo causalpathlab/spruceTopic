@@ -5,6 +5,8 @@ library(pheatmap)
 library(RColorBrewer)
 library(Polychrome)
 library(randomcoloR)
+source("Util.R")
+
 
 ccv_struct_plot <- function(df,f) {
 
@@ -44,3 +46,28 @@ ggplot(df, aes(x=cluster_celltype, y=ncount,fill=as.factor(state))) +
 ggsave(f,p,width = 60, height = 20,limitsize=F)
 }
 
+cancer_nbr_lr_plot <- function(df,f) {
+
+
+df = as.data.frame(df)
+rownames(df) = df$index
+df$index = NULL
+
+row_order = row.order(df)
+
+df_t = df
+df_t$topic = rownames(df)
+df_t = melt(df_t)
+colnames(df_t)=c('row','col','weight')
+col_order = col.order(df_t,row_order)
+
+df = df[,col_order]
+df = df[row_order,]
+
+df = df + 1
+df = log10(df)
+
+p1 <- pheatmap(df,color = colorRampPalette(c("navy", "white", "firebrick3"))(100),fontsize_row=6,fontsize_col=8,cluster_rows=FALSE,cluster_cols=FALSE,show_rownames=T,show_colnames=T)
+
+ggsave(f,p1)
+}

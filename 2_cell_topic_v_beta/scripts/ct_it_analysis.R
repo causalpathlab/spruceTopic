@@ -26,21 +26,21 @@ struct_plot(df_h,paste(model_id,'_ct_struct_plot_kmeans_cluster.png',sep=''))
 
 
 source('../scripts/fig_1_hmap.R')
-topgenes_file = paste(model_id,"_cell_topic_top_5_genes_topic.tsv.gz",sep="")
-df_tg = read.table(topgenes_file, sep = "\t", header=TRUE)
+topgenes_file = paste(ct_model_id,"_ct_beta_weight_top_5_genes.csv.gz",sep="")
+df_tg = read.table(topgenes_file, sep = ",", header=TRUE)
 
-beta = paste(model_id,"_cell_topic_beta.tsv.gz",sep="")
+beta = paste(ct_model_id,"_ct_beta_mean.csv.gz",sep="")
 beta_cols = read.table(paste(args_home,args$data,args$sample_id,'genes.csv.gz',sep=''),header=TRUE)
-df_beta = read.table(beta, sep = "\t", header=TRUE)
+df_beta = read.table(beta, sep = ",", header=TRUE)
 colnames(df_beta) = beta_cols$X0
 
+# f = paste(ct_model_id,"_ct_beta_hmap_all.png",sep="")
+# top_genes=FALSE
+# weightmat_plot(df_beta,top_genes,df_tg,f)
 
-top_genes=FALSE
-weightmat_plot(df_beta,top_genes,df_tg)
-
-
+f = paste(ct_model_id,"_ct_beta_hmap_tp.png",sep="")
 top_genes=TRUE
-weightmat_plot(df_beta,top_genes,df_tg)
+weightmat_plot(df_beta,top_genes,df_tg,f)
 
 
 
@@ -130,9 +130,12 @@ summary_plot_all(df_cancer,f)
 
 #########################################################
 
-
-
 source('fig_4_ccview.R')
 df = read.table(paste(it_model_id,'_it_cancercells_interactions.csv.gz',sep=""),sep=',', header=TRUE)
 f = paste(it_model_id,"_it_ccview_stplot.png",sep="")
 ccv_struct_plot(df,f)
+
+source('fig_4_ccview.R')
+df = read.table(paste(it_model_id,'_it_cancer_normal_cl.csv.gz',sep=""),sep=',', header=TRUE)
+f = paste(it_model_id,"_it_ccview_cl.png",sep="")
+cancer_nbr_lr_plot(df,f)
