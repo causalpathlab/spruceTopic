@@ -105,27 +105,26 @@ source('fig_3_summary.R')
 summary_file = paste(it_model_id,'_it_model_summary.csv.gz',sep="")
 
 
-df_summary = read.table(summary_file,sep=',', header=TRUE)
-f = paste(it_model_id,"_it_model_summary.png",sep="")
-summary_plot_all(df_summary,f)
-
 source('fig_3_summary.R')
 df_summary = read.table(summary_file,sep=',', header=TRUE)
 df_others = df_summary[df_summary$celltype %in% c('PVL','Endothelial','T-cells','B-cells','Myeloid','CAFs','Plasmablasts','GSE156728-CD8'), ]
 f = paste(it_model_id,"_it_model_summary_others.png",sep="")
-summary_plot_all(df_others,f)
+col=4
+summary_plot_all(df_others,f,col)
 
 source('fig_3_summary.R')
 df_summary = read.table(summary_file,sep=',', header=TRUE)
 df_normal = df_summary[df_summary$celltype %in% c('GSE164898','Normal Epithelial'), ]
 f = paste(it_model_id,"_it_model_summary_normal.png",sep="")
-summary_plot_all(df_normal,f)
+col=2
+summary_plot_all(df_normal,f,col)
 
 source('fig_3_summary.R')
 df_summary = read.table(summary_file,sep=',', header=TRUE)
 df_cancer = df_summary[df_summary$celltype %in% c('Cancer Epithelial'), ]
 f = paste(it_model_id,"_it_model_summary_cancer.png",sep="")
-summary_plot_all(df_cancer,f)
+col=1
+summary_plot_all(df_cancer,f,col)
 
 
 #########################################################
@@ -135,7 +134,7 @@ df = read.table(paste(it_model_id,'_it_cancercells_interactions.csv.gz',sep=""),
 f = paste(it_model_id,"_it_ccview_stplot.png",sep="")
 ccv_struct_plot(df,f)
 
-source('fig_4_ccview.R')
-df = read.table(paste(it_model_id,'_it_cancer_normal_cl.csv.gz',sep=""),sep=',', header=TRUE)
-f = paste(it_model_id,"_it_ccview_cl.png",sep="")
-cancer_nbr_lr_plot(df,f)
+# source('fig_4_ccview.R')
+# df = read.table(paste(it_model_id,'_it_cancer_normal_cl.csv.gz',sep=""),sep=',', header=TRUE)
+# f = paste(it_model_id,"_it_ccview_cl.png",sep="")
+# cancer_nbr_lr_plot(df,f)

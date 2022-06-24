@@ -130,7 +130,7 @@ def sample_cells_with_celltype(sp,cell_n=50):
 
 
 def get_topics(spr,df_kmeans):
-	df_h_state = spr.interaction_topic.neighbour_h
+	df_h_state = spr.interaction_topic.neighbour_h.copy()
 	df_h_state['state'] = [ pd.Series(vals).value_counts().index[0] for indx,vals in df_h_state.iterrows()]
 	dflatent = pd.merge(df_h_state[['cell','state']],df_kmeans,how='left',on='cell')
 	return dflatent
@@ -138,10 +138,10 @@ def get_topics(spr,df_kmeans):
 
 def topics_summary(spr,df_kmeans):
 
-	df_h_celltype = spr.cell_topic.h
+	df_h_celltype = spr.cell_topic.h.copy()
 	df_h_celltype['topic'] = df_h_celltype.iloc[:,1:].idxmax(axis=1)
 
-	df_h_state = spr.interaction_topic.neighbour_h
+	df_h_state = spr.interaction_topic.neighbour_h.copy()
 	df_h_state['state'] = [ pd.Series(vals).value_counts().index[0] for indx,vals in df_h_state.iterrows()]
 
 	dflatent = pd.merge(df_h_state[['cell','state']],df_h_celltype[['cell','topic']],how='left',on='cell')
@@ -190,7 +190,7 @@ def plt_cn(spr,df,cslist):
         ax[0].set_title('Cancer_'+celltype+'_ligands')
         sns.heatmap(pd.DataFrame(dfr),annot=False,ax=ax[1])
         ax[1].set_title('Cancer_'+celltype+'_receptors')
-        plt.savefig(spr.interaction_topic.model_id+'_cancer_'+celltype+'_state_'+str(state)+'_lr.png')
+        plt.savefig(spr.interaction_topic.model_id+'_cancer_'+celltype+'_lr.png')
         plt.close()
 
 

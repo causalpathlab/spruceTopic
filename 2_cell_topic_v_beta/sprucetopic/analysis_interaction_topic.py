@@ -30,8 +30,9 @@ Each row is one cell and argmax h for its 159 neighbours.
 '''
 df_its = spr.interaction_topic_states()
 
-# df_its.to_csv(spr.interaction_topic.model_id+'_it_h_argmax.csv.gz',index=False,compression='gzip')
-# df_its = pd.read_csv(spr.interaction_topic.model_id+'_it_h_argmax.csv.gz',compression='gzip')
+###save/load
+df_its.to_csv(spr.interaction_topic.model_id+'_it_h_argmax.csv.gz',index=False,compression='gzip')
+df_its = pd.read_csv(spr.interaction_topic.model_id+'_it_h_argmax.csv.gz',compression='gzip')
 
 df_hmax = pd.DataFrame(pd.Series(df_its.iloc[:,1:].values.flatten()).value_counts()).reset_index().rename(columns={'index':'topic',0:'argmax_count'})
 df_hmax = df_hmax.sort_values('argmax_count',ascending=False)
@@ -135,12 +136,12 @@ plt.rcParams['figure.autolayout'] = True
 df=pd.read_csv(spr.interaction_topic.model_id+'_it_model_all_topics_cancer_cells.csv.gz',compression='gzip')
 
 cslist = [ 
-('Normal Epithelial',10),
-('Normal Epithelial',4),
-('B-cells',22),
-('T-cells',22),
-('PVL',18),
-('Myeloid',24),
-('Endothelial',2)
+('Normal Epithelial',49),
+('Normal Epithelial',5),
+('B-cells',34),
+('T-cells',34),
+('PVL',14),
+('Myeloid',7),
+('Endothelial',16)
 ]
 _topics.plt_cn(spr,df,cslist)

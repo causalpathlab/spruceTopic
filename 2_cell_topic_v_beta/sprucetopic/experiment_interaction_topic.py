@@ -83,7 +83,7 @@ def run_model(experiment_home,args,mode):
 		torch.save(model.state_dict(), sp.interaction_topic.model_id + '_it_model.torch')
 
 		df = pd.read_csv(f_loss,header=None,sep='\t')
-		df.groupby(df.index//4500).mean().to_csv(sp.interaction_topic.model_id+'_it_lossm.txt.gz',compression='gzip',index=False,header=None)	
+		df.groupby(df.index//4500).mean().to_csv(sp.interaction_topic.model_id+'_it_model_lossm.txt.gz',compression='gzip',index=False,header=None)	
 
 
 

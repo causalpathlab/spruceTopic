@@ -8,7 +8,7 @@ library(ggh4x)
 setwd(box::file())
 source("Util.R")
 
-summary_plot_all <- function(df,f) {
+summary_plot_all <- function(df,f,col) {
 
   col_vector = c("#FFCC99","#993F00","#94FFB5","#8F7C00","#9DCC00","#C20088","#003380","#FFA405","#FFA8BB","#426600","#FF0010","#5EF1F2","#00998F","#740AFF","#990000","#F0A3FF", "#0075DC","#808080" ,"#4C005C","#2BCE48","#FFFF00")
   interaction_states = sort(unique(df$state))
@@ -45,6 +45,6 @@ summary_plot_all <- function(df,f) {
 
     }
 
-  stplt <- grid.arrange(grobs=plotlist,ncol=4)
+  stplt <- grid.arrange(grobs=plotlist,ncol=col)
   ggsave(f,stplt,width =10, height = 5)
 }
