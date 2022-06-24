@@ -73,46 +73,73 @@ def cell_interaction_network(spr,df):
 	visual_style["layout"] = g.layout_reingold_tilford_circular()
 	igraph.plot(g, target=spr.interaction_topic.model_id+"_it_model_network_plot.png",**visual_style,margin=40)
 
-def lr_network(sp):
-	for i in range(25):	
-		df = pd.read_csv(sp.model_id+'topic_'+str(i)+'_ietm_alpha.tsv.gz',sep='\t',compression='gzip')
+def interaction_statewise_lr_network(spr,states,df_db=None):
+
+	import matplotlib.pylab as plt
+	import colorcet as cc
+	import seaborn as sns
+	plt.rcParams['figure.figsize'] = [20,10]
+	plt.rcParams['figure.autolayout'] = True
+
+	fig, ax = plt.subplots(2,4) 
+	ax = ax.ravel()
+
+	ligands = list(spr.interaction_topic.beta_r.columns) 
+	receptors = list(spr.interaction_topic.beta_l.columns) 
+
+	for i,state in enumerate(states): 	
+		l_vals =  spr.interaction_topic.beta_r.iloc[state,:].values
+		r_vals =  spr.interaction_topic.beta_l.iloc[state,:].values
+
+		l = l_vals.reshape(l_vals.shape[0],1)
+		r = r_vals.reshape(r_vals.shape[0],1)
+		r = r.T
+		lr = l[:,None]+r
+		lr = lr.flatten()
+		lr = lr[lr.argsort()]
+		cuttoff = lr[-25:][0]
+		print('cuttoff is...'+str(cuttoff))
+
+
+		# lr_topic = []
+		# lr_pair = []
+		# for lr_p in df_db['lr_pair']:
+		# 	l,r = lr_p.split('_')[0],lr_p.split('_')[1]
+		# 	if l in df_beta2.columns and r in df_beta1.columns and \
+		# 		l in top_genes and r in top_genes:
+		# 		lr_topic.append((df_beta2[l]+df_beta1[r])/2)
+		# 		lr_pair.append(lr_p)
+		# df_lr_topic = pd.DataFrame(lr_topic)
+		# df_lr_topic.index=lr_pair
 		
-		# df.index = sp.data.raw_l_data_genes
-		# df.columns = sp.data.raw_r_data_genes
-
-		df.columns = sp.data.raw_l_data_genes
-		df.index = sp.data.raw_r_data_genes
-
-		th = 0.99
 		g = igraph.Graph()
-		# g.add_vertices(sp.data.raw_l_data_genes + sp.data.raw_r_data_genes)
 
-		added = []
-		for ligand in df.index:
-			for receptor in df.columns:
-				w = df.loc[ligand,receptor]
-				if w >= th:
-					if ligand not in added:
-						g.add_vertex(ligand)
-						added.append(ligand)
-					if receptor not in added:
-						g.add_vertex(receptor)
-						added.append(receptor)
-					g.add_edge(ligand,receptor,weight=w)
+		weights = []
+		for li,ligand in enumerate(ligands):
+			for ri,receptor in enumerate(receptors):
+				w = l_vals[li]+r_vals[ri]
+				if w>cuttoff:
+					g.add_vertex(ligand)
+					g.add_vertex(receptor)
+					g.add_edge(ligand,receptor,weight= w)
 		
-		# to_delete_vids = [v.index for v in g.vs if v.degree()<1]
-		# g.delete_vertices(to_delete_vids)
+
+		# to_delete_eids = [e.index for e in g.es if e['weight']<10]
+		# g.delete_edges(to_delete_eids)
+
+		to_delete_vids = [v.index for v in g.vs if v.degree()<1]
+		g.delete_vertices(to_delete_vids)
 
 		for v in g.vs:
-			if v['name'] in list(df.columns): 
+			if v['name'] in receptors: 
 				v['attr'] = 'receptor'
-				v['size'] = 50
-				v['color'] = 'deeppink2'
-				v['shape'] = 'circle'
+				v['size'] = 15
+				v['color'] = 'r'
+				v['shape'] = 'diamond'
 			else: 
 				v['attr'] = 'ligand'
-				v['size'] = 20
-				v['color'] = 'skyblue'
+				v['size'] = 10
+				v['color'] = 'b'
 				v['shape'] = 'square'
 			
 
@@ -120,6 +147,12 @@ def lr_network(sp):
 		visual_style["vertex_label"] =  g.vs['name']
 		visual_style["vertex_size"] = g.vs['size']
 		visual_style["vertex_color"] = g.vs['color']
-		visual_style["vertex_label_size"] = 12
-		visual_style["layout"] = g.layout_kamada_kawai()
-		igraph.plot(g, target=sp.model_id+'_lr_network_topic'+str(i)+'.pdf',**visual_style,margin=40,title='topic_'+str(i))
+		visual_style["vertex_label_size"] = 14
+		# visual_style["edge_width"] = [x/5 for x in g.es['weight']]
+		visual_style["layout"] = g.layout_circle()
+
+		ax[i].set_axis_off()
+		ax[i].set_title('interaction topic_'+str(state))
+		igraph.plot(g,target=ax[i],**visual_style,margin=20,title='interaction topic_'+str(state))
+		# igraph.plot(g, target=spr.interaction_topic.model_id+'_lr_network_it_state_'+str(state)+'.png',**visual_style,margin=40,)
+	plt.savefig(spr.interaction_topic.model_id+'_lr_network_it_states.png');plt.close()

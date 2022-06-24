@@ -78,6 +78,17 @@ _network.cell_interaction_network(spr,df)
 
 
 ##################################################################
+    # topic wise lr network graph
+##################################################################
+
+from analysis import _network
+
+df_db = pd.read_csv( experiment_home + spr.args.database+ spr.args.lr_db,sep='\t', usecols=['lr_pair'])
+_network.interaction_statewise_lr_network(spr,df_db)
+
+
+
+##################################################################
     # top genes
 ##################################################################
 
