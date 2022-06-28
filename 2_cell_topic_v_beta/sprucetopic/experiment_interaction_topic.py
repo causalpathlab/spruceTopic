@@ -122,6 +122,11 @@ def get_model(experiment_home,args):
 	sp.data.raw_lr_data = pd.read_pickle(experiment_home+args.data+args.sample_id+args.raw_lr_data)
 
 	sp.cell_topic.h = pd.read_csv(experiment_home+args.cell_topic['out']+args.cell_topic['model_id']+'_ct_h.csv.gz')
+	sp.cell_topic.beta_mean = pd.read_csv(experiment_home+args.cell_topic['out']+args.cell_topic['model_id']+'_ct_beta_mean.csv.gz')
+	sp.data.raw_data_genes = pd.read_pickle(experiment_home+args.data+args.sample_id+args.raw_data_genes)[0].values
+	sp.cell_topic.beta_mean.columns = sp.data.raw_data_genes
+
+
 	sp.cell_topic.neighbour = pd.read_csv(experiment_home+args.cell_topic['out']+args.cell_topic['model_id']+'_nbr_cellids.csv.gz')
 
 	batch_size = sp.args.interaction_topic['train']['batch_size']

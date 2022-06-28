@@ -29,44 +29,45 @@ header-includes:
  - \usepackage{amsmath}
  - \usepackage{amssymb}
  - \usepackage{setspace}\doublespacing
-
-params:
-  ct_model_id : '/home/BCCRC.CA/ssubedi/projects/experiments/spruce_topic/2_cell_topic_v_beta/output/cell_topic/2022061422_ld_50_ep_1000/GSE176078mix_2022061422'
-  it_model_id : '/home/BCCRC.CA/ssubedi/projects/experiments/spruce_topic/2_cell_topic_v_beta/output/interaction_topic/20220619/GSE176078mix_2022061422'
-
 ---
 
 ## Methods
 
 ### Data origins and preprocessing
-We generated a mixuture dataset combining three different recent breast cancer studies. The first one is a breast cancer dataset consisting of 100k cells from a single-cell atlas of human breast cancers (\cite{wu2021single}). The secod dataset consited of 48k cells from a single-cell atlas of the healthy breast tissues (\cite{bhat2021single}).The third dataset is 6k subset of breast cancer CD4 and CD8 T-cells from a pan-cancer atlas of tumour-infiltrating T cells profiled across 21 cancer types and 316 donors (\cite{zheng2021pan}). The total number of cells in the combined dataset was 155913. We filtered out genes detected in less than 3 cells along with mitochondrial gene and spike genes, which lead to 20265 genes in the final dataset. 
+We generated a mixuture dataset combining three different recent breast cancer studies. The first one is a breast cancer dataset consisting of 100k cells from a single-cell atlas of human breast cancers $\cite{wu2021single}. The secod dataset consited of 48k cells from a single-cell atlas of the healthy breast tissues (\cite{bhat2021single}).The third dataset is 6k subset of breast cancer CD4 and CD8 T-cells from a pan-cancer atlas of tumour-infiltrating T cells profiled across 21 cancer types and 316 donors (\cite{zheng2021pan}). The total number of cells in the combined dataset was 155913. We filtered out genes detected in less than 3 cells along with mitochondrial gene and spike genes, which lead to 20265 genes in the final dataset. 
 
+### The SPRUCE Model
+The SPRUCE model consists of two steps of topic modeling - first, we model cell topic to assign each cell into type/state, and then we use these cell topics to construct a set of neighbours and model interaction topic, which assigns each neighbour pair to unique interaction state. 
 
+### Cell topic analysis
+The cell topic modeling extends on the ideas of LDA. Consider a sample of cells ${i_{1},....,i_{N}}$ and a list of genes ${g_{1},....,g_{G}}$, where ${x_{i1},x_{i2},...,x_{iG}}$ are raw count data for $G$ genes in cell $i$. We assume that each cell count vector $X_{i}$ was generated from a multinomial distribution parameterized by a gene expression frequency matrix with an element $\rho_{ig}$ of a gene $g$ in the cell $i$.
 
-## The SPRUCE Model
-The ETM model extends on the ideas of LDA. Consider a sample of cells ${c_{1},....,c_{N}}$ and a list of genes ${g_{1},....,g_{D}}$, where ${x_{c1},x_{c2},...,x_{cD}}$ are raw count data for $D$ genes in cell $c$. The model represents each cell in terms of K latent topics and each topic is a full distribution over the genes. In LDA, topic proportion $\theta_{c}$ for cell $c$ and topic distribution over genes $\beta_{k}$ for topic $k$ are drawn from Dirichlet distribution with fixed model hyperparameters. In ETM, for the topic proportion Dirichlet distribution is replaced with logistic normal distribution, and $\beta_{k}$ topic distribution over genes uses softmax function with model hyperparameters $\alpha_{k}$.
+$$p(\mathbf{x}_{i}|\rho_{i}) = \prod_{g} \rho_{ig}^{X_{ig}}$$
+
+We introduce Dirichlet prior on the $\rho$ and parameterize the Dirichlet as a generalized linear model (GLM). Exploiting the conjugacy between the multinomial and Dirichlet, we integrate out the unknown parameters $\rho$.
+
+$$p(\rho_{i}|\lambda_{i}) = \frac{\Gamma(\sum_{g} \lambda_{ig})}{\prod_{g} \Gamma(\lambda_{ig})} \prod_{g \in \textsf{genes}} \rho_{ig}^{\lambda_{ig} - 1}$$
+
+$$\lambda_{ig} = \exp\left( \sum_{t=1}^{T} \theta_{it} ( \beta_{tg} + b_{g} ) \right)$$
+
+The topic proportion $\theta_{it}$ for cell $i$ is drawn from logistic normal distribution with model hyperparameters $\delta_{it}$ and we assume topic proportions within a simplex, namely $\sum_{t\in \textsf{topics}} \theta_{it} = 1$.
+
 \begin{equation}
 \begin{split}
-\delta_{c} \sim LN(0,I);\theta_{c} = softmax(\delta_{c})\\
-\beta_{k} = softmax(\alpha_{k})
+\delta_{it} \sim LN(0,I);\theta_{it} = softmax(\delta_{it})\\
 \end{split}
 \end{equation}
-
-
 
 The marginal likelihood 
 
-The parameters of ETM model are the topic embeddings $\beta_{1:K}$. The marginal likelihood of cells is given as,
-\begin{equation}
-\begin{split}
-L(\beta) = \sum_{n} log \ p(c_{n} \mid \beta)\\
-p(c_{n} \mid \beta) = \int p(\delta_{c}) \prod_{d} p(x_{cd} \mid \delta_{c},\beta) d\delta_{c}\\
-p(x_{cd}\mid \delta_{c}, \beta) = \sum_{k}\theta_{ck}\beta_{k,x_{cd}} \\
-\end{split}
-\end{equation}
-Here, $\theta_{ck}$ is topic proportion transformed using softmax fuction over $\delta_{c}$ for cell $c$, and $\beta_{k}$ is distribution over genes induced by topic embeddings $\alpha_{k}$. The marginal likelihood of each cell is an intractable problem because it involves integral over the topic proportion. Variational inference techniques can be used to approximate this type of intractable integrals. 
+$$p(\mathbf{x}_{i}| \cdot ) = 
+\frac{\Gamma(\sum_{g} \lambda_{ig})} {\sum_{g} \Gamma(\lambda_{ig})} \frac{\Gamma(\sum_{g} \lambda_{ig} + X_{ig})}{\sum_{g} \Gamma(\lambda_{ig} + X_{ig})}$$
+
+
+The marginal likelihood of each cell is an intractable problem because it involves integral over the topic proportion. Variational inference techniques can be used to approximate this type of intractable integrals. 
 
 Let $p_{\theta}(z \mid x)$ be a true posterior and $q_{\phi}(z \mid x)$ be an approximate posterior.
+
 \begin{equation}
 \begin{split}
 D_{KL}(q_{\phi}\mid\mid p_{\theta}) & = E_{q_{\phi}}[log  \frac {q_{\phi}(z \mid x)}{p_{\theta}(z \mid x)}]\\
@@ -79,6 +80,7 @@ D_{KL}(q_{\phi}\mid\mid p_{\theta}) & = E_{q_{\phi}}[log  \frac {q_{\phi}(z \mid
 log \ {p_{\theta}(x)} & = - E_{q_{\phi}}[log \ {q_{\phi}(z \mid x)}] + E_{q_{\phi}} [log \ {p_{\theta}(z,x)}] + D_{KL}(q_{\phi}\mid\mid p_{\theta}) \\
 \end{split}
 \end{equation}
+
 Here, $D_{KL}(q_{\phi}\mid\mid p_{\theta})$ is intractable but it is always $\geq$ 0, we can use this property to remove $D_{KL}$ from the equation and the marginal log likelihood $log \ {p_{\theta}(x)}$ will be at least $\geq - E_{q_{\phi}}[log \ {q_{\phi}(z \mid x)}] + E_{q_{\phi}} [log \ {p_{\theta}(z,x)}]$. Since this term is the lower bound on the evidence,it is called as Evidence Lower Bound(ELBO). We maximize the marginal log likelihood by maximizing the ELBO and indirectly minimize the KL divergence.
 
 \begin{equation}
@@ -89,78 +91,49 @@ ELBO & = - E_{q_{\phi}}[log \ {q_{\phi}(z \mid x)}] + E_{q_{\phi}} [log \ {p_{\t
 ELBO & = E_{q_{\phi}} [log \ {p_{\theta}(x \mid z)}]  - E_{q_{\phi}} [log \frac{q_{\phi}(z \mid x)}{p_{\theta}(z)}] \\
 \end{split}
 \end{equation}
-Here, $E_{q_{\phi}} [log \ {p_{\theta}(x \mid z)}]$ is an expected reconstruction error 
-and $E_{q_{\phi}} [log \frac{q_{\phi}(z \mid x)}{p_{\theta}(z)}]$ is KL Divergence between approximate posterior and the prior.
 
-Reconstruction error
+Here, $E_{q_{\phi}} [log \ {p_{\theta}(x \mid z)}]$ is an expected reconstruction error and $E_{q_{\phi}} [log \frac{q_{\phi}(z \mid x)}{p_{\theta}(z)}]$ is KL Divergence between approximate posterior and the prior.
 
-Let $x_{cd}$ be count data for $d^{th}$ gene in cell $c$ 
-and $P_{cd}$ be probability of observing $x_{cd}$ count data.
-Then the likelihood of observing count data for all $D$ genes 
-in cell $c$ is $\prod^{D}_{d} P^{x_{cd}}_{cd}$ and log-likelihood 
-is $\sum^{D}_{d} x_{cd} log(P_{cd})$.
 
 Approximate posterior and prior
 
-The approximate posterior $q_{\phi}(z \mid x)$ is a 
-Gaussian variational distribution 
-$q(\delta_{c};c_{n},v)$ = $N(\mu,\Sigma)$
-whose mean and variance are constructed 
-form a neural network parameterized by $v$.
-The network takes raw count data of a cell 
-$c_{n}$ for $D$ genes and outputs a mean and
-variance of $\delta_{c}$. The prior $p_{\theta}(z)$ = $N(0,I)$.
-The KL divergence between these two form of Gaussians exist in closed form and given as-
+The approximate posterior $q_{\phi}(z \mid x)$ is a Gaussian variational distribution $q(\delta_{i};i_{n},v)$ = $N(\mu,\Sigma)$ whose mean and variance are constructed form a neural network parameterized by $v$. The network takes raw count data of a cell 
+$i_{n}$ for $G$ genes and outputs a mean and variance of $\delta_{i}$. The prior $p_{\theta}(z)$ = $N(0,I)$. The KL divergence between these two form of Gaussians exist in closed form and given as-
+
 \begin{equation}
 \begin{split}
 D_{KL}(q_{\phi}\mid\mid p_{\theta}) & = E_{q_{\phi}} [log \frac{q_{\phi}(z \mid x)}{p_{\theta}(z)}] \\
 & = E_{q_{\phi}}[log \ {q_{\phi}(z \mid x)}] - E_{q_{\phi}} [log \ {p_{\theta}(z)}]\\
-& = ....TODO \\
 & = 1/2 \sum_{d} (1 + log(\Sigma) - \mu^{2} - \Sigma) \\
 \end{split}
 \end{equation}
 
-
-# Cell topic analysis
-
-
-Multinomial-Dirichlet:
-
-
-$$p(\mathbf{y}_{i}|\mathbf{q}_{i}) = \frac{(\sum_{g} Y_{ig})!}{\prod_{g} Y_{ig}!} \prod_{g} q_{ig}^{Y_{ig}}$$
-
-$$\mathbf{q}_{i} \sim \textsf{Dir}(\mathbf{q}_{i}|\rho_{i}) = \frac{\Gamma(\sum_{g}\rho_{ig})}{\prod_{g} \Gamma(\rho_{ig})} \prod_{g} q_{ig}^{\rho_{ig} - 1}$$
-
-
-Single-cell generative model:
-$$p(\mathbf{x}_{j}| \cdot ) = 
-\frac{\Gamma(\sum_{g} \lambda_{jg})} {\sum_{g} \Gamma(\lambda_{jg})} \frac{\Gamma(\sum_{g} \lambda_{jg} + X_{jg})}{\sum_{g} \Gamma(\lambda_{jg} + X_{jg})}$$
-
-where
-
-$$\lambda_{jg} = \exp\left( \sum_{t=1}^{T} \theta_{jt} ( \beta_{tg} + \delta_{g} ) \right)$$
-
-
-Bayesian regularization of the model parameters
+In addition to the latent state KL divergence, we take into account the uncertainty of $\beta_{tg}$ parameters:
 
 $$\beta_{tg} \sim \mathcal{N}\!\left(0, 1\right)$$
 
 Total Expected log-likelihood Lower-bound (ELBO):
 
-\begin{eqnarray*}
+\begin{align}
 \frac{J}{n} 
-    &=& \frac{1}{n}\sum_{i=1}^{n} \log p(\mathbf{x}_{i}|\theta_{i}(\mathbf{z}_{i}), \beta) \\
-	& & + \frac{1}{n}\sum_{i=1}^{n} \sum_{t=1}^{T} D_{\textsf{KL}}\left( q(z_{it}) \| p(z_{it}) \right) \\
-	& & + \frac{1}{n}\sum_{t=1}^{T}\sum_{g=1}^{G} D_{\textsf{KL}}\left( q(\beta_{tg}) \| p(\beta_{tg}) \right) \\
-	&\approx&
-	\frac{1}{B}\sum_{i=1}^{B} \log p(\mathbf{x}_{i}|\theta_{i}(\mathbf{z}_{i}), \beta) \\
-	& & + \frac{1}{B}\sum_{i=1}^{B} \sum_{t=1}^{T} D_{\textsf{KL}}\left( q(z_{it}) \| p(z_{it}) \right) \\
-	& & + \frac{1}{n}\sum_{t=1}^{T}\sum_{g=1}^{G} D_{\textsf{KL}}\left( q(\beta_{tg}) \| p(\beta_{tg}) \right)
-\end{eqnarray*}
-where $B$ is the mini-batch size.
-
+    &=\frac{1}{n}\sum_{i=1}^{n} \log p(\mathbf{x}_{i}|\theta_{i}(\mathbf{z}_{i}), \beta) \\
+	&  + \frac{1}{n}\sum_{i=1}^{n} \sum_{t=1}^{T} D_{\textsf{KL}}\left( q(z_{it}) \| p(z_{it}) \right) \\
+	&  + \frac{1}{n}\sum_{t=1}^{T}\sum_{g=1}^{G} D_{\textsf{KL}}\left( q(\beta_{tg}) \| p(\beta_{tg}) \right) \\
+\end{align}
 
 \newpage
+
+### Neighbour cells calculation
+
+A set of neighbour cells were calculated for each cell using the topic assignment from cell topic model. For each cell, five neighbours from each topic were calculated using ANNOY. In total, we generated 159 neighbours for each cell - 32 topics and 5 neighbours from each topic.
+- removed self neighbour pair. 18 topics with cell count less than 100 were removed during generating annoy model list. Topics were not removed during generating neighbours, only selected topics were used to create a model list. 
+
+### Ligan receptor data augmentation
+
+For each cell pair, we selected ligand and receptors genes from celltalkDB database and incorporated known interactions from the database using the transformation of spaces as shown in the figure.
+
+  
+\newpage 
 
 
 ### Interaction topic analysis
@@ -193,24 +166,15 @@ $$\beta_{tg} \sim \mathcal{N}\!\left(0, 1\right)$$
 
 Total Expected log-likelihood Lower-bound (ELBO):
 
-\begin{eqnarray*}
+
+\begin{align}
 \frac{J}{n} 
-    &=& \frac{1}{n}\sum_{i=1}^{n} \log p(\mathbf{x}_{i}|\theta_{i}(\mathbf{z}_{i}), \beta) \\
-	& & + \frac{1}{n}\sum_{i=1}^{n} \sum_{t=1}^{T} D_{\textsf{KL}}\left( q(z_{it}) \| p(z_{it}) \right) \\
-	& & + \frac{1}{n}\sum_{t=1}^{T}\sum_{l=1}^{L} D_{\textsf{KL}}\left( q(\beta_{tl}) \| p(\beta_{tl}) \right) \\
-	& & + \frac{1}{n}\sum_{t=1}^{T}\sum_{r=1}^{R} D_{\textsf{KL}}\left( q(\beta_{tr}) \| p(\beta_{tr}) \right) 
-\end{eqnarray*}
+    &= \frac{1}{n}\sum_{i=1}^{n} \log p(\mathbf{x}_{i}|\theta_{i}(\mathbf{z}_{i}), \beta) \\
+	&  + \frac{1}{n}\sum_{i=1}^{n} \sum_{t=1}^{T} D_{\textsf{KL}}\left( q(z_{it}) \| p(z_{it}) \right) \\
+	&  + \frac{1}{n}\sum_{t=1}^{T}\sum_{l=1}^{L} D_{\textsf{KL}}\left( q(\beta_{tl}) \| p(\beta_{tl}) \right) \\
+	&  + \frac{1}{n}\sum_{t=1}^{T}\sum_{r=1}^{R} D_{\textsf{KL}}\left( q(\beta_{tr}) \| p(\beta_{tr}) \right) 
+\end{align}
 
-### Neighbour cells calculation
-
-- removed self neighbour pair 
-
-- 18 topics with cell count less than 100 were removed during generating annoy model list. Topics were not removed during generating neighbours, only selected topics were used to create a model list. 
-
-
-- Neighbours are calculated from the remaining 32 topics and 5 neighbours from each topic - 159 neighbours for each cell.  
-  
-\newpage
 
 
 # Results
@@ -230,24 +194,23 @@ Total Expected log-likelihood Lower-bound (ELBO):
 
 
 Total number of cells from different datasets-
-\begin{center}
-\begin{tabular}{ c c  }
-GSE164898    &        48495 \\
 
-T-cells       &       35214 \\
-Cancer Epithelial &   24489 \\
-Myeloid            &   9675 \\
-Endothelial         &  7605 \\
-CAFs                &  6573 \\
-PVL                 &  5423 \\
-Normal Epithelial   &  4355 \\
-Plasmablasts        &  3524 \\
-B-cells             &  3206 --> 101149 \\
+```json
+GSE164898            48495 
 
-GSE156728-CD4        & 3063 \\
-GSE156728-CD8        & 4291 --> 6269
-\end{tabular}
-\end{center}
+T-cells              35214 
+Cancer Epithelial    24489 
+Myeloid               9675 
+Endothelial           7605 
+CAFs                  6573 
+PVL                   5423 
+Normal Epithelial     4355 
+Plasmablasts          3524 
+B-cells               3206 --> 101149 
+
+GSE156728-CD4         3063 
+GSE156728-CD8         4291 --> 6269
+```
 
 
 Removed cell topics during generating neighbour model list.

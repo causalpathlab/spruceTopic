@@ -59,7 +59,7 @@ plt.savefig(spr.cell_topic.model_id+'_ct_umap_h_argmax_label.png');plt.close()
 
 df_umap['label'] = [x.split('_')[len(x.split('_'))-1] for x in df_umap['cell']]
 
-f='/home/sishirsubedi/projects/data/GSE176078mix/GSE176078_metadata.csv.gz'
+f='/home/BCCRC.CA/ssubedi/projects/data/GSE176078mix/GSE176078_metadata.csv.gz'
 dfl = pd.read_csv(f,compression='gzip')
 dfl = dfl.rename(columns={'Unnamed: 0':'cell'})
 
@@ -73,7 +73,21 @@ label_index=8
 label = dfl.columns[label_index]
 
 df_umap = pd.merge(df_umap,dflabel[['l1',label]],right_on='l1',left_on='cell',how='left')
-df_umap[label] = df_umap[label].mask(df_umap[label].isna(), df_umap['label'])
+normal_f='/home/BCCRC.CA/ssubedi/projects/experiments/spruce_topic/2_cell_topic_v_beta/output/scanpy/gse_normal_annotated.csv.gz'
+df_nlabel =  pd.read_csv(normal_f,compression='gzip')
+
+
+df_umap = pd.merge(df_umap,df_nlabel,right_on='index',left_on='cell',how='left')
+df_umap.loc[df_umap['index'].notna(),'celltype_major'] = df_umap[df_umap['index'].notna()]['annot'].values
+df_umap =df_umap.drop(columns=['index','annot'])
+df_umap.loc[df_umap['celltype_major']=='GSE164898','celltype_major'] = 'n_Others'
+df_umap.loc[df_umap['celltype_major']=='GSE156728-CD8','celltype_major'] = 'pan_CD8'
+df_umap.loc[df_umap['celltype_major']=='GSE156728-CD4','celltype_major'] = 'pan_CD4'
+
+
+
+# df_umap[label] = df_umap[label].mask(df_umap[label].isna(), df_umap['label'])
+
 cp = sns.color_palette(cc.glasbey, n_colors=len(df_umap[label].unique()))
 p = sns.scatterplot(data=df_umap, x='umap1', y='umap2', hue=label,s=1,palette=cp)
 plt.legend(title='Cell type',title_fontsize=18, fontsize=14,loc='center left', bbox_to_anchor=(1, 0.5))
@@ -107,23 +121,23 @@ plt.savefig(spr.cell_topic.model_id+'_ct_h_kmeans.png');plt.close()
 
 # cell annotation based on kmeans cluster and majority 
 
-df_umap['label'] = [x.split('_')[len(x.split('_'))-1] for x in df_umap['cell']]
-f='/home/BCCRC.CA/ssubedi/projects/data/GSE176078mix/GSE176078_metadata.csv.gz'
+# df_umap['label'] = [x.split('_')[len(x.split('_'))-1] for x in df_umap['cell']]
+# f='/home/BCCRC.CA/ssubedi/projects/data/GSE176078mix/GSE176078_metadata.csv.gz'
 
-dfl = pd.read_csv(f,compression='gzip')
-dfl = dfl.rename(columns={'Unnamed: 0':'cell'})
+# dfl = pd.read_csv(f,compression='gzip')
+# dfl = dfl.rename(columns={'Unnamed: 0':'cell'})
 
-dflabel = pd.DataFrame()
-dflabel['l1'] =  [x for x in df_umap[df_umap['label']=='GSE176078']['cell']]
-dflabel['l2'] =  [x.replace('_GSE176078','') for x in df_umap[df_umap['label']=='GSE176078']['cell']]
-dflabel = pd.merge(dflabel,dfl,right_on='cell',left_on='l2',how='left')
+# dflabel = pd.DataFrame()
+# dflabel['l1'] =  [x for x in df_umap[df_umap['label']=='GSE176078']['cell']]
+# dflabel['l2'] =  [x.replace('_GSE176078','') for x in df_umap[df_umap['label']=='GSE176078']['cell']]
+# dflabel = pd.merge(dflabel,dfl,right_on='cell',left_on='l2',how='left')
 
-print(dfl.columns)
-label_index=8
-label = dfl.columns[label_index]
+# print(dfl.columns)
+# label_index=8
+# label = dfl.columns[label_index]
 
-df_umap = pd.merge(df_umap,dflabel[['l1',label]],right_on='l1',left_on='cell',how='left')
-df_umap[label] = df_umap[label].mask(df_umap[label].isna(), df_umap['label'])
+# df_umap = pd.merge(df_umap,dflabel[['l1',label]],right_on='l1',left_on='cell',how='left')
+# df_umap[label] = df_umap[label].mask(df_umap[label].isna(), df_umap['label'])
 
 df_clust_celltype = df_umap.groupby(['cluster','celltype_major'])['cell'].count().reset_index().sort_values(['cluster','cell'])
 df_clust_celltype = df_clust_celltype.drop_duplicates(subset=['cluster'], keep='last').drop(['cell'],axis=1).rename(columns={'celltype_major':'cluster_celltype'})
@@ -135,7 +149,7 @@ df_umap.to_csv(spr.cell_topic.model_id+'_ct_h_umap_cordinates_kmeans.csv.gz',ind
 df_umap = pd.read_csv(spr.cell_topic.model_id +'_ct_h_umap_cordinates_kmeans.csv.gz')
 ######
 
-cp = sns.color_palette(cc.glasbey, n_colors=len(df_umap['cluster'].unique()))
+cp = sns.color_palette(cc.glasbey, n_colors=len(df_umap['cluster_celltype'].unique()))
 p = sns.scatterplot(data=df_umap, x='umap1', y='umap2', hue='cluster_celltype',s=1,palette=cp,legend=True)
 
 # plt.legend(title='Cell type',title_fontsize=18, fontsize=14,loc='center left', bbox_to_anchor=(1, 0.5))

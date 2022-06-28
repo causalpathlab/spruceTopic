@@ -68,23 +68,9 @@ dfsummary = dfsummary[dfsummary['cell']>min_cells_per_state]
 dfsummary.to_csv(spr.interaction_topic.model_id+'_it_model_summary.csv.gz',index=False,compression='gzip')
 
 
-##################################################################
-    # network graph
-##################################################################
 
-from analysis import _network
-df = pd.read_csv(spr.interaction_topic.model_id+'_it_model_all_topics.csv.gz',compression='gzip')
-_network.cell_interaction_network(spr,df)
-
-
-##################################################################
-    # topic wise lr network graph
-##################################################################
-
-from analysis import _network
-
-df_db = pd.read_csv( experiment_home + spr.args.database+ spr.args.lr_db,sep='\t', usecols=['lr_pair'])
-_network.interaction_statewise_lr_network(spr,df_db)
+from analysis import _gsea
+_gsea.gsea(spr)
 
 
 
@@ -101,7 +87,7 @@ top_n = 10
 df_top_genes = _topics.topic_top_lr_genes(spr,top_n)
 df_top_genes.to_csv(spr.interaction_topic.model_id+'_it_beta_weight_top_'+str(top_n)+'_genes.csv.gz',index=False,compression='gzip')
 
-#### get top genes based on beta weight matrix - l/r separately
+#### get top genes based on beta weight matrix - l/r together
 
 df_db = pd.read_csv( experiment_home + spr.args.database+ spr.args.lr_db,sep='\t', usecols=['lr_pair'])
 top_n=25
@@ -111,6 +97,24 @@ df_lr_topic.to_csv(spr.interaction_topic.model_id+'_it_beta_top_'+str(top_n)+'_l
 ##################################################################
     # cancer centric view
 ##################################################################
+
+##################################################################
+    # network graph
+##################################################################
+
+from analysis import _network
+df = pd.read_csv(spr.interaction_topic.model_id+'_it_model_all_topics_cancer_cells.csv.gz',compression='gzip')
+# df = df[df['cluster_celltype'] == 'Cancer Epithelial']
+df = df[~df['state'].isin([7,10])]
+_network.cell_interaction_network(spr,df)
+
+
+##################################################################
+    # state distribution of cancer neighbouring cells
+##################################################################
+
+
+### get cancer cells only data 
 
 from analysis import _topics
 df = pd.read_csv(spr.interaction_topic.model_id+'_it_model_all_topics.csv.gz',compression='gzip')
@@ -128,10 +132,15 @@ df_res.to_csv(spr.interaction_topic.model_id+'_it_model_all_topics_cancer_cells.
 df=pd.read_csv(spr.interaction_topic.model_id+'_it_model_all_topics_cancer_cells.csv.gz',compression='gzip')
 
 df = df[df['cluster_celltype'] != 'Cancer Epithelial']
+
+# df = df[df['state'].isin([10,7,4,2,22,24,18,1])]
+
+
 df_grp = df.groupby(['cluster_celltype','state'])['state'].size().rename('count').reset_index()
 ##normalize
 celltype_sum = dict(df_grp.groupby('cluster_celltype')['count'].sum())
 df_grp['ncount'] = [x/celltype_sum[y] for x,y in zip(df_grp['count'],df_grp['cluster_celltype'])]
+
 df_grp.to_csv(spr.interaction_topic.model_id+'_it_cancercells_interactions.csv.gz',index=False,compression='gzip')
 
 ### look at cancer neighbours of cancer cells
@@ -147,12 +156,31 @@ plt.rcParams['figure.autolayout'] = True
 df=pd.read_csv(spr.interaction_topic.model_id+'_it_model_all_topics_cancer_cells.csv.gz',compression='gzip')
 
 cslist = [ 
-('Normal Epithelial',49),
-('Normal Epithelial',5),
-('B-cells',34),
-('T-cells',34),
-('PVL',14),
-('Myeloid',7),
-('Endothelial',16)
+('Normal Epithelial',10),
+('Normal Epithelial',4),
+('B-cells',22),
+('T-cells',22),
+('PVL',18),
+('Myeloid',24),
+('Endothelial',2)
 ]
 _topics.plt_cn(spr,df,cslist)
+
+
+cslist = [ 
+('n_B-cells',18),
+('n_T-cells',18)
+]
+_topics.plt_cn(spr,df,cslist)
+
+
+##################################################################
+    # topic wise lr network graph
+##################################################################
+
+from analysis import _network
+
+df_db = pd.read_csv( experiment_home + spr.args.database+ spr.args.lr_db,sep='\t', usecols=['lr_pair'])
+_network.interaction_statewise_lr_network(spr,[10,7,4,2,22,24,18,1],df_db)
+
+
