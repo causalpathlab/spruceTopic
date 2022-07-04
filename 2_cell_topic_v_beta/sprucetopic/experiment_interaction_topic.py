@@ -141,11 +141,11 @@ def get_model(experiment_home,args):
 	model.eval()
 	sp.interaction_topic.model = model
 
-	sp.interaction_topic.beta_l = pd.read_csv(sp.interaction_topic.model_id+'_it_beta_l.csv.gz',compression='gzip')
-	sp.interaction_topic.beta_r = pd.read_csv(sp.interaction_topic.model_id+'_it_beta_r.csv.gz',compression='gzip')
+	sp.interaction_topic.beta_r = pd.read_csv(sp.interaction_topic.model_id+'_it_beta_l.csv.gz',compression='gzip')
+	sp.interaction_topic.beta_l = pd.read_csv(sp.interaction_topic.model_id+'_it_beta_r.csv.gz',compression='gzip')
 
-	sp.interaction_topic.beta_l.columns = sp.data.raw_r_data_genes
-	sp.interaction_topic.beta_r.columns = sp.data.raw_l_data_genes
+	sp.interaction_topic.beta_r.columns = sp.data.raw_r_data_genes
+	sp.interaction_topic.beta_l.columns = sp.data.raw_l_data_genes
 
 	return sp
 

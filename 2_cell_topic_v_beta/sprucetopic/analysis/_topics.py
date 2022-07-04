@@ -1,5 +1,6 @@
 import os
 import pandas as pd
+import math
 import numpy as np
 from torch import frac
 
@@ -171,27 +172,31 @@ def get_cell_neighbours_states(df_nbr,df_its,df):
 
 def plt_cn(spr,df,cslist):
 
-    import matplotlib.pylab as plt
-    import colorcet as cc
-    import seaborn as sns
-    plt.rcParams['figure.figsize'] = [15, 4]
-    plt.rcParams['figure.autolayout'] = True
+	import matplotlib.pylab as plt
+	import colorcet as cc
+	import seaborn as sns
+	plt.rcParams['figure.figsize'] = [15, 4]
+	plt.rcParams['figure.autolayout'] = True
 
-    for i in cslist:
-        celltype = i[0]
-        state = i[1]
-        df_sel = df[df['cluster_celltype'] == celltype]
-        df_sel = df_sel.drop_duplicates(subset=['cancer_cell','state'])
+	for i in cslist:
+		celltype = i[0]
+		state = i[1]
+		df_sel = df[df['cluster_celltype'] == celltype]
+		df_sel = df_sel.drop_duplicates(subset=['cancer_cell','state'])
 
-        # state = df.state.value_counts().head(1).index[0]
-        dfl,dfr = get_cell_neighbours_states_lr(spr,df_sel[df_sel['state']==state],state)
-        fig, ax = plt.subplots(2,1) 
-        sns.heatmap(pd.DataFrame(dfl),annot=False,ax=ax[0])
-        ax[0].set_title('Cancer_'+celltype+'_ligands')
-        sns.heatmap(pd.DataFrame(dfr),annot=False,ax=ax[1])
-        ax[1].set_title('Cancer_'+celltype+'_receptors')
-        plt.savefig(spr.interaction_topic.model_id+'_cancer_'+celltype+'_lr.png')
-        plt.close()
+		# state = df.state.value_counts().head(1).index[0]
+		# try:
+		dfl,dfr = get_cell_neighbours_states_lr(spr,df_sel[df_sel['state']==state],state)
+		fig, ax = plt.subplots(2,1) 
+		sns.heatmap(dfl,annot=False,ax=ax[0],cmap='viridis')
+		ax[0].set_title('Cancer_'+celltype+'_ligands_state_'+str(state))
+		sns.heatmap(dfr,annot=False,ax=ax[1],cmap='viridis')
+		ax[1].set_title('Cancer_'+celltype+'_receptors_state_'+str(state))
+		plt.savefig(spr.interaction_topic.model_id+'_cancer_'+celltype+'_lr_state_'+str(state)+'.png')
+		plt.close()
+
+		# except:
+		# 	print('error...celltype'+celltype+'---'+str(state))
 
 
 def get_cell_neighbours_states_lr(spr,df,state):
@@ -207,12 +212,12 @@ def get_cell_neighbours_states_lr(spr,df,state):
 	df_nbr_l.iloc[:,1:] = df_nbr_l.iloc[:,1:].div(df_nbr_l.iloc[:,1:].sum(axis=1), axis=0)
 	df_nbr_r.iloc[:,1:] = df_nbr_r.iloc[:,1:].div(df_nbr_r.iloc[:,1:].sum(axis=1), axis=0)
 
-	df_cancer_l = df_cancer_l.sample(n=df_nbr_l.shape[0])
-	df_cancer_r = df_cancer_r.sample(n=df_nbr_r.shape[0])
+	# df_cancer_l = df_cancer_l.sample(n=df_nbr_l.shape[0])
+	# df_cancer_r = df_cancer_r.sample(n=df_nbr_r.shape[0])
 
 
-	top_r = list(spr.interaction_topic.beta_l.iloc[state,:].sort_values(ascending=False).head(25).index)
-	top_l = list(spr.interaction_topic.beta_r.iloc[state,:].sort_values(ascending=False).head(25).index)
+	top_r = list(spr.interaction_topic.beta_r.iloc[state,:].sort_values(ascending=False).head(25).index)
+	top_l = list(spr.interaction_topic.beta_l.iloc[state,:].sort_values(ascending=False).head(25).index)
 	
 	df_cancer_l = df_cancer_l.loc[:,top_l]
 	df_cancer_r = df_cancer_r.loc[:,top_r]
@@ -227,6 +232,11 @@ def get_cell_neighbours_states_lr(spr,df,state):
 	dfl = pd.DataFrame([df_cancer_l,df_nbr_l],index=['cancer','nbr'])
 	dfr = pd.DataFrame([df_cancer_r,df_nbr_r],index=['cancer','nbr'])
 
+	dfl += 1e-5
+	dfr += 1e-5
+	dfl = dfl.applymap(math.sqrt)
+	dfr = dfr.applymap(math.sqrt)
+	
 	return dfl,dfr
 
 def interaction_summary(sp,topics_prob):

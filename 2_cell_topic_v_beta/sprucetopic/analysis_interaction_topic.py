@@ -69,10 +69,6 @@ dfsummary.to_csv(spr.interaction_topic.model_id+'_it_model_summary.csv.gz',index
 
 
 
-from analysis import _gsea
-_gsea.gsea(spr)
-
-
 
 ##################################################################
     # top genes
@@ -98,16 +94,6 @@ df_lr_topic.to_csv(spr.interaction_topic.model_id+'_it_beta_top_'+str(top_n)+'_l
     # cancer centric view
 ##################################################################
 
-##################################################################
-    # network graph
-##################################################################
-
-from analysis import _network
-df = pd.read_csv(spr.interaction_topic.model_id+'_it_model_all_topics_cancer_cells.csv.gz',compression='gzip')
-# df = df[df['cluster_celltype'] == 'Cancer Epithelial']
-df = df[~df['state'].isin([7,10])]
-_network.cell_interaction_network(spr,df)
-
 
 ##################################################################
     # state distribution of cancer neighbouring cells
@@ -128,6 +114,8 @@ df_res = pd.merge(df_res,df[['cell','cluster','cluster_celltype']],left_on='nbr'
 df_res.to_csv(spr.interaction_topic.model_id+'_it_model_all_topics_cancer_cells.csv.gz',index=False,compression='gzip')
 
 
+##################################################################
+
 ##### look at non cancer neighbours of cancer cells and check state distribution 
 df=pd.read_csv(spr.interaction_topic.model_id+'_it_model_all_topics_cancer_cells.csv.gz',compression='gzip')
 
@@ -143,7 +131,41 @@ df_grp['ncount'] = [x/celltype_sum[y] for x,y in zip(df_grp['count'],df_grp['clu
 
 df_grp.to_csv(spr.interaction_topic.model_id+'_it_cancercells_interactions.csv.gz',index=False,compression='gzip')
 
-### look at cancer neighbours of cancer cells
+
+##################################################################
+    # network graph
+##################################################################
+'''
+take all cancer cells and remove state 7 and 10 
+plot network to show cancer cell states and neighbour cells belonging
+to that state
+'''
+from analysis import _network
+df = pd.read_csv(spr.interaction_topic.model_id+'_it_model_all_topics_cancer_cells.csv.gz',compression='gzip')
+# df = df[df['cluster_celltype'] == 'Cancer Epithelial']
+df = df[~df['state'].isin([7,10])]
+_network.cell_interaction_network(spr,df)
+
+
+##################################################################
+    # topic wise lr network graph
+##################################################################
+
+from analysis import _network
+
+df_db = pd.read_csv( experiment_home + spr.args.database+ spr.args.lr_db,sep='\t', usecols=['lr_pair'])
+
+states = [10,7,4,2,22,24,18,1]
+top_lr = 200
+keep_db= True
+_network.interaction_statewise_lr_network(spr,states,top_lr,keep_db,df_db)
+
+top_lr = 25
+keep_db=False
+_network.interaction_statewise_lr_network(spr,states,top_lr,keep_db,df_db)
+
+##################################################################
+### look at neighbours of cancer cells
 
 
 from analysis import _topics
@@ -156,31 +178,34 @@ plt.rcParams['figure.autolayout'] = True
 df=pd.read_csv(spr.interaction_topic.model_id+'_it_model_all_topics_cancer_cells.csv.gz',compression='gzip')
 
 cslist = [ 
-('Normal Epithelial',10),
-('Normal Epithelial',4),
-('B-cells',22),
+# ('Normal Epithelial',10),
+# ('Normal Epithelial',4),
+('B-cells',24),
 ('T-cells',22),
-('PVL',18),
-('Myeloid',24),
-('Endothelial',2)
-]
-_topics.plt_cn(spr,df,cslist)
-
-
-cslist = [ 
-('n_B-cells',18),
-('n_T-cells',18)
+('B-cells',22),
+('T-cells',24),
+('n_B-cells',22),
+('n_B-cells',24),
+('n_T-cells',22),
+('n_T-cells',24)
+# ('PVL',18),
+# ('Myeloid',24),
+# ('Endothelial',2)
 ]
 _topics.plt_cn(spr,df,cslist)
 
 
 ##################################################################
-    # topic wise lr network graph
+    # interaction topic gse analysis
 ##################################################################
-
-from analysis import _network
 
 df_db = pd.read_csv( experiment_home + spr.args.database+ spr.args.lr_db,sep='\t', usecols=['lr_pair'])
-_network.interaction_statewise_lr_network(spr,[10,7,4,2,22,24,18,1],df_db)
+df = _gsea.gse_interactiontopic(spr,df_db)
+df.to_csv(spr.interaction_topic.model_id+'_it_gsea.csv.gz',index=False,compression='gzip')
+
+
+
+from analysis import _gsea
+_gsea.gsea(spr)
 
 

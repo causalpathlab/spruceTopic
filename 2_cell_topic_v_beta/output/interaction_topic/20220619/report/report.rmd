@@ -54,7 +54,7 @@ The topic proportion $\theta_{it}$ for cell $i$ is drawn from logistic normal di
 
 \begin{equation}
 \begin{split}
-\delta_{it} \sim LN(0,I);\theta_{it} = softmax(\delta_{it})\\
+\delta_{it} \sim N(0,I);\theta_{it} = softmax(\delta_{it})\\
 \end{split}
 \end{equation}
 
@@ -186,6 +186,20 @@ Total Expected log-likelihood Lower-bound (ELBO):
 ## Different interaction topics induce subtype-specific gene-gene networks 
 
 ## Each interaction topic show disjoint differential expression genes
+
+- State:24
+Ligand S100A9 in cancer and receptor CD68 in neighbouring B cells/myeloid cells.
+S100A9 is a calcium-binding protein that is associated with inflammation and expressed not only in myeloid cells but also in some tumours.
+S100A9 expressed in ER−PgR− breast cancers induces inflammatory cytokines and is associated with an impaired overall survival.
+British Journal of Cancer volume 113, pages1234–1243 (2015)
+Ligand HSPA1A in cancer
+LncRNA HOTAIR enhances breast cancer radioresistance through facilitating HSPA1A expression via sequestering miR-449b-5p
+
+
+- State:22
+B2M is abnormally expressed in many cancer types.
+B2M binds to CD3D,CD3G,KLRD1, etc.
+The chemokine receptor CXCR4 has been found to be a prognostic marker in various types of cancer, including breast cancer. 
 
 
 \newpage

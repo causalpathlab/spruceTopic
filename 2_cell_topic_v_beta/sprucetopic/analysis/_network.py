@@ -84,7 +84,7 @@ def cell_interaction_network(spr,df):
 	# visual_style["layout"] = g.layout_sugiyama()
 	igraph.plot(g, target=spr.interaction_topic.model_id+"_it_ccview_network_plot.png",**visual_style,margin=40)
 
-def interaction_statewise_lr_network(spr,states,df_db=None):
+def interaction_statewise_lr_network(spr,states,top_lr=200,keep_db=True,df_db=None):
 
 	import matplotlib.pylab as plt
 	import colorcet as cc
@@ -99,6 +99,8 @@ def interaction_statewise_lr_network(spr,states,df_db=None):
 	receptors = list(spr.interaction_topic.beta_l.columns) 
 
 	for i,state in enumerate(states):
+
+
 		l_vals =  spr.interaction_topic.beta_r.iloc[state,:].values
 		r_vals =  spr.interaction_topic.beta_l.iloc[state,:].values
 
@@ -108,7 +110,7 @@ def interaction_statewise_lr_network(spr,states,df_db=None):
 		lr = l[:,None]+r
 		lr = lr.flatten()
 		lr = lr[lr.argsort()]
-		cuttoff = lr[-200:][0]
+		cuttoff = lr[-top_lr:][0]
 		print('cuttoff is...'+str(cuttoff))
 
 		
@@ -132,12 +134,20 @@ def interaction_statewise_lr_network(spr,states,df_db=None):
 				lrpair[r] = [l]
 
 		keep_eids = []
-		for e in g.es:
-			source = g.vs[e.source]['name']
-			target = g.vs[e.target]['name']
-			if (source in lrpair.keys() and target in lrpair[source] ) or (target in lrpair.keys() and source in lrpair[target] ) :
-				keep_eids.append(e.index)
-				print(source,target)
+		if keep_db:
+			for e in g.es:
+				source = g.vs[e.source]['name']
+				target = g.vs[e.target]['name']
+				if (source in lrpair.keys() and target in lrpair[source] ) or (target in lrpair.keys() and source in lrpair[target] ) :
+					keep_eids.append(e.index)
+					print(source,target)
+		else:
+			for e in g.es:
+				source = g.vs[e.source]['name']
+				target = g.vs[e.target]['name']
+				if (target in lrpair.keys() and source not in lrpair[target] ):
+					keep_eids.append(e.index)
+					print(source,target)
 		
 		to_delete_eids = [e.index for e in g.es if e.index not in keep_eids]
 		g.delete_edges(to_delete_eids)
@@ -171,4 +181,6 @@ def interaction_statewise_lr_network(spr,states,df_db=None):
 			ax[i].set_title('interaction topic_'+str(state))
 			igraph.plot(g,target=ax[i],**visual_style,margin=20,title='interaction topic_'+str(state))
 			# igraph.plot(g, target=spr.interaction_topic.model_id+'_lr_network_it_state_'+str(state)+'.png',**visual_style,margin=40,)
-	plt.savefig(spr.interaction_topic.model_id+'_lr_network_it_states_db.png');plt.close()
+	flag='not_db'
+	if keep_db: flag='db'
+	plt.savefig(spr.interaction_topic.model_id+'_lr_network_it_states_'+flag+'.png');plt.close()
