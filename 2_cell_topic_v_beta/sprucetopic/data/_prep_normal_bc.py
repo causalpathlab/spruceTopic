@@ -75,21 +75,22 @@ def plot_marker():
 
 	
 	df = pd.read_pickle(experiment_home+ sample+'_scanpy_processed.pkl')
-	df_ann = pd.read_csv(experiment_home+ sample+'_annotated_encode.csv')
+	df_ann = pd.read_csv(experiment_home+ sample+'_annotated_chetah.csv.gz')
 
 	df['labels'] = df_ann['labels']
 
 	# df = df[df['labels'].isin(['B_cell','T_cells','NK_cell','Neuroepithelial_cell','BM'])]
-	selected = ['CD8+ T-cells','CD4+ T-cells','B-cells','NK cells','Endothelial cells','Fibroblasts','DC']
+	# selected = ['CD8+ T-cells','CD4+ T-cells','B-cells','NK cells','Endothelial cells','Fibroblasts','DC']
 
-	df['labels'] = ['Epithelial cells' if x not in selected else x for x in df['labels']  ]
+	# df['labels'] = ['Epithelial cells' if x not in selected else x for x in df['labels']  ]
 
 	df['labels'] = [x.replace('+','').replace(' ','_') for x in df['labels']]
+	cp = sns.color_palette(cc.glasbey_dark, n_colors=len(df['labels'].unique()))
 	p = sns.scatterplot(data=df, x='umap1', y='umap2', hue='labels',s=5,legend=True)
 	plt.legend(title='Cell type',title_fontsize=18, fontsize=14,loc='center left', bbox_to_anchor=(1, 0.5))
 	p.set_xlabel("UMAP1",fontsize=20)
 	p.set_ylabel("UMAP2",fontsize=20)
-	plt.savefig(experiment_home+ sample+'_scanpy_umap_annotated_encode.png');plt.close()
+	plt.savefig(experiment_home+ sample+'_scanpy_umap_annotated_chetah.png');plt.close()
 
 
 	fig, ax = plt.subplots(3,4) 

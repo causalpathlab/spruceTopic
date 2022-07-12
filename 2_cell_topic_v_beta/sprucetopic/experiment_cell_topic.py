@@ -80,6 +80,7 @@ def get_model(experiment_home,args):
 	sp.cell_topic.h = pd.read_csv(sp.cell_topic.model_id + args.fn_cell_topic_h,compression='gzip')
 	
 	sp.data.raw_data_genes = pd.read_pickle(experiment_home+args.input+args.raw_data_genes)[0].values
+	# sp.data.raw_data = pd.read_pickle(experiment_home+args.input+args.raw_data)
 
 	sp.cell_topic.beta_mean = pd.read_csv(sp.cell_topic.model_id+ args.fn_cell_topic_beta_mean,compression='gzip')
 	sp.cell_topic.beta_var = pd.read_csv(sp.cell_topic.model_id+ args.fn_cell_topic_beta_var,compression='gzip')
@@ -98,37 +99,6 @@ def get_experiment(experiment):
 	args = namedtuple('Struct',experiment_config.keys())(*experiment_config.values())
 
 	return get_model(experiment_home,args)
-
-
-# def temp(sp):
-# 	print('processing...',sp.model_id)
-# 	# _umap_viz.plot_umap_with_annotation_mix(sp)
-# 	# _topics.topic_top_genes(sp,5)
-# 	# _topics.topic_top_genes(sp,10)
-# 	# _topics.topic_top_genes(sp,25)
-# 	# _topics.sample_cells_with_latent(sp)
-# 	# _umap_viz.plot_umap(sp)
-
-
-# 	hallmark_db = args.home + args.database +  args.db_hallmark
-# 	df_hmark = pd.read_csv(hallmark_db,compression='gzip')
-# 	df_hmark = df_hmark[['gs_name','gene_symbol']]
-# 	df_htest = _gsea.hypergeom_test(sp,df_hmark)
-# 	df_htest = df_htest.sort_values('pval')
-# 	df_htest.to_csv(sp.model_id+'_hallmark_hypergeom_test.tsv.gz',compression='gzip',index=False,sep='\t')	
-
-# 	hallmark_db = args.home + args.database +  args.db_cmark
-# 	df_hmark = pd.read_excel(hallmark_db)
-# 	df_hmark = df_hmark[['Cell type','Gene']]
-# 	df_hmark.columns = ['gs_name','gene_symbol']
-# 	df_htest = _gsea.hypergeom_test(sp,df_hmark)
-# 	df_htest = df_htest.sort_values('pval')
-# 	df_htest.to_csv(sp.model_id+'_cmark_hypergeom_test.tsv.gz',compression='gzip',index=False,sep='\t')	
-	
-	
-
-
-
 
 if __name__ == "__main__":
 	

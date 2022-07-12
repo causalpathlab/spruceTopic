@@ -3,7 +3,7 @@ library(gridExtra)
 library(reshape)
 library(yaml)
 library(pheatmap)
-library(dendextend)
+# library(dendextend)
 library(RColorBrewer)
 source("Util.R")
 
@@ -33,6 +33,8 @@ df_lrpair = df_lrpair[row_order,]
 
 df_lrpair[df_lrpair < -20] = -20
 df_lrpair[df_lrpair > 20] = 20
+
+# df_lrpair = sqrt(df_lrpair)
 
 mat_colors <- colorRampPalette(brewer.pal(n = 7, name = "PuRd"))(100)
 

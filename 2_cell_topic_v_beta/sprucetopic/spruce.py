@@ -155,11 +155,7 @@ class Spruce:
 
         return df_beta1,df_beta2,df_beta1_bias,df_beta2_bias
 
-    def interaction_topic_prob(self,input_dims1,input_dims2,latent_dims,layers1,layers2):
-
-        model = _interaction_topic.LitETM(input_dims1,input_dims2,latent_dims,layers1,layers2,'_txt_')
-        model.load_state_dict(self.interaction_topic.model)
-        model.eval()
+    def interaction_topic_prob(self,cell_indxs):
 
         df_h = self.cell_topic.h
 
@@ -173,13 +169,14 @@ class Spruce:
 
         # device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
         device='cpu'
-        nbrmat = torch.tensor(df_nbr.values.astype(np.compat.long),requires_grad=False).to(device)
+        nbrmat = torch.tensor(df_nbr.iloc[:,1:].values.astype(np.compat.long),requires_grad=False).to(device)
         lmat = torch.tensor(df_l.iloc[:,1:].values.astype(np.float32),requires_grad=False).to(device)
         rmat = torch.tensor(df_r.iloc[:,1:].values.astype(np.float32),requires_grad=False).to(device)
         lrmat = torch.tensor(df_lr.values.astype(np.float32),requires_grad=False).to(device)
 
+        nbrs = []
         topics_prob = []
-        for idx in range(df_nbr.shape[0]):
+        for idx in cell_indxs:
 
             cm_l = lmat[idx].unsqueeze(0)
             cm_r = rmat[idx].unsqueeze(0)
@@ -194,15 +191,33 @@ class Spruce:
 
             lprime,rprime =  cm_lr + torch.mm(cn_l,lrmat).mul(cn_r) , cm_rl + torch.mm(cn_r,torch.t(lrmat)).mul(cn_l)
 
-            pr,m1,v1,m2,v2,theta,beta = model.etm(lprime,rprime)
-
-            h_smax = nn.LogSoftmax(dim=-1)
-            theta = torch.exp(h_smax(theta))
+            m1,v1,m2,v2,blm,blv,brm,brv,theta,alpha_l,alpha_r  = self.interaction_topic.model.etm(lprime,rprime)
 
             topics_prob.append(theta.detach().numpy())
+            nbrs.append(nbr_idxs)
         
-        return topics_prob
+        return nbrs,topics_prob
     
+    def interaction_topic_prop_with_cellids(self,cancer_cells):
+        
+        cell_indxs = self.cell_topic.neighbour[self.cell_topic.neighbour['cell'].isin(cancer_cells)].index.values
+
+        nbrs,cc_it_prob = self.interaction_topic_prob(cell_indxs)
+
+        df = pd.DataFrame()
+        for indx,c_c in enumerate(cancer_cells):
+            dft = pd.DataFrame(cc_it_prob[indx])
+            dft['cancer_cell'] = c_c
+            n = [ int(x) for x in nbrs[indx]]
+            dft['nbr']=self.cell_topic.neighbour.loc[n,'cell'].values
+            df = pd.concat([df, dft], axis=0, ignore_index=True)        
+            print(df.shape)
+        return df
+
+
+
+
+
     def interaction_topic_states(self):
 
         df_h = self.cell_topic.h

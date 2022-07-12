@@ -1,11 +1,10 @@
-library(ggplot2)
+library(ggplot2, lib.loc = '~/R/x86_64-pc-linux-gnu-library/3.6/')
 library(gridExtra)
 library(reshape)
 library(yaml)
 library(RColorBrewer)
 library(data.table)
 library(ggh4x)
-setwd(box::file())
 source("Util.R")
 
 summary_plot_all <- function(df,f,col) {
@@ -46,5 +45,5 @@ summary_plot_all <- function(df,f,col) {
     }
 
   stplt <- grid.arrange(grobs=plotlist,ncol=col)
-  ggsave(f,stplt,width =10, height = 5)
+  ggsave(f,stplt,width =10, height = 15)
 }

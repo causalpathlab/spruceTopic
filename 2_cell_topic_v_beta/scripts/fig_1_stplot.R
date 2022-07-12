@@ -3,6 +3,7 @@ library(gridExtra)
 library(reshape)
 library(pheatmap)
 library(RColorBrewer)
+library(Polychrome)
 
 struct_plot <- function(df_h,f) {
 
@@ -24,7 +25,7 @@ col_vector = unlist(mapply(brewer.pal, qual_col_pals$maxcolors, rownames(qual_co
 p <-
 ggplot(df_h_m, aes(x=cell, y=hvalue,fill=Topic)) +
   geom_bar(position="stack",stat="identity",size=0) +
-  scale_fill_manual("Latent topic",values=col_vector)+
+  scale_fill_manual("Cell topic",values=col_vector)+
   facet_grid(~ cluster, scales = "free", switch = "x", space = "free")+
   labs(x = "Cells", y = "Topic proportion")+
   theme(
@@ -32,7 +33,7 @@ ggplot(df_h_m, aes(x=cell, y=hvalue,fill=Topic)) +
     legend.justification = "left", 
     legend.margin = margin(0, 0, 0, 0),
     legend.box.margin=margin(10,10,10,10),
-    text = element_text(size=50),
+    text = element_text(size=25),
     panel.spacing.x = unit(0.005, "lines"),
     axis.text.x = element_blank(),
     axis.ticks.x = element_blank(),
@@ -44,3 +45,38 @@ ggplot(df_h_m, aes(x=cell, y=hvalue,fill=Topic)) +
 ggsave(f,p,width = 60, height = 20,limitsize=F)
 }
 
+struct_plot_interaction_topic <- function(df_h,f) {
+
+df_h_m = melt(df_h,id=c("cell","Topic"))
+df_h_m$Topic <- factor(df_h_m$Topic)
+
+colnames(df_h_m) = c("cell", "cluster", "Topic", "hvalue")
+
+df_h_m$Topic <- gsub("X","",df_h_m$Topic)
+
+n <- 25
+qual_col_pals = brewer.pal.info[brewer.pal.info$category == 'qual',]
+col_vector = unlist(mapply(brewer.pal, qual_col_pals$maxcolors, rownames(qual_col_pals)))
+
+p <-
+ggplot(df_h_m, aes(x=cell, y=hvalue,fill=Topic)) +
+  geom_bar(position="stack",stat="identity",size=0) +
+  scale_fill_manual("Interaction topic",values=col_vector)+
+  facet_grid(~ cluster, scales = "free", switch = "x", space = "free")+
+  labs(x = "Cancer cell pairs", y = "Topic proportion")+
+  theme(
+    legend.position = "top",
+    legend.justification = "left", 
+    legend.margin = margin(0, 0, 0, 0),
+    legend.box.margin=margin(10,10,10,10),
+    text = element_text(size=60),
+    panel.spacing.x = unit(0.005, "lines"),
+    axis.text.x = element_blank(),
+    axis.ticks.x = element_blank(),
+    panel.grid = element_blank(),
+    panel.background = element_rect(fill='transparent'),
+    plot.background = element_rect(fill='transparent', color=NA))+
+  guides(fill = guide_legend(nrow = 1))
+
+ggsave(f,p,width = 60, height = 20,limitsize=F)
+}

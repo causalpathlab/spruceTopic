@@ -2,10 +2,10 @@ library(ggplot2)
 library(gridExtra)
 library(reshape)
 library(yaml)
-library(pheatmap)
+# library(pheatmap)
 library(dplyr)
 source("Util.R")
-options(repr.plot.width = 7, repr.plot.height = 10, repr.plot.res = 300)
+options(repr.plot.width = 15, repr.plot.height = 7, repr.plot.res = 300)
 
 
 weightmat_plot <- function(df_beta,p_top_genes,df_tg,f) {
@@ -30,8 +30,12 @@ df_beta = df_beta[row_order,]
 df_beta[df_beta < -20] = -20
 df_beta[df_beta > 20] = 20
 
+
+ignore = c("26","14","45","43","16","4","42","48","17","19","50","30","37","11","9","6")
+
+df_beta = df_beta[!(rownames(df_beta) %in% ignore ),]
 if(p_top_genes){
-p1 <- pheatmap(df_beta,color = colorRampPalette(c("navy", "white", "firebrick3"))(100),fontsize_row=8,fontsize_col=3,cluster_rows=FALSE,cluster_cols=FALSE,show_colnames=T)
+p1 <- pheatmap(df_beta,color = colorRampPalette(c("navy", "white", "firebrick3"))(100),fontsize_row=8,fontsize_col=3,cluster_rows=FALSE,cluster_cols=FALSE,show_colnames=F)
 }
 else{
 p1 <- pheatmap(df_beta,color = colorRampPalette(c("navy", "white", "firebrick3"))(100),fontsize_row=8,fontsize_col=8,cluster_rows=FALSE,cluster_cols=FALSE,show_colnames=F)

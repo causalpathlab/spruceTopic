@@ -137,6 +137,17 @@ def get_topics(spr,df_kmeans):
 	return dflatent
 
 
+def add_interaction_topics(spr,df_kmeans):
+
+	df_h_state = spr.interaction_topic.neighbour_h.copy()
+	df_h_state['it_topic'] = [ pd.Series(vals).value_counts().index[0] for indx,vals in df_h_state.iterrows()]
+
+	df_kmeans = pd.merge(df_kmeans,df_h_state[['cell','it_topic']],how='left',on='cell')
+	
+	return df_kmeans
+
+
+
 def topics_summary(spr,df_kmeans):
 
 	df_h_celltype = spr.cell_topic.h.copy()
@@ -157,7 +168,7 @@ def topics_summary(spr,df_kmeans):
 
 def get_cell_neighbours_states(df_nbr,df_its,df):
 
-	cancer_cells = df[df['cluster_celltype']=='Cancer Epithelial']['cell'].values
+	cancer_cells = df[df['cluster_celltype'].str.contains('Cancer')]['cell'].values
 	cc_idxs = df_nbr[df_nbr['cell'].isin(cancer_cells)].index
 
 	res = []
@@ -170,30 +181,97 @@ def get_cell_neighbours_states(df_nbr,df_its,df):
 
 	return res
 
-def plt_cn(spr,df,cslist):
+# def plt_cn(spr,df,cslist):
+
+# 	import matplotlib.pylab as plt
+# 	import colorcet as cc
+# 	import seaborn as sns
+# 	plt.rcParams['figure.figsize'] = [15, 4]
+# 	plt.rcParams['figure.autolayout'] = True
+
+# 	for i in cslist:
+# 		celltype = i[0]
+# 		state = i[1]
+# 		df_sel = df[df['cluster_celltype'] == celltype]
+# 		df_sel = df_sel.drop_duplicates(subset=['cancer_cell','state'])
+
+# 		# state = df.state.value_counts().head(1).index[0]
+# 		# try:
+# 		dfl,dfr = get_cell_neighbours_states_lr(spr,df_sel[df_sel['state']==state],state)
+# 		fig, ax = plt.subplots(2,1) 
+# 		sns.heatmap(dfl,annot=False,ax=ax[0],cmap='viridis')
+# 		ax[0].set_title('Cancer_'+celltype+'_ligands_state_'+str(state))
+# 		sns.heatmap(dfr,annot=False,ax=ax[1],cmap='viridis')
+# 		ax[1].set_title('Cancer_'+celltype+'_receptors_state_'+str(state))
+# 		plt.savefig(spr.interaction_topic.model_id+'_cancer_'+celltype+'_lr_state_'+str(state)+'.png')
+# 		plt.close()
+
+# 		# except:
+# 		# 	print('error...celltype'+celltype+'---'+str(state))
+
+
+# def get_cell_neighbours_states_lr(spr,df,state):
+# 	df_cancer_l = spr.data.raw_l_data[spr.data.raw_l_data['index'].isin(df['cancer_cell'].values)]
+# 	df_cancer_r = spr.data.raw_r_data[spr.data.raw_r_data['index'].isin(df['cancer_cell'].values)]
+
+# 	df_nbr_l = spr.data.raw_l_data[spr.data.raw_l_data['index'].isin(df['nbr'].values)]
+# 	df_nbr_r = spr.data.raw_r_data[spr.data.raw_r_data['index'].isin(df['nbr'].values)]
+
+# 	df_cancer_l.iloc[:,1:] = df_cancer_l.iloc[:,1:].div(df_cancer_l.iloc[:,1:].sum(axis=1), axis=0)
+# 	df_cancer_r.iloc[:,1:] = df_cancer_r.iloc[:,1:].div(df_cancer_r.iloc[:,1:].sum(axis=1), axis=0)
+
+# 	df_nbr_l.iloc[:,1:] = df_nbr_l.iloc[:,1:].div(df_nbr_l.iloc[:,1:].sum(axis=1), axis=0)
+# 	df_nbr_r.iloc[:,1:] = df_nbr_r.iloc[:,1:].div(df_nbr_r.iloc[:,1:].sum(axis=1), axis=0)
+
+# 	# df_cancer_l = df_cancer_l.sample(n=df_nbr_l.shape[0])
+# 	# df_cancer_r = df_cancer_r.sample(n=df_nbr_r.shape[0])
+
+
+# 	top_r = list(spr.interaction_topic.beta_r.iloc[state,:].sort_values(ascending=False).head(25).index)
+# 	top_l = list(spr.interaction_topic.beta_l.iloc[state,:].sort_values(ascending=False).head(25).index)
+	
+# 	df_cancer_l = df_cancer_l.loc[:,top_l]
+# 	df_cancer_r = df_cancer_r.loc[:,top_r]
+# 	df_nbr_l = df_nbr_l.loc[:,top_l]
+# 	df_nbr_r = df_nbr_r.loc[:,top_r]
+
+# 	df_cancer_l = df_cancer_l.mean()
+# 	df_cancer_r = df_cancer_r.mean()
+# 	df_nbr_l = df_nbr_l.mean()
+# 	df_nbr_r = df_nbr_r.mean()
+
+# 	dfl = pd.DataFrame([df_cancer_l,df_nbr_l],index=['cancer','nbr'])
+# 	dfr = pd.DataFrame([df_cancer_r,df_nbr_r],index=['cancer','nbr'])
+
+# 	dfl += 1e-5
+# 	dfr += 1e-5
+# 	dfl = dfl.applymap(math.sqrt)
+# 	dfr = dfr.applymap(math.sqrt)
+	
+# 	return dfl,dfr
+
+def plt_cn(spr,df):
 
 	import matplotlib.pylab as plt
 	import colorcet as cc
 	import seaborn as sns
-	plt.rcParams['figure.figsize'] = [15, 4]
+	plt.rcParams['figure.figsize'] = [16,12]
 	plt.rcParams['figure.autolayout'] = True
 
-	for i in cslist:
-		celltype = i[0]
-		state = i[1]
-		df_sel = df[df['cluster_celltype'] == celltype]
-		df_sel = df_sel.drop_duplicates(subset=['cancer_cell','state'])
+	fig, ax = plt.subplots(7,2)
+	# ax = ax.ravel()
+ 
 
-		# state = df.state.value_counts().head(1).index[0]
-		# try:
-		dfl,dfr = get_cell_neighbours_states_lr(spr,df_sel[df_sel['state']==state],state)
-		fig, ax = plt.subplots(2,1) 
-		sns.heatmap(dfl,annot=False,ax=ax[0],cmap='viridis')
-		ax[0].set_title('Cancer_'+celltype+'_ligands_state_'+str(state))
-		sns.heatmap(dfr,annot=False,ax=ax[1],cmap='viridis')
-		ax[1].set_title('Cancer_'+celltype+'_receptors_state_'+str(state))
-		plt.savefig(spr.interaction_topic.model_id+'_cancer_'+celltype+'_lr_state_'+str(state)+'.png')
-		plt.close()
+	for idx,state in enumerate(df['state'].unique()):
+		df_sel = df[df['state'] == state]
+		dfl,dfr = get_cell_neighbours_states_lr(spr,df_sel,state)
+		sns.heatmap(dfl,annot=False,ax=ax[idx,0],cmap='viridis',yticklabels=['c','n'])
+		ax[idx,0].set_ylabel(state)
+		# ax[0].set_title('Ligands_interaction_topic_'+str(state))
+		sns.heatmap(dfr,annot=False,ax=ax[idx,1],cmap='viridis',yticklabels=['c','n'])
+		# ax[1].set_title('Receptors_interaction_topic_'+str(state))
+	plt.savefig(spr.interaction_topic.model_id+'_lr_interaction_topic_hmap.pdf')
+	plt.close()
 
 		# except:
 		# 	print('error...celltype'+celltype+'---'+str(state))
@@ -206,11 +284,11 @@ def get_cell_neighbours_states_lr(spr,df,state):
 	df_nbr_l = spr.data.raw_l_data[spr.data.raw_l_data['index'].isin(df['nbr'].values)]
 	df_nbr_r = spr.data.raw_r_data[spr.data.raw_r_data['index'].isin(df['nbr'].values)]
 
-	df_cancer_l.iloc[:,1:] = df_cancer_l.iloc[:,1:].div(df_cancer_l.iloc[:,1:].sum(axis=1), axis=0)
-	df_cancer_r.iloc[:,1:] = df_cancer_r.iloc[:,1:].div(df_cancer_r.iloc[:,1:].sum(axis=1), axis=0)
+	# df_cancer_l.iloc[:,1:] = df_cancer_l.iloc[:,1:].div(df_cancer_l.iloc[:,1:].sum(axis=1), axis=0)
+	# df_cancer_r.iloc[:,1:] = df_cancer_r.iloc[:,1:].div(df_cancer_r.iloc[:,1:].sum(axis=1), axis=0)
 
-	df_nbr_l.iloc[:,1:] = df_nbr_l.iloc[:,1:].div(df_nbr_l.iloc[:,1:].sum(axis=1), axis=0)
-	df_nbr_r.iloc[:,1:] = df_nbr_r.iloc[:,1:].div(df_nbr_r.iloc[:,1:].sum(axis=1), axis=0)
+	# df_nbr_l.iloc[:,1:] = df_nbr_l.iloc[:,1:].div(df_nbr_l.iloc[:,1:].sum(axis=1), axis=0)
+	# df_nbr_r.iloc[:,1:] = df_nbr_r.iloc[:,1:].div(df_nbr_r.iloc[:,1:].sum(axis=1), axis=0)
 
 	# df_cancer_l = df_cancer_l.sample(n=df_nbr_l.shape[0])
 	# df_cancer_r = df_cancer_r.sample(n=df_nbr_r.shape[0])

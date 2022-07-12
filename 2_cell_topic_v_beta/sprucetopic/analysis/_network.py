@@ -7,8 +7,11 @@ import igraph
 import seaborn as sns
 
 
+
 def cell_interaction_network(spr,df):
 	import matplotlib.pylab as plt
+	plt.rcParams['figure.figsize'] = [15, 10]
+	plt.rcParams['figure.autolayout'] = True
 	import colorcet as cc
 	import seaborn as sns
 
@@ -31,7 +34,8 @@ def cell_interaction_network(spr,df):
 	# if len(states)<=10:
 	# 	colors = sns.color_palette("Paired")
 	# elif len(states)>10:
-	colors = sns.color_palette('tab10',len(cells))
+	# colors = sns.color_palette('tab10',len(cells))
+	colors = sns.color_palette(cc.glasbey_dark, n_colors=len(cells))
 	cell_clr = {}
 	for i,c in enumerate(cells): cell_clr[c]=colors[i]
 
@@ -63,25 +67,27 @@ def cell_interaction_network(spr,df):
 	for v in g.vs:
 		if "state" not in v['name']: 
 			v['attr'] = 'cell'
-			v['size'] = 20
-			v['color'] = 'aqua'
+			v['size'] = 10
+			v['color'] = 'white'
 			v['shape'] = 'circle'
 		else: 
 			v['attr'] = 'state'
-			v['size'] = 20
+			v['size'] = 10
 			v['color'] = 'lightyellow'
-			v['shape'] = 'square'
+			v['shape'] = 'white'
 		
 
 	visual_style={}
 	visual_style["vertex_label"] = [ x.replace('state','s') for x in g.vs["name"]]
 	# visual_style["vertex_size"] = g.vs['size']
 	# visual_style["vertex_color"] = g.vs['color']
-	visual_style["vertex_label_size"] = 10
+	visual_style["vertex_label_size"] = 20
 	visual_style["edge_color"] = g.es['color']
-	# visual_style["edge_width"] = [x for x in g.es['weight']]
-	visual_style["layout"] = g.layout_reingold_tilford_circular()
-	# visual_style["layout"] = g.layout_sugiyama()
+	visual_style["edge_width"] = [x/10 for x in g.es['weight']]
+	# visual_style["layout"] = g.layout_reingold_tilford_circular()
+	visual_style["layout"] = g.layout_circle()
+	visual_style["bbox"] = (1000, 1000)
+
 	igraph.plot(g, target=spr.interaction_topic.model_id+"_it_ccview_network_plot.png",**visual_style,margin=40)
 
 def interaction_statewise_lr_network(spr,states,top_lr=200,keep_db=True,df_db=None):
