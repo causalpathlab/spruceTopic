@@ -214,6 +214,20 @@ class Spruce:
             print(df.shape)
         return df
 
+    def interaction_topic_prop_with_cellids_nbrsummed(self,query_cells):
+        
+        cell_indxs = self.cell_topic.neighbour[self.cell_topic.neighbour['cell'].isin(query_cells)].index.values
+
+        nbrs,cc_it_prob = self.interaction_topic_prob(cell_indxs)
+
+        cell_det = []
+        for indx,c_c in enumerate(query_cells): 
+            cell_det.append([c_c,cc_it_prob[indx].sum(0)])                
+        df = pd.DataFrame(cell_det)
+        split_df = pd.DataFrame(df[1].tolist(), columns=[ 't'+str(x) for x in range(25)])
+        df = pd.concat([df, split_df], axis=1).drop(columns=[1])
+        return df 
+
 
 
 

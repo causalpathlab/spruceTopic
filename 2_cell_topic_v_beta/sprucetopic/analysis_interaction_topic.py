@@ -32,13 +32,28 @@ df_its = spr.interaction_topic_states()
 df_its.to_csv(spr.interaction_topic.model_id+'_it_h_argmax.csv.gz',index=False,compression='gzip')
 df_its = pd.read_csv(spr.interaction_topic.model_id+'_it_h_argmax.csv.gz',compression='gzip')
 
-df_hmax = pd.DataFrame(pd.Series(df_its.iloc[:,1:].values.flatten()).value_counts()).reset_index().rename(columns={'index':'topic',0:'argmax_count'})
+df_hmax = pd.DataFrame(pd.Series(df_its.iloc[:,1:].values.flatten()).value_counts()).reset_index().rename(columns={'index':'cell_topic',0:'argmax_count'})
 df_hmax = df_hmax.sort_values('argmax_count',ascending=False)
-p = sns.barplot(x='topic',y='argmax_count',data=df_hmax,color='blue')
+p = sns.barplot(x='cell_topic',y='argmax_count',data=df_hmax,color='blue')
 p.set_xlabel("Topic",fontsize=20)
 p.set_ylabel("Count(argmax)",fontsize=20)
 plt.savefig(spr.interaction_topic.model_id+'_it_h_argmax.png');plt.close()
 
+
+##################################################################
+# make metafile
+##################################################################
+df_kmeans = pd.read_csv(spr.cell_topic.model_id +'_ct_h_umap_cordinates_kmeans.csv.gz')
+df_its = pd.read_csv(spr.interaction_topic.model_id+'_it_h_argmax.csv.gz',compression='gzip')
+df_its['interact_topic'] = [ pd.Series(vals).value_counts().index[0] for indx,vals in df_its.iterrows()]
+
+df_kmeans = pd.merge(df_kmeans,df_its[['cell','interact_topic']],how='left',on='cell')
+
+df_kmeans = df_kmeans.drop(columns=['umap1', 'umap2', 'label', 'l1','celltype_minor','celltype',])
+
+df_kmeans = df_kmeans.rename(columns={'topic':'cell_topic'})
+
+df_kmeans.to_csv(spr.interaction_topic.model_id+'_alltopics_meta.csv.gz',index=False,compression='gzip')
 
 
 ##################################################################
@@ -54,19 +69,13 @@ top_n = 10
 df_top_genes = _topics.topic_top_lr_genes(spr,top_n)
 df_top_genes.to_csv(spr.interaction_topic.model_id+'_it_beta_weight_top_'+str(top_n)+'_genes.csv.gz',index=False,compression='gzip')
 
-#### get top genes based on beta weight matrix - l/r together
-
-# df_db = pd.read_csv( experiment_home + spr.args.database+ spr.args.lr_db,sep='\t', usecols=['lr_pair'])
-# top_n=25
-# df_lr_topic = _topics.topic_top_lr_pair_genes(spr,df_db,top_n)
-# df_lr_topic.to_csv(spr.interaction_topic.model_id+'_it_beta_top_'+str(top_n)+'_lrpair.csv.gz',compression='gzip')
 
 ##################################################################
-# 8 interaction topic struct plot and cancer nbr gene expression
+# 3 interaction topic struct plot 
 ##################################################################
 
 ##################################################################
-# 8.1 
+# 3.1 
 # get samples of cell pairs interaction topic
 '''
 take 100 cells sample from each cancer cell topic with >100 cells
@@ -87,8 +96,8 @@ df_kmeans = pd.read_csv(spr.cell_topic.model_id +'_ct_h_umap_cordinates_kmeans.c
 df_kmeans = df_kmeans[ df_kmeans.cluster_celltype.str.contains('Cancer')]
 
 # identify cancer cell topic with > 100 cells
-df_kmeans = df_kmeans[ df_kmeans['topic'].isin(df_kmeans.topic.value_counts().index[:13])]
-df_kmeans = df_kmeans.groupby('topic').sample(n=100, random_state=1)
+df_kmeans = df_kmeans[ df_kmeans['cell_topic'].isin(df_kmeans.topic.value_counts().index[:13])]
+df_kmeans = df_kmeans.groupby('cell_topic').sample(n=100, random_state=1)
 cancer_cells = df_kmeans['cell'].values
 
 dfh_sample = spr.interaction_topic_prop_with_cellids(cancer_cells)
@@ -153,15 +162,15 @@ torder={
 
 dfh_sample_kmeans['Topic'] = [torder[i] for i in dfh_sample_kmeans['Topic']]
 
-iofit = [3,11,13,16,18,20,23]
+selected_int_topics = [3,11,13,16,18,20,23]
 
-dfh_sample_kmeans = dfh_sample_kmeans[dfh_sample_kmeans['Topic'].isin(iofit)]
+dfh_sample_kmeans = dfh_sample_kmeans[dfh_sample_kmeans['Topic'].isin(selected_int_topics)]
 
 dfh_sample_kmeans = dfh_sample_kmeans.sort_values('Topic')
 dfh_sample_kmeans.to_csv(spr.interaction_topic.model_id+'_it_h_sample_kmeans_selected.csv.gz',index=False,compression='gzip')
 
 ##################################################################
-# 8.2 
+# 3.2 
 # get mean expression of cancer nbr cells from above sample dataset
 # draw heatmap
 '''
@@ -173,35 +182,114 @@ dfh_sample_kmeans.to_csv(spr.interaction_topic.model_id+'_it_h_sample_kmeans_sel
 '''
 
 df=pd.read_csv(spr.interaction_topic.model_id+'_it_model_all_topics_cancer_cells.csv.gz',compression='gzip')
-df = df[['cancer_cell','nbr','state']]
-iofit = [2,4,7,10,18,22,24]
-df = df[df['state'].isin(iofit)]
-_topics.plt_cn(spr,df)
+df = df[['cancer_cell','nbr','interact_topic']]
+selected_int_topics = [2,4,7,10,18,22,24]
+df = df[df['interact_topic'].isin(selected_int_topics)]
+_topics.plt_cn(spr,df,selected_int_topics)
 
 
-########### cell type distribution of cancer cells
+##################################################################
+# 3.3 
+# cell type distribution of cancer cells
 # it with interesting pattern - 2,4,7,10,18,22,24
 
 
-iofit = [2,4,7,10,18,22,24]
+selected_int_topics = [2,4,7,10,18,22,24]
 df=pd.read_csv(spr.interaction_topic.model_id+'_it_model_all_topics_cancer_cells.csv.gz',compression='gzip')
 df = df[~df['cluster_celltype'].str.contains('Cancer')]
-df = df[df['state'].isin(iofit)]
+df = df[df['interact_topic'].isin(selected_int_topics)]
 
-df_grp = df.groupby(['cluster_celltype','state'])['state'].size().rename('count').reset_index()
+df_grp = df.groupby(['cluster_celltype','interact_topic'])['interact_topic'].size().rename('count').reset_index()
 ##normalize
-celltype_sum = dict(df_grp.groupby('state')['count'].sum())
+celltype_sum = dict(df_grp.groupby('interact_topic')['count'].sum())
 
-df_grp['ncount'] = [x/celltype_sum[y] for x,y in zip(df_grp['count'],df_grp['state'])]
+df_grp['ncount'] = [x/celltype_sum[y] for x,y in zip(df_grp['count'],df_grp['interact_topic'])]
 
 df_grp.to_csv(spr.interaction_topic.model_id+'_it_cancercells_interactions.csv.gz',index=False,compression='gzip')
 
 ##################################################################
-# 3 cancer centric view
+# 4 gene gene L/R correlation network 
 ##################################################################
 
 ##################################################################
 # 3.1 
+'''
+For each interaction topics,
+for cells -> combine cells from all cell pairs 
+for genes -> combine ligand receptor genes
+construct gene correlation matrix using raw count data as gene expression, add 1 where zero.
+'''
+from analysis import _network
+from util._io import read_config
+from collections import namedtuple
+
+df=pd.read_csv(spr.interaction_topic.model_id+'_it_model_all_topics_cancer_cells.csv.gz',compression='gzip')
+
+selected_int_topics = [2,4,7,10,18,22,24]
+# df = df[~df['cluster_celltype'].str.contains('Cancer')]
+df = df[df['interact_topic'].isin(selected_int_topics)]
+# df = df.drop_duplicates(subset=['cancer_cell','interact_topic'], keep='last')
+
+experiment_config = read_config(experiment_home+'config.yaml')
+args = namedtuple('Struct',experiment_config.keys())(*experiment_config.values())
+spr.data.raw_data = pd.read_pickle(experiment_home+args.data+args.sample_id+args.raw_data)
+
+# corr_th = {2:0.2,4:0.11,10:0.2,18:0.28,22:0.2,24:0.2}
+corr_th = {2:0.25,4:0.12,10:0.2,18:0.3,22:0.25,24:0.25}
+zcutoff = 1
+selected_int_topics = [2,4,10,18,22,24]
+_network.lr_correlation_network(spr,df,selected_int_topics,zcutoff,corr_th)
+
+
+
+##################################################################
+# DEG analysis
+##################################################################
+
+
+df = pd.read_csv(spr.interaction_topic.model_id+'_it_model_all_topics.csv.gz',compression='gzip')
+selected_int_topics = [2,4,7,10,18,22,24]
+df = df[df['interact_topic'].isin(selected_int_topics)]
+
+df_its = pd.read_csv(spr.interaction_topic.model_id+'_it_h_argmax.csv.gz',compression='gzip')
+df_nbr = spr.cell_topic.neighbour
+
+res = _topics.get_cell_neighbours_states(df_nbr,df_its,df['cell'].values)
+df_res = pd.DataFrame(res,columns=['cell_id','nbr','interact_topic'])
+df_res = df_res.explode(['nbr','interact_topic'])
+df_res = pd.merge(df_res,df[['cell','cell_topic','cluster','cluster_celltype']],left_on='nbr',right_on='cell',how='left')
+df_res = df_res.drop(columns=['cell'])
+
+df_res = df_res[df_res['interact_topic'].isin(selected_int_topics)]
+
+df_res.to_pickle(spr.interaction_topic.model_id+'_it_model_all_topics_all_cells.pkl')
+
+df_res = pd.read_pickle(spr.interaction_topic.model_id+'_it_model_all_topics_all_cells.pkl')
+
+query_cells = df_res['cell_id'].values
+query_cells = pd.Series(query_cells).unique()
+df = spr.interaction_topic_prop_with_cellids_nbrsummed(query_cells)
+df.to_csv(spr.interaction_topic.model_id+'_it_model_deg_analysis.csv.gz',index=False,compression='gzip')
+
+#### DEG data check
+df = pd.read_csv(spr.interaction_topic.model_id+'_it_model_deg_analysis.csv.gz')
+df_meta = pd.read_csv(spr.interaction_topic.model_id+'_alltopics_meta.csv.gz',compression='gzip')
+dftest = df_meta[df_meta['cell'].isin(df['cell_id'].values)]
+dftest.shape
+dftest['interact_topic'].value_counts()
+dftest.cluster_celltype.value_counts()
+
+##################################################################
+##################################################################
+# NOT INCLUDED IN FIGURES
+##################################################################
+
+##################################################################
+# OTHER cancer centric view
+##################################################################
+
+##################################################################
+# 4.1 
 # generate topics summary 
 
 '''
@@ -214,8 +302,9 @@ df_kmeans = pd.read_csv(spr.cell_topic.model_id +'_ct_h_umap_cordinates_kmeans.c
 df_all_topics = _topics.get_topics(spr,df_kmeans)
 df_all_topics.to_csv(spr.interaction_topic.model_id+'_it_model_all_topics.csv.gz',index=False,compression='gzip')
 
+
 ##################################################################
-# 3.2 
+# 4.2 
 # look at all the cancer cells, what cell and interaction topics they belong to
 # check only for interaction with >100 cells 
 
@@ -229,7 +318,7 @@ df_kmeans = pd.read_csv(spr.cell_topic.model_id +'_ct_h_umap_cordinates_kmeans.c
 df_kmeans = df_kmeans[ df_kmeans.cluster_celltype.str.contains('Cancer')]
 
 dfsummary = _topics.topics_summary(spr,df_kmeans)
-dfsummary = dfsummary.groupby(['cluster','topic','state']).count()
+dfsummary = dfsummary.groupby(['cluster','cell_topic','interact_topic']).count()
 dfsummary = dfsummary.reset_index()	
 ### filter topics summary for summary plot
 
@@ -240,18 +329,16 @@ dfsummary['celltype'] = [clust_to_cell_type[x] for x in dfsummary['cluster']]
 # use cluster assignment as cell type
 # dfsummary['celltype'] = ['ct_'+str(x) for x in dfsummary['cluster']]
 
-dfsummary = dfsummary.sort_values('state')
+dfsummary = dfsummary.sort_values('interact_topic')
 min_cells_per_state = 100
 dfsummary = dfsummary[dfsummary['cell']>min_cells_per_state]
 dfsummary.to_csv(spr.interaction_topic.model_id+'_it_model_summary.csv.gz',index=False,compression='gzip')
 
-
-
 ##################################################################
-# 3.2 
+# 4.3 
 # interaction topics distribution of neighbouring cells of cancer
 
-# 3.2.1 get neighbour cells of each cancer cell and their interaction topic 
+# 4.3.1 get neighbour cells of each cancer cell and their interaction topic 
 
 from analysis import _topics
 df = pd.read_csv(spr.interaction_topic.model_id+'_it_model_all_topics.csv.gz',compression='gzip')
@@ -259,19 +346,14 @@ df_its = pd.read_csv(spr.interaction_topic.model_id+'_it_h_argmax.csv.gz',compre
 df_nbr = spr.cell_topic.neighbour
 
 res = _topics.get_cell_neighbours_states(df_nbr,df_its,df)
-df_res = pd.DataFrame(res,columns=['cancer_cell','nbr','state'])
-df_res = df_res.explode(['nbr','state'])
+df_res = pd.DataFrame(res,columns=['cancer_cell','nbr','interact_topic'])
+df_res = df_res.explode(['nbr','interact_topic'])
 df_res = pd.merge(df_res,df[['cell','cluster','cluster_celltype']],left_on='nbr',right_on='cell',how='left')
 df_res.to_csv(spr.interaction_topic.model_id+'_it_model_all_topics_cancer_cells.csv.gz',index=False,compression='gzip')
 
 
-# 3.2.1 look at non cancer neighbours of cancer cells and check state distribution 
-
-df = df_res
-
-
 ##################################################################
-# 4 network graph
+# 5 network graph
 # Check interaction state of cancer cells and neighbouring cells 
 
 '''
@@ -282,12 +364,12 @@ to that state
 from analysis import _network
 df = pd.read_csv(spr.interaction_topic.model_id+'_it_model_all_topics_cancer_cells.csv.gz',compression='gzip')
 # df = df[df['cluster_celltype'] == 'Cancer Epithelial']
-# df = df[~df['state'].isin([7,10])]
+# df = df[~df['interact_topic'].isin([7,10])]
 _network.cell_interaction_network(spr,df)
 
 
 ##################################################################
-# 5 topic wise lr network graph
+# 6 topic wise lr network graph
 ##################################################################
 
 from analysis import _network
@@ -303,43 +385,6 @@ top_lr = 25
 keep_db=False
 _network.interaction_statewise_lr_network(spr,states,top_lr,keep_db,df_db)
 
-##################################################################
-# 6 look at neighbours of cancer cells gene expression
-'''
--for only cancer cells select its neighbour cell type and interaction topic
--get raw data for these cancer cells and nbr cells
-- normalize rowwise such that each ligand expression is proportion of all ligand expression
-- get top 25 ligand and receptor genes for interaction topic
-- filter those top genes and take mean, add 1e-5, and apply sqrt for heatmap
-'''
-
-
-from analysis import _topics
-import matplotlib.pylab as plt
-import colorcet as cc
-import seaborn as sns
-plt.rcParams['figure.figsize'] = [15, 4]
-plt.rcParams['figure.autolayout'] = True
-
-df=pd.read_csv(spr.interaction_topic.model_id+'_it_model_all_topics_cancer_cells.csv.gz',compression='gzip')
-
-cslist = [ 
-('Epithelial_Normal',10),
-('Epithelial_Normal',4),
-('B_cells',24),
-('T_cells',22),
-('B_cells',22),
-('T_cells',24),
-('B_cell_n',22),
-('B_cell_n',24),
-('T_cell_n',22),
-('T_cell_n',24),
-('PVL',18),
-('Myeloid',24),
-('Endothelial',2)
-]
-_topics.plt_cn(spr,df,cslist)
-
 
 ##################################################################
 # 7 interaction topic gse analysis
@@ -350,8 +395,6 @@ take ligand and receptor weight and average them
 df_db = pd.read_csv( experiment_home + spr.args.database+ spr.args.lr_db,sep='\t', usecols=['lr_pair'])
 df = _gsea.gse_interactiontopic_v2(spr,df_db)
 df.to_csv(spr.interaction_topic.model_id+'_it_gsea.csv.gz',index=False,compression='gzip')
-
-
 
 from analysis import _gsea
 _gsea.gsea(spr)

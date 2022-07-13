@@ -22,7 +22,7 @@ umap_2d = umap.UMAP(n_components=2, init='random', random_state=0,min_dist=0.0,m
 proj_2d = umap_2d.fit(dfh.iloc[:,1:])
 
 df_umap[['umap1','umap2']] = umap_2d.embedding_[:,[0,1]]
-df_umap['topic'] = [x.replace('h','') for x in dfh.iloc[:,1:].idxmax(axis=1)]
+df_umap['cell_topic'] = [x.replace('h','') for x in dfh.iloc[:,1:].idxmax(axis=1)]
 df_umap.to_csv(spr.cell_topic.model_id+'_ct_h_umap_cordinates.csv.gz',index=False,compression='gzip')
 
 ##################################################################
@@ -40,12 +40,12 @@ df_umap = pd.read_csv(spr.cell_topic.model_id+'_ct_h_umap_cordinates.csv.gz',com
 
 # if we need to select topics with >100 cells
 # selected_topic = list(df_umap.topic.value_counts().index[0:32])
-# df_umap = df_umap[df_umap['topic'].isin(selected_topic)]
+# df_umap = df_umap[df_umap['cell_topic'].isin(selected_topic)]
 
 # plot umap with argmax topic
 
-cp = sns.color_palette(cc.glasbey_dark, n_colors=len(df_umap['topic'].unique()))
-p = sns.scatterplot(data=df_umap, x='umap1', y='umap2', hue='topic',s=5,palette=cp,legend=False)
+cp = sns.color_palette(cc.glasbey_dark, n_colors=len(df_umap['cell_topic'].unique()))
+p = sns.scatterplot(data=df_umap, x='umap1', y='umap2', hue='cell_topic',s=5,palette=cp,legend=False)
 # plt.legend(title='Cell type',title_fontsize=18, fontsize=14,loc='center left', bbox_to_anchor=(1, 0.5))
 p.axes.set_title("UMAP plot of cell-mixture with argmax cell topic assignment",fontsize=30)
 p.set_xlabel("UMAP1",fontsize=20)
@@ -308,9 +308,9 @@ del dfh
 # df_umap = pd.read_csv(spr.cell_topic.model_id+'_ct_h_umap_cordinates_kmeans.csv.gz',compression='gzip')
 # df_umap2 = df_umap[df_umap[label]=='Cancer_Epithelial']
 # # df_umap2 = df_umap[df_umap['cluster_celltype']=='Cancer_Epithelial']
-# df_h_sample = df_umap2.groupby('topic').sample(frac=0.2, random_state=1)
-# dfh = pd.merge(dfh,df_h_sample[['cell','topic']],on='cell',how='inner')
-# dfh = dfh.rename(columns={'topic':'Topic'})
+# df_h_sample = df_umap2.groupby('cell_topic').sample(frac=0.2, random_state=1)
+# dfh = pd.merge(dfh,df_h_sample[['cell','cell_topic']],on='cell',how='inner')
+# dfh = dfh.rename(columns={'cell_topic':'Topic'})
 # dfh.to_csv(spr.cell_topic.model_id+'_ct_h_sample_cancer_topic.csv.gz',index=False,compression='gzip')
 # del dfh
 
@@ -319,15 +319,15 @@ del dfh
 ##################################################################
 
 dfh = spr.cell_topic.h
-df_hsum = dfh.iloc[:,1:].sum(0).reset_index().rename(columns={'index':'topic',0:'sum'})
+df_hsum = dfh.iloc[:,1:].sum(0).reset_index().rename(columns={'index':'cell_topic',0:'sum'})
 df_hsum = df_hsum.sort_values('sum',ascending=False)
-p = sns.barplot(x='topic',y='sum',data=df_hsum,color='blue')
+p = sns.barplot(x='cell_topic',y='sum',data=df_hsum,color='blue')
 p.set_xlabel("Topic",fontsize=20)
 p.set_ylabel("Sum",fontsize=20)
 plt.savefig(spr.model_id+'_ct_h_sum.png');plt.close()
 
-df_hmax = pd.DataFrame(pd.Series([x.replace('h','') for x in dfh.iloc[:,1:].idxmax(axis=1)]).value_counts()).reset_index().rename(columns={'index':'topic',0:'argmax_count'})
-p = sns.barplot(x='topic',y='argmax_count',data=df_hmax,color='blue')
+df_hmax = pd.DataFrame(pd.Series([x.replace('h','') for x in dfh.iloc[:,1:].idxmax(axis=1)]).value_counts()).reset_index().rename(columns={'index':'cell_topic',0:'argmax_count'})
+p = sns.barplot(x='cell_topic',y='argmax_count',data=df_hmax,color='blue')
 p.set_xlabel("Topic",fontsize=20)
 p.set_ylabel("Count(argmax)",fontsize=20)
 plt.savefig(spr.model_id+'_ct_h_argmax.png');plt.close()
@@ -346,15 +346,15 @@ df_top_genes.to_csv(spr.cell_topic.model_id+'_ct_beta_weight_top_'+str(top_n)+'_
 #######
 df_umap = pd.read_csv(spr.cell_topic.model_id +'_ct_h_umap_cordinates_kmeans.csv.gz')
 
-df_umap_sum = df_umap.groupby(['topic','cluster_celltype'])['cell'].count().reset_index()
-df_umap_sum = df_umap_sum.sort_values(['topic','cell'])
-df_umap_sum = df_umap_sum.drop_duplicates(subset=['topic'], keep='last')
+df_umap_sum = df_umap.groupby(['cell_topic','cluster_celltype'])['cell'].count().reset_index()
+df_umap_sum = df_umap_sum.sort_values(['cell_topic','cell'])
+df_umap_sum = df_umap_sum.drop_duplicates(subset=['cell_topic'], keep='last')
 df_umap_sum = df_umap_sum[df_umap_sum['cell']>100]
 df_umap_sum = df_umap_sum.sort_values('cluster_celltype')
 
 
 # ignore = [26,14,45,43,16,4,42,48,17,19,50,30,37,11,9,6]
-# df_umap_sum = df_umap_sum[~df_umap_sum['topic'].isin(ignore)]
+# df_umap_sum = df_umap_sum[~df_umap_sum['cell_topic'].isin(ignore)]
 
 df_umap_sum = df_umap_sum.sort_values('cell',ascending=False)
 
@@ -362,14 +362,14 @@ df_umap_sum = df_umap_sum.sort_values('cell',ascending=False)
 
 top_n = 25
 df_top_genes = _topics.topic_top_genes(spr,top_n)
-sel_topics = ['k'+str(x) for x in df_umap_sum['topic']]
+sel_topics = ['k'+str(x) for x in df_umap_sum['cell_topic']]
 df_top_genes = df_top_genes[df_top_genes['Topic'].isin(sel_topics)]
 
 df_top_genes = df_top_genes.pivot(index='Topic',columns='Gene',values='Proportion')
 df_top_genes[df_top_genes>20] = 20
 df_top_genes[df_top_genes<-20] = -20
 
-topic_label = [ x for x in zip(df_umap_sum['topic'],df_umap_sum['cluster_celltype'])]
+topic_label = [ x for x in zip(df_umap_sum['cell_topic'],df_umap_sum['cluster_celltype'])]
 tld = {}
 for x in topic_label:tld[x[0]]= x[1]+'/' + str(x[0])
 

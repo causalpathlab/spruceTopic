@@ -1,6 +1,6 @@
 from audioop import add
 import os
-from turtle import title
+from turtle import title, width
 import pandas as pd
 import numpy as np
 import igraph
@@ -27,7 +27,7 @@ def cell_interaction_network(spr,df):
 	# dfs['cluster'] = [str(x)+'-'+y for x,y in zip(dfs['cluster'],dfs['cluster_celltype'])]
 	# cells = [x for x in list(dfs['cluster'].values)]
 
-	states = ['state'+str(int(x)) for x in dfs['state'].unique()]
+	states = ['interact_topic'+str(int(x)) for x in dfs['interact_topic'].unique()]
 	print(states)
 
 	## construct graph
@@ -45,8 +45,8 @@ def cell_interaction_network(spr,df):
 	gedges = []
 	for i,row in dfs.iterrows():
 		cell = row.cluster_celltype
-		s = int(row['state'])
-		interaction_state = 'state'+str(s)
+		s = int(row['interact_topic'])
+		interaction_state = 'interact_topic'+str(s)
 		epair = cell + '_' + interaction_state
 
 		if epair not in gedges:
@@ -71,14 +71,14 @@ def cell_interaction_network(spr,df):
 			v['color'] = 'white'
 			v['shape'] = 'circle'
 		else: 
-			v['attr'] = 'state'
+			v['attr'] = 'interact_topic'
 			v['size'] = 10
 			v['color'] = 'lightyellow'
 			v['shape'] = 'white'
 		
 
 	visual_style={}
-	visual_style["vertex_label"] = [ x.replace('state','s') for x in g.vs["name"]]
+	visual_style["vertex_label"] = [ x.replace('interact_topic','s') for x in g.vs["name"]]
 	# visual_style["vertex_size"] = g.vs['size']
 	# visual_style["vertex_color"] = g.vs['color']
 	visual_style["vertex_label_size"] = 20
@@ -190,3 +190,93 @@ def interaction_statewise_lr_network(spr,states,top_lr=200,keep_db=True,df_db=No
 	flag='not_db'
 	if keep_db: flag='db'
 	plt.savefig(spr.interaction_topic.model_id+'_lr_network_it_states_'+flag+'.png');plt.close()
+
+def lr_correlation_network(spr,df,interact_topics,zcutoff,corr_th):
+
+	import matplotlib.pylab as plt
+	import networkx as nx
+	import colorcet as cc
+	import seaborn as sns
+	import scipy.stats as stats
+
+	plt.rcParams['figure.figsize'] = [30,20]
+	plt.rcParams['figure.autolayout'] = True
+
+	fig, ax = plt.subplots(2,3) 
+	ax = ax.ravel()
+
+
+	for i,topic in enumerate(interact_topics):
+
+		r_vals = spr.interaction_topic.beta_r.iloc[topic,:]
+		receptors = r_vals[stats.zscore(r_vals)>zcutoff].index.values
+		l_vals = spr.interaction_topic.beta_l.iloc[topic,:]
+		ligands = l_vals[stats.zscore(l_vals)>zcutoff].index.values
+
+		# receptors = list(spr.interaction_topic.beta_r.iloc[topic,:].sort_values(ascending=False).head(300).index)
+		# ligands = list(spr.interaction_topic.beta_l.iloc[topic,:].sort_values(ascending=False).head(300).index)
+		all_genes = np.concatenate([ligands,receptors])
+
+		df_gexp = spr.data.raw_data.loc[:,np.concatenate([['index'],all_genes])].copy()
+		df_gexp = df_gexp.replace(to_replace = 0, value = 10)
+
+		cancer_cells = df[df['interact_topic']==topic]['cancer_cell'].unique()
+		nbr_cells = df[df['interact_topic']==topic]['nbr'].unique()
+		all_cells = np.concatenate( [cancer_cells , nbr_cells])
+
+		df_gexp_topic = df_gexp[df_gexp['index'].isin(all_cells)].copy()
+		df_gexp_topic.index = df_gexp_topic['index']
+		df_gexp_topic = df_gexp_topic.drop(columns=['index'])	
+		df_gexp_topic = df_gexp_topic.T
+
+		df_corr = pd.DataFrame(np.corrcoef(df_gexp_topic))
+		df_corr.index = all_genes
+		df_corr.columns = all_genes
+		
+		df_corr = df_corr.reset_index().melt(id_vars=['index'])
+		df_corr.columns = ['gene1','gene2','c']
+
+		df_corr = df_corr[df_corr['c']>corr_th[topic]]
+		
+		g = nx.Graph()
+
+		for idx,row in df_corr.iterrows():
+			g1 = row['gene1']
+			g2 = row['gene2']
+			# if (g1 in ligands and g2 in receptors) or (g1 in receptors and g2 in ligands):
+			if g1 ==g2 :continue
+			g.add_node(row['gene1'])
+			g.add_node(row['gene2'])
+			g.add_edge(row['gene1'],row['gene2'],weight= row['c'])
+
+
+		remove = [node for node, degree in g.degree() if degree < 2]
+		g.remove_nodes_from(remove)
+
+		edges = g.edges()
+		weights = [ g[u][v]['weight'] * 10 for u,v in edges]
+		if len(g.nodes()) > 0:
+			fs = 12	
+			# if topic ==18 : fs = 6
+			ax[i].set_axis_off()
+			ax[i].set_title(str(topic),fontsize=20)
+			color_map = ['salmon' if node in receptors else 'darkcyan' for node in g]
+			pos = nx.circular_layout(g,scale=2)
+			nx.draw(g,pos=pos,with_labels=False,ax=ax[i],node_color=color_map,edge_color='grey',width=weights)
+			# nx.draw(g,pos=pos,with_labels=False,ax=ax[i],node_color=color_map,edge_color='grey')
+			pos_attrs = {}
+			adj = 0.15
+			for node, coords in pos.items():
+				if coords[0] > 0 and coords[1] > 0:
+					pos_attrs[node] = (coords[0], coords[1] + adj)
+				elif coords[0] < 0 and coords[1] < 0:
+					pos_attrs[node] = (coords[0], coords[1] - adj)
+				elif coords[0] > 0 and coords[1] < 0:
+					pos_attrs[node] = (coords[0], coords[1] - adj)
+				elif coords[0] < 0 and coords[1] > 0:
+					pos_attrs[node] = (coords[0], coords[1] + adj)
+
+			nx.draw_networkx_labels(g, pos_attrs,ax=ax[i],font_size=fs,font_weight='bold')
+
+
+	plt.savefig(spr.interaction_topic.model_id+'_lr_network_it_topics_corr.pdf');plt.close()

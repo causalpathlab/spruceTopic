@@ -74,6 +74,8 @@ ggplot(df_h_m, aes(x=cell, y=hvalue,fill=Topic)) +
     axis.text.x = element_blank(),
     axis.ticks.x = element_blank(),
     panel.grid = element_blank(),
+    strip.background = element_blank(), 
+    strip.text = element_blank(),
     panel.background = element_rect(fill='transparent'),
     plot.background = element_rect(fill='transparent', color=NA))+
   guides(fill = guide_legend(nrow = 1))
