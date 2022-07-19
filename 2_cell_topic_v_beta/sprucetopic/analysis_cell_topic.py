@@ -384,3 +384,54 @@ df_top3['genes'] =  df_top3['a'] +'/' +df_top3['b']+'/'+df_top3['c']
 df_top3.index = df_top_genes.index
 df_top3 = df_top3.drop(columns=['a','b','c'])
 df_top3.to_csv(spr.cell_topic.model_id+'_ct_beta_weight_top_'+str(top_n)+'_genes_top3.csv.gz',index=True,compression='gzip')
+
+
+
+
+#### plot marker genes
+
+from util._io import read_config
+from collections import namedtuple
+
+
+experiment_home='/home/BCCRC.CA/ssubedi/'+experiment_home
+experiment_config = read_config(experiment_home+'config.yaml')
+args = namedtuple('Struct',experiment_config.keys())(*experiment_config.values())
+df = pd.read_pickle(experiment_home+args.data+args.sample_id+args.raw_data)
+
+from anndata import AnnData
+import scanpy as sc
+import numpy as np
+adata = AnnData(df.iloc[:,1:].values)
+sc.pp.normalize_total(adata, target_sum=1e4)
+sc.pp.log1p(adata)
+dfn = adata.to_df()
+dfn.columns = df.columns[1:]
+dfn['cell'] = df['index'].values
+
+df_umap = pd.read_csv(spr.cell_topic.model_id+'_ct_h_umap_cordinates.csv.gz',compression='gzip')
+
+dfn = pd.merge(dfn,df_umap,on='cell',how='left')
+
+# df_m = df.groupby('topic').sample(frac=0.1, random_state=1)
+# dfn = dfn[dfn['cell'].str.contains('GSE176078')]
+
+from analysis import _supp
+# marker_genes = [ 'CD79A', 'MS4A1','CD3E', 'CD3G', 'CD3D','CD4', 'CD8A', 'CD8B',
+# 'SELL', 'CCR7', 'IL7R']
+# marker_genes = ['S100A8', 'S100A9', 'CST3','FCGR3A', 'FCGR3B', 'CD14'] 
+marker_genes = ['EPCAM', 'MKI67', 'CD3D', 'CD68','MS4A1','JCHAIN', 'PECAM1', 'PDGFRB'] 
+
+_supp.plot_marker(spr,dfn,marker_genes)
+
+
+
+#### run scanpy pipeline on mixture dataset
+from util._io import read_config
+from collections import namedtuple
+import pandas as pd
+
+experiment_home='/home/BCCRC.CA/ssubedi/'+experiment_home
+experiment_config = read_config(experiment_home+'config.yaml')
+args = namedtuple('Struct',experiment_config.keys())(*experiment_config.values())
+df = pd.read_pickle(experiment_home+args.data+args.sample_id+args.raw_data)

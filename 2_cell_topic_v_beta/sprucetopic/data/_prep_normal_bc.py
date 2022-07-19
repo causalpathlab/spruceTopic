@@ -97,13 +97,7 @@ def plot_marker():
 	ax = ax.ravel()
 
 
-	marker_genes = ['IL7R','CD3D', #CD4
-					'CD8A', #CD8
-					'LYZ', 'CD14', #CD14
-					'MS4A1','CD79A', # B
-					'GNLY', 'NKG7',#NK
-					'FCER1A',#DC
-					'S100A8', 'S100A9'] #myeloid
+	marker_genes = ['CD2','CD3','CD45'] #myeloid
 	
 	for i,g in enumerate(marker_genes):
 		if g in df.columns:

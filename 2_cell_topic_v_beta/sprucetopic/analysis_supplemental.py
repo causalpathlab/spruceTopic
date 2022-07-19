@@ -1,73 +1,47 @@
-import os
+##################################################################
+    # setup
+##################################################################
+import experiment_interaction_topic 
 import pandas as pd
-import scanpy as sc
-from scipy import sparse
-from premodel import processing as prc 
-import numpy as np
-import logging
-logger = logging.getLogger(__name__)
+from pathlib import Path
 
-def preprocessing(args):
-
-	args_home = os.environ['args_home'] 
-
-	logger.info('reading data to scanpy...')
-
-	adata = sc.read_10x_mtx(args_home+args.tenx_data)
-
-	logger.info('reading data to pandas...')
-	df = adata.to_df()
-	df.columns = adata.var_names
-	df = df.reset_index()
-
-	# logger.info('fill nans as zero...')
-	# df.values[df.isna()] = 0.0
-
-	min_total_gene_count = 3
-	df = prc.filter_minimal(df,min_total_gene_count)
+server = Path.home().as_posix()
+experiment_home = '/projects/experiments/spruce_topic/2_cell_topic_v_beta/'
+experiment_home = server+experiment_home
+spr = experiment_interaction_topic.get_experiment_model(experiment_home)
+print(spr.cell_topic.model_id)
+print(spr.interaction_topic.model_id)
 
 
-	logger.info('save raw data...')
-	df.to_pickle(args_home+args.input+args.raw_data)
-	pd.DataFrame(df.columns[1:]).to_pickle(args_home+args.input+args.raw_data_genes)
+##################################################################
+############ interaction topic tree
+##################################################################
 
-	## generate npz files
-	logger.info('processing--creating coo sparse matrix file')
+df = pd.read_csv(spr.interaction_topic.model_id+'_it_model_deg_analysis.csv.gz')
+df_meta = pd.read_csv(spr.interaction_topic.model_id+'_alltopics_meta.csv.gz',compression='gzip')
 
-	label = df.iloc[:,0].to_numpy()
-	np.savez_compressed(args_home+args.input+args.nbr_model['sparse_label'], idx=label,allow_pickle=True)
 
-	df = df.iloc[:,1:]
+from scipy.cluster.hierarchy import dendrogram, linkage
+import sys
+sys.setrecursionlimit(10000)
+import matplotlib.pylab as plt
+plt.rcParams['figure.figsize'] = [15, 10]
+plt.rcParams['figure.autolayout'] = True
+import colorcet as cc
+import seaborn as sns
 
-	S = sparse.coo_matrix(df.to_numpy())
-	idx, idy, val = sparse.find(S)
-	d = df.shape
-	np.savez_compressed(args_home + args.input + args.nbr_model['sparse_data'], idx=idx,idy=idy,val=val,shape=d,allow_pickle=True)
+cells = df_meta.groupby('interact_topic').sample(frac=0.1, random_state=1)['cell'].values
+df_sample = df[df['cell_id'].isin(cells)]
+Z = linkage(df_sample.iloc[:,1:].T.values)
+dendrogram(Z)  
+plt.savefig(spr.interaction_topic.model_id+'_it_hierarchy.png');plt.close()
 
-	logger.info('Data pre-processing--COMPLETED !!')
-
-def combine_metadata(args):
-
-	import glob 
-
-	args_home = os.environ['args_home'] 
-
-	logger.info('reading data to scanpy...')
-
-	path = args.meta_data
-
-	csv_files = glob.glob(os.path.join(path, "*.csv"))
-
-	df_combine = pd.DataFrame()
-
-	for f in csv_files:
-		df = pd.read_csv(f)
-		print(f,df.shape)
-		df_combine = pd.concat([df_combine, df], axis=0, ignore_index=True)
-
-	df_combine.to_csv(args_home+ args.input+ args.sample+'_metadata.tsv.gz',sep='\t',index=False,compression='gzip')
+##################################################################
+############ scanpy processing of mix dataset ~ cell topic model
+##################################################################
 
 def scanpy_processing(df):
+    import scanpy as sc
 	import matplotlib.pylab as plt
 	plt.rcParams['figure.figsize'] = [12.50, 10.50]
 	plt.rcParams['figure.autolayout'] = True
@@ -134,12 +108,6 @@ def scanpy_processing(df):
 	# df_scanpy_pcs.to_pickle(args_sample+'scanpy_raw_pipeline_123k_50PCS_hvariable_genes.pkl')
 
 
-def lr_preprocessing(args):
-	
-	args_home = os.environ['args_home'] 
-
-	df = pd.read_pickle(args_home+args.input+args.raw_data)
-	prc.lr_exp_data(args,df)
-	prc.create_lr_mat(args)
-
-
+##################################################################
+############ 
+##################################################################

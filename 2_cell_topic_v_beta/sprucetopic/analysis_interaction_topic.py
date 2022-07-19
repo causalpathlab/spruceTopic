@@ -17,7 +17,7 @@ print(spr.interaction_topic.model_id)
 ##################################################################
 from analysis import _topics
 import matplotlib.pylab as plt
-plt.rcParams['figure.figsize'] = [15, 10]
+plt.rcParams['figure.figsize'] = [7, 5]
 plt.rcParams['figure.autolayout'] = True
 import colorcet as cc
 import seaborn as sns
@@ -212,7 +212,6 @@ df_grp.to_csv(spr.interaction_topic.model_id+'_it_cancercells_interactions.csv.g
 ##################################################################
 
 ##################################################################
-# 3.1 
 '''
 For each interaction topics,
 for cells -> combine cells from all cell pairs 
@@ -222,6 +221,28 @@ construct gene correlation matrix using raw count data as gene expression, add 1
 from analysis import _network
 from util._io import read_config
 from collections import namedtuple
+from analysis import _topics
+
+
+# first get neighbour cells of each cancer cell and their interaction topic 
+'''
+total data size will be 4185039
+total cancer cells 26321
+        26321 x 159 neighbours = 4185039
+'''
+
+df = pd.read_csv(spr.interaction_topic.model_id+'_it_model_all_topics.csv.gz',compression='gzip')
+df_its = pd.read_csv(spr.interaction_topic.model_id+'_it_h_argmax.csv.gz',compression='gzip')
+df_nbr = spr.cell_topic.neighbour
+
+res = _topics.get_cell_neighbours_states(df_nbr,df_its,df)
+df_res = pd.DataFrame(res,columns=['cancer_cell','nbr','interact_topic'])
+df_res = df_res.explode(['nbr','interact_topic'])
+df_res = pd.merge(df_res,df[['cell','cluster','cluster_celltype']],left_on='nbr',right_on='cell',how='left')
+df_res.to_csv(spr.interaction_topic.model_id+'_it_model_all_topics_cancer_cells.csv.gz',index=False,compression='gzip')
+
+
+## load cancer cell neighbour interact topic info
 
 df=pd.read_csv(spr.interaction_topic.model_id+'_it_model_all_topics_cancer_cells.csv.gz',compression='gzip')
 
@@ -246,6 +267,7 @@ _network.lr_correlation_network(spr,df,selected_int_topics,zcutoff,corr_th)
 # DEG analysis
 ##################################################################
 
+selected_int_topics = [2,4,10,18,22,24]
 
 df = pd.read_csv(spr.interaction_topic.model_id+'_it_model_all_topics.csv.gz',compression='gzip')
 selected_int_topics = [2,4,7,10,18,22,24]
@@ -278,6 +300,35 @@ dftest = df_meta[df_meta['cell'].isin(df['cell_id'].values)]
 dftest.shape
 dftest['interact_topic'].value_counts()
 dftest.cluster_celltype.value_counts()
+
+
+##################################################################
+# cancer cell cell types from cell topic and 
+# sub types from interaction topic analysis
+# ** cancer cells summary plot **
+##################################################################
+
+df=pd.read_csv(spr.interaction_topic.model_id+'_it_model_all_topics_cancer_cells.csv.gz',compression='gzip')
+
+selected_int_topics = [2,4,7,10,18,22,24]
+df = df[df['interact_topic'].isin(selected_int_topics)]
+df = df.drop(columns=['cell'])
+
+
+dfmeta = pd.read_csv(spr.interaction_topic.model_id+'_alltopics_meta.csv.gz')
+
+df = pd.merge(df,dfmeta[['cell','cell_topic']],left_on='cancer_cell',right_on='cell',how='left')
+
+dfs = df.groupby(['cell_topic','interact_topic'])['cancer_cell'].count().reset_index()
+
+selected_cell_topic = list(dfmeta[dfmeta['cluster_celltype'].str.contains('Cancer')]['cell_topic'].value_counts().index[:13])
+dfs = dfs[dfs['cell_topic'].isin(selected_cell_topic)]
+
+
+celltopic_sum = dict(dfs.groupby('cell_topic')['cancer_cell'].sum())
+dfs['ncount'] = [x/celltopic_sum[y] for x,y in zip(dfs['cancer_cell'],dfs['cell_topic'])]
+
+dfs.to_csv(spr.interaction_topic.model_id+'_it_model_cancer_summary.csv.gz',index=False,compression='gzip')
 
 ##################################################################
 ##################################################################
@@ -334,22 +385,6 @@ min_cells_per_state = 100
 dfsummary = dfsummary[dfsummary['cell']>min_cells_per_state]
 dfsummary.to_csv(spr.interaction_topic.model_id+'_it_model_summary.csv.gz',index=False,compression='gzip')
 
-##################################################################
-# 4.3 
-# interaction topics distribution of neighbouring cells of cancer
-
-# 4.3.1 get neighbour cells of each cancer cell and their interaction topic 
-
-from analysis import _topics
-df = pd.read_csv(spr.interaction_topic.model_id+'_it_model_all_topics.csv.gz',compression='gzip')
-df_its = pd.read_csv(spr.interaction_topic.model_id+'_it_h_argmax.csv.gz',compression='gzip')
-df_nbr = spr.cell_topic.neighbour
-
-res = _topics.get_cell_neighbours_states(df_nbr,df_its,df)
-df_res = pd.DataFrame(res,columns=['cancer_cell','nbr','interact_topic'])
-df_res = df_res.explode(['nbr','interact_topic'])
-df_res = pd.merge(df_res,df[['cell','cluster','cluster_celltype']],left_on='nbr',right_on='cell',how='left')
-df_res.to_csv(spr.interaction_topic.model_id+'_it_model_all_topics_cancer_cells.csv.gz',index=False,compression='gzip')
 
 
 ##################################################################

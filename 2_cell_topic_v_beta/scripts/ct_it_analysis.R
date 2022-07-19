@@ -154,15 +154,23 @@ weightmat_lr_plot(df_beta,tag,top_genes,topgenes_file,f)
 
 #########################################################
 
-# source('fig_3_summary.R')
-# summary_file = paste(it_model_id,'_it_model_summary.csv.gz',sep="")
-# df_summary = read.table(summary_file,sep=',', header=TRUE)
+source('fig_3_summary.R')
+summary_file = paste(it_model_id,'_it_model_summary.csv.gz',sep="")
+df_summary = read.table(summary_file,sep=',', header=TRUE)
 
-# cancer_cells = c('Cancer_Basal_SC','Cancer_Cycling','Cancer_Her2_SC','Cancer_LumA_SC','Cancer_LumB_SC')
-# df_cancer = df_summary[df_summary$celltype %in% cancer_cells, ]
-# f = paste(it_model_id,"_it_ccview_summary_cancer.png",sep="")
-# col=1
-# summary_plot_all(df_cancer,f,col)
+cancer_cells = c('Cancer_Basal_SC','Cancer_Cycling','Cancer_Her2_SC','Cancer_LumA_SC','Cancer_LumB_SC')
+df_cancer = df_summary[df_summary$celltype %in% cancer_cells, ]
+f = paste(it_model_id,"_it_ccview_summary_cancer.png",sep="")
+col=1
+summary_plot_all(df_cancer,f,col)
+
+source('fig_3_summary.R')
+summary_file = paste(it_model_id,'_it_model_cancer_summary.csv.gz',sep="")
+df_summary = read.table(summary_file,sep=',', header=TRUE)
+f = paste(it_model_id,"_it_ccview_summary_cancer_only.png",sep="")
+col=1
+summary_plot_cancer(df_summary,f,col)
+
 
 # source('fig_3_summary.R')
 # df_summary = read.table(summary_file,sep=',', header=TRUE)

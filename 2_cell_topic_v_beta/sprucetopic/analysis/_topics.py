@@ -160,21 +160,6 @@ def topics_summary(spr,df_kmeans):
 	return dfsummary
 
 
-def get_cancer_cell_neighbours_states(df_nbr,df_its,df):
-
-	cancer_cells = df[df['cluster_celltype'].str.contains('Cancer')]['cell'].values
-	cc_idxs = df_nbr[df_nbr['cell'].isin(cancer_cells)].index
-
-	res = []
-	for idx in cc_idxs:
-		cell = df_nbr.iloc[idx,0]
-		nbr_idxs = df_nbr.iloc[idx,1:].values
-		nbr_states = df_its.iloc[idx,1:].values
-		nbr_cells = df_its.iloc[nbr_idxs]['cell'].values
-		res.append([cell,nbr_cells,nbr_states])
-
-	return res
-
 def get_cell_neighbours_states(df_nbr,df_its,cells):
 
 	cc_idxs = df_nbr[df_nbr['cell'].isin(cells)].index

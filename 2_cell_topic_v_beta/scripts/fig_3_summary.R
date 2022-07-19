@@ -3,6 +3,7 @@ library(gridExtra)
 library(reshape)
 library(yaml)
 library(RColorBrewer)
+library(Polychrome)
 library(data.table)
 library(ggh4x)
 source("Util.R")
@@ -46,4 +47,35 @@ summary_plot_all <- function(df,f,col) {
 
   stplt <- grid.arrange(grobs=plotlist,ncol=col)
   ggsave(f,stplt,width =10, height = 15)
+}
+
+
+summary_plot_cancer <- function(df,f) {
+
+n <- length(unique(df$interact_topic))
+print(n)
+col_vector <- as.vector(dark.colors(n+1))[-1]
+
+
+p <-
+ggplot(df, aes(x=cell_topic, y=ncount,fill=as.factor(interact_topic))) +
+  geom_bar(position="stack",stat="identity",size=0) +
+  scale_fill_manual("Interaction topic",values=col_vector)+
+  facet_grid(~ cell_topic, scales = "free", switch = "x", space = "free")+
+  labs(x = "Cell topic of cancer cells", y = "Interaction topic distribution")+
+  theme(
+    legend.position = "right",
+    legend.justification = "left", 
+    legend.margin = margin(0, 0, 0, 0),
+    legend.box.margin=margin(10,10,10,10),
+    text = element_text(size=75),
+    panel.spacing.x = unit(0.005, "lines"),
+    axis.text.x = element_blank(),
+    axis.ticks.x = element_blank(),
+    panel.grid = element_blank())+
+    # panel.background = element_rect(fill='transparent'),
+    # plot.background = element_rect(fill='transparent', color=NA))+
+  guides(fill = guide_legend(nrow = n))
+
+ggsave(f,p,width = 30, height = 20,limitsize=F)
 }
