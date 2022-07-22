@@ -191,7 +191,7 @@ def interaction_statewise_lr_network(spr,states,top_lr=200,keep_db=True,df_db=No
 	if keep_db: flag='db'
 	plt.savefig(spr.interaction_topic.model_id+'_lr_network_it_states_'+flag+'.png');plt.close()
 
-def lr_correlation_network(spr,df,interact_topics,zcutoff,corr_th):
+def lr_correlation_network(spr,df,interact_topics,zcutoff,corr_th,mode):
 
 	import matplotlib.pylab as plt
 	import networkx as nx
@@ -199,10 +199,10 @@ def lr_correlation_network(spr,df,interact_topics,zcutoff,corr_th):
 	import seaborn as sns
 	import scipy.stats as stats
 
-	plt.rcParams['figure.figsize'] = [30,20]
+	plt.rcParams['figure.figsize'] = [50,7]
 	plt.rcParams['figure.autolayout'] = True
 
-	fig, ax = plt.subplots(2,3) 
+	fig, ax = plt.subplots(1,7) 
 	ax = ax.ravel()
 
 
@@ -220,7 +220,7 @@ def lr_correlation_network(spr,df,interact_topics,zcutoff,corr_th):
 		df_gexp = spr.data.raw_data.loc[:,np.concatenate([['index'],all_genes])].copy()
 		df_gexp = df_gexp.replace(to_replace = 0, value = 10)
 
-		cancer_cells = df[df['interact_topic']==topic]['cancer_cell'].unique()
+		cancer_cells = df[df['interact_topic']==topic]['Cancer'].unique()
 		nbr_cells = df[df['interact_topic']==topic]['nbr'].unique()
 		all_cells = np.concatenate( [cancer_cells , nbr_cells])
 
@@ -236,36 +236,56 @@ def lr_correlation_network(spr,df,interact_topics,zcutoff,corr_th):
 		df_corr = df_corr.reset_index().melt(id_vars=['index'])
 		df_corr.columns = ['gene1','gene2','c']
 
-		df_corr = df_corr[df_corr['c']>corr_th[topic]]
-		
-		g = nx.Graph()
+		df_corr = df_corr[df_corr['c']>corr_th]
 
-		for idx,row in df_corr.iterrows():
-			g1 = row['gene1']
-			g2 = row['gene2']
-			# if (g1 in ligands and g2 in receptors) or (g1 in receptors and g2 in ligands):
-			if g1 ==g2 :continue
-			g.add_node(row['gene1'])
-			g.add_node(row['gene2'])
-			g.add_edge(row['gene1'],row['gene2'],weight= row['c'])
+		if mode == 'lr':
+			g = nx.Graph()
+			for idx,row in df_corr.iterrows():
+				g1 = row['gene1']
+				g2 = row['gene2']
+				if g1==g2:continue
+				if (g1 in ligands and g2 in receptors) or (g1 in receptors and g2 in ligands):
+					g.add_node(row['gene1'])
+					g.add_node(row['gene2'])
+					g.add_edge(row['gene1'],row['gene2'],weight= row['c'])
+		if mode == 'll':
+			g = nx.Graph()
+			for idx,row in df_corr.iterrows():
+				g1 = row['gene1']
+				g2 = row['gene2']
+				if g1==g2:continue
+				if (g1 in ligands and g2 in ligands):
+					g.add_node(row['gene1'])
+					g.add_node(row['gene2'])
+					g.add_edge(row['gene1'],row['gene2'],weight= row['c'])
+		if mode == 'rr':
+			g = nx.Graph()
+			for idx,row in df_corr.iterrows():
+				g1 = row['gene1']
+				g2 = row['gene2']
+				if g1==g2:continue
+				if (g1 in receptors and g2 in receptors):
+					g.add_node(row['gene1'])
+					g.add_node(row['gene2'])
+					g.add_edge(row['gene1'],row['gene2'],weight= row['c'])
 
 
-		remove = [node for node, degree in g.degree() if degree < 2]
-		g.remove_nodes_from(remove)
+		# remove = [node for node, degree in g.degree() if degree < 2]
+		# g.remove_nodes_from(remove)
 
 		edges = g.edges()
 		weights = [ g[u][v]['weight'] * 10 for u,v in edges]
 		if len(g.nodes()) > 0:
-			fs = 12	
-			# if topic ==18 : fs = 6
+			fs = 8	
+			if topic ==18 : fs = 4
 			ax[i].set_axis_off()
-			ax[i].set_title(str(topic),fontsize=20)
+			ax[i].set_title(str(topic),fontsize=30)
 			color_map = ['salmon' if node in receptors else 'darkcyan' for node in g]
 			pos = nx.circular_layout(g,scale=2)
-			nx.draw(g,pos=pos,with_labels=False,ax=ax[i],node_color=color_map,edge_color='grey',width=weights)
+			nx.draw(g,pos=pos,with_labels=False,ax=ax[i],node_color=color_map,edge_color='grey',width=weights,node_size=50)
 			# nx.draw(g,pos=pos,with_labels=False,ax=ax[i],node_color=color_map,edge_color='grey')
 			pos_attrs = {}
-			adj = 0.15
+			adj = 0.05
 			for node, coords in pos.items():
 				if coords[0] > 0 and coords[1] > 0:
 					pos_attrs[node] = (coords[0], coords[1] + adj)
@@ -279,4 +299,4 @@ def lr_correlation_network(spr,df,interact_topics,zcutoff,corr_th):
 			nx.draw_networkx_labels(g, pos_attrs,ax=ax[i],font_size=fs,font_weight='bold')
 
 
-	plt.savefig(spr.interaction_topic.model_id+'_lr_network_it_topics_corr.pdf');plt.close()
+	plt.savefig(spr.interaction_topic.model_id+'_lr_network_it_topics_corr_'+mode+'.pdf',dpi=300);plt.close()

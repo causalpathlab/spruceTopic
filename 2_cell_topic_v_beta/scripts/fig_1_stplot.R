@@ -58,6 +58,17 @@ n <- 25
 qual_col_pals = brewer.pal.info[brewer.pal.info$category == 'qual',]
 col_vector = unlist(mapply(brewer.pal, qual_col_pals$maxcolors, rownames(qual_col_pals)))
 
+# df_h_m = df_h_m[df_h_m$Topic %in% c(2,4,7,10,18,22,24),]
+
+sc = "aliceblue"
+l <- c("0" = sc,"1" =sc,"3" = sc,"5" = sc,"6" = sc,"8"=sc,"9"=sc,"11"=sc,"12"=sc,"13"=sc,"14"=sc,"15"=sc,"16"=sc,"17"=sc,"19"=sc,"20"=sc,"21"=sc,"23"=sc,"2"="aquamarine" , "4"="coral" , "7"= "firebrick", "10"="darkviolet" , "18"="seagreen" ,"22"="royalblue" , "24"="hotpink" )
+
+col_vector = c()
+for (t in df_h_m$Topic){
+  print(l[t])
+  col_vector = append(col_vector,l[t])
+}
+
 p <-
 ggplot(df_h_m, aes(x=cell, y=hvalue,fill=Topic)) +
   geom_bar(position="stack",stat="identity",size=0) +

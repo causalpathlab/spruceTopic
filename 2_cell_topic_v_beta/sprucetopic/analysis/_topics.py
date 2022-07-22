@@ -28,8 +28,6 @@ def topic_top_genes(sp,top_n):
 
 	return pd.DataFrame(top_genes,columns=['Topic','GeneType','Genes','Gene','Proportion'])
 
-
-
 def topic_top_lr_genes(sp,top_n=5):
 	top_genes = []
 	top_genes = generate_gene_vals(sp.interaction_topic.beta_l,top_n,top_genes,'receptors')
@@ -196,8 +194,8 @@ def plt_cn(spr,df,statelist):
 	plt.close()
 
 def get_cell_neighbours_states_lr(spr,df,state):
-	df_cancer_l = spr.data.raw_l_data[spr.data.raw_l_data['index'].isin(df['cancer_cell'].values)]
-	df_cancer_r = spr.data.raw_r_data[spr.data.raw_r_data['index'].isin(df['cancer_cell'].values)]
+	df_cancer_l = spr.data.raw_l_data[spr.data.raw_l_data['index'].isin(df['Cancer'].values)]
+	df_cancer_r = spr.data.raw_r_data[spr.data.raw_r_data['index'].isin(df['Cancer'].values)]
 
 	df_nbr_l = spr.data.raw_l_data[spr.data.raw_l_data['index'].isin(df['nbr'].values)]
 	df_nbr_r = spr.data.raw_r_data[spr.data.raw_r_data['index'].isin(df['nbr'].values)]

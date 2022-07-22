@@ -11,14 +11,13 @@ ccv_struct_plot <- function(df,f) {
 
 n <- length(unique(df$cluster_celltype))
 print(n)
-col_vector <- as.vector(dark.colors(n+1))[-1]
-
+col_vector <- as.vector(alphabet.colors(26))
 
 p <-
-ggplot(df, aes(x=state, y=ncount,fill=as.factor(cluster_celltype))) +
+ggplot(df, aes(x=interact_topic, y=ncount,fill=as.factor(cluster_celltype))) +
   geom_bar(position="stack",stat="identity",size=0) +
   scale_fill_manual("Cell type ",values=col_vector)+
-  facet_grid(~ state, scales = "free", switch = "x", space = "free")+
+  facet_grid(~ interact_topic, scales = "free", switch = "x", space = "free")+
   labs(x = "Interaction topic of cancer cells", y = "Celltype distribution")+
   theme(
     legend.position = "right",

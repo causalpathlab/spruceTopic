@@ -14,8 +14,14 @@ def plot_marker(spr,df,marker_genes):
     for i,g in enumerate(marker_genes):
         if g in df.columns:
             print(g)
-            sns.scatterplot(data=df, x='umap1', y='umap2', hue=df[g].values,s=0.1,palette="viridis",legend=False,ax=ax[i])
-            # ax[i].set_xlabel("UMAP1",fontsize=20)
-            # ax[i].set_ylabel("UMAP2",fontsize=20)
+            val = np.array([x if x<3 else 3.0 for x in df[g]])
+            sns.scatterplot(data=df, x='umap1', y='umap2', hue=val,s=.1,palette="PuBu",ax=ax[i],legend=False)
+
+            norm = plt.Normalize(val.min(), val.max())
+            sm = plt.cm.ScalarMappable(cmap="PuBu",norm=norm)
+            sm.set_array([])
+
+            # cax = fig.add_axes([ax[i].get_position().x1, ax[i].get_position().y0, 0.01, ax[i].get_position().height])
+            fig.colorbar(sm,ax=ax[i])
             ax[i].set_title(g)
     fig.savefig(spr.cell_topic.model_id+'_umap_marker_genes.png');plt.close()
