@@ -3,6 +3,7 @@ library(gridExtra)
 library(reshape)
 library(yaml)
 library(pheatmap)
+library(viridis)
 library(dplyr)
 source("Util.R")
 
@@ -30,14 +31,14 @@ col_order = col.order(df_beta_t,rownames(df_beta))
 df_beta = df_beta[,col_order]
 
 
-df_beta[df_beta < -20] = -20
-df_beta[df_beta > 20] = 20
+df_beta[df_beta < -10] = -10
+df_beta[df_beta > 10] = 10
 
 if(p_top_genes){
-p1 <- pheatmap(t(df_beta),color = colorRampPalette(c("navy", "white", "firebrick3"))(100),fontsize_row=6,fontsize_col=8,cluster_rows=FALSE,cluster_cols=FALSE,show_rownames=T)
+p1 <- pheatmap(t(df_beta),color = viridis(n = 256, alpha = 1, begin = 0, end = 1, option = "viridis"),fontsize_row=6,fontsize_col=8,cluster_rows=FALSE,cluster_cols=FALSE,show_rownames=T)
 }
 else{
-p1 <- pheatmap(t(df_beta),color = colorRampPalette(c("navy", "white", "firebrick3"))(100),fontsize_row=6,fontsize_col=8,cluster_rows=FALSE,cluster_cols=FALSE,show_rownames=F)
+p1 <- pheatmap(t(df_beta),color = viridis(n = 256, alpha = 1, begin = 0, end = 1, option = "viridis"),fontsize_row=6,fontsize_col=8,cluster_rows=FALSE,cluster_cols=FALSE,show_rownames=F)
 }
 
 ggsave(f,p1,width = 2, height = 6)

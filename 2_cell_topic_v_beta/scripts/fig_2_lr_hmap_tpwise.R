@@ -31,8 +31,8 @@ col_order = col.order(df_lrpair_t,row_order)
 df_lrpair = df_lrpair[,col_order]
 df_lrpair = df_lrpair[row_order,]
 
-df_lrpair[df_lrpair < -20] = -20
-df_lrpair[df_lrpair > 20] = 20
+df_lrpair[df_lrpair < -10] = -10
+df_lrpair[df_lrpair > 10] = 10
 
 # df_lrpair = sqrt(df_lrpair)
 

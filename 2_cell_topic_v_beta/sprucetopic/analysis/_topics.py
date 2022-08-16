@@ -21,6 +21,34 @@ def generate_gene_vals(df,top_n,top_genes,label):
 
 	return top_genes
 
+def generate_top_genes_topicwise(df,top_n):
+
+	df_top = pd.DataFrame()
+	for x in range(df.shape[0]):
+		gtab = pd.DataFrame(df.T.iloc[:,x].sort_values(0,ascending=False)[:top_n].reset_index())
+		gtab.columns = ['gene','val']
+		gtab['topic']=x
+		df_top = pd.concat([df_top,gtab], axis=0, ignore_index=True)
+	return df_top
+
+def get_zscores(sp):
+
+	dfr = pd.DataFrame()
+	dfr['genes'] = sp.interaction_topic.beta_rm.columns
+	for topic in range(25):
+		r_m = sp.interaction_topic.beta_rm.iloc[topic,:]
+		r_v = sp.interaction_topic.beta_rv.iloc[topic,:]
+		dfr[topic] = (r_m/np.sqrt(r_v)).values
+
+	dfl = pd.DataFrame()
+	dfl['genes'] = sp.interaction_topic.beta_lm.columns
+	for topic in range(25):
+		l_m = sp.interaction_topic.beta_lm.iloc[topic,:]
+		l_v = sp.interaction_topic.beta_lv.iloc[topic,:]
+		dfl[topic] = (l_m/np.sqrt(l_v)).values
+	
+	return dfl,dfr
+
 def topic_top_genes(sp,top_n):
 
 	top_genes = []
@@ -30,12 +58,11 @@ def topic_top_genes(sp,top_n):
 
 def topic_top_lr_genes(sp,top_n=5):
 	top_genes = []
-	top_genes = generate_gene_vals(sp.interaction_topic.beta_l,top_n,top_genes,'receptors')
-	top_genes = generate_gene_vals(sp.interaction_topic.beta_r,top_n,top_genes,'ligands')
+	top_genes = generate_gene_vals(sp.interaction_topic.beta_lm,top_n,top_genes,'receptors')
+	top_genes = generate_gene_vals(sp.interaction_topic.beta_rm,top_n,top_genes,'ligands')
 
 	return pd.DataFrame(top_genes,columns=['Topic','GeneType','Genes','Gene','Proportion'])
 	
-
 def topic_top_lr_pair_genes(sp,df_db,top_n=5):
 
 	df_beta1 = sp.interaction_topic.beta_l
@@ -177,9 +204,9 @@ def plt_cn(spr,df,statelist):
 	import matplotlib.pylab as plt
 	import colorcet as cc
 	import seaborn as sns
-	plt.rcParams['figure.figsize'] = [16,12]
+	plt.rcParams['figure.figsize'] = [6,4]
 	plt.rcParams['figure.autolayout'] = True
-
+	sns.set(font_scale=0.5)
 	fig, ax = plt.subplots(7,2)
  
 	for idx,state in enumerate(statelist):
@@ -190,10 +217,10 @@ def plt_cn(spr,df,statelist):
 		# ax[0].set_title('Ligands_interaction_topic_'+str(state))
 		sns.heatmap(dfr,annot=False,ax=ax[idx,1],cmap='viridis',yticklabels=['c','n'])
 		# ax[1].set_title('Receptors_interaction_topic_'+str(state))
-	plt.savefig(spr.interaction_topic.model_id+'_lr_interaction_topic_hmap.pdf')
+	plt.savefig(spr.interaction_topic.id+'4_it_top5genes_expression_hmap.pdf')
 	plt.close()
 
-def get_cell_neighbours_states_lr(spr,df,state):
+def get_cell_neighbours_states_lr(spr,df,topic):
 	df_cancer_l = spr.data.raw_l_data[spr.data.raw_l_data['index'].isin(df['Cancer'].values)]
 	df_cancer_r = spr.data.raw_r_data[spr.data.raw_r_data['index'].isin(df['Cancer'].values)]
 
@@ -210,8 +237,8 @@ def get_cell_neighbours_states_lr(spr,df,state):
 	# df_cancer_r = df_cancer_r.sample(n=df_nbr_r.shape[0])
 
 
-	top_r = list(spr.interaction_topic.beta_r.iloc[state,:].sort_values(ascending=False).head(25).index)
-	top_l = list(spr.interaction_topic.beta_l.iloc[state,:].sort_values(ascending=False).head(25).index)
+	top_r = list(spr.interaction_topic.beta_rm.iloc[topic,:].sort_values(ascending=False).head(5).index)
+	top_l = list(spr.interaction_topic.beta_lm.iloc[topic,:].sort_values(ascending=False).head(5).index)
 	
 	df_cancer_l = df_cancer_l.loc[:,top_l]
 	df_cancer_r = df_cancer_r.loc[:,top_r]
@@ -226,10 +253,11 @@ def get_cell_neighbours_states_lr(spr,df,state):
 	dfl = pd.DataFrame([df_cancer_l,df_nbr_l],index=['cancer','nbr'])
 	dfr = pd.DataFrame([df_cancer_r,df_nbr_r],index=['cancer','nbr'])
 
-	dfl += 1e-5
-	dfr += 1e-5
 	dfl = dfl.applymap(math.sqrt)
 	dfr = dfr.applymap(math.sqrt)
+
+	dfl[dfl>1]=1
+	dfr[dfr>1]=1
 	
 	return dfl,dfr
 
@@ -244,4 +272,4 @@ def interaction_summary(sp,topics_prob):
 		if idx % 10000 == 0:
 			print(idx)
 	df = pd.DataFrame(summary,columns=['cell_i','cell_j','interaction_topic','interaction_probability'])
-	df.to_csv(sp.interaction_topic.model_id+'_interaction_summary.tsv.gz',sep='\t',index=False,compression='gzip')
+	df.to_csv(sp.interaction_topic.id+'_interaction_summary.tsv.gz',sep='\t',index=False,compression='gzip')

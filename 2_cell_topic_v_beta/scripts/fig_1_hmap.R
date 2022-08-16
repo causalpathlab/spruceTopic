@@ -35,10 +35,10 @@ ignore = c("26","14","45","43","16","4","42","48","17","19","50","30","37","11",
 
 df_beta = df_beta[!(rownames(df_beta) %in% ignore ),]
 if(p_top_genes){
-p1 <- pheatmap(df_beta,color = colorRampPalette(c("navy", "white", "firebrick3"))(100),fontsize_row=8,fontsize_col=3,cluster_rows=FALSE,cluster_cols=FALSE,show_colnames=F)
+p1 <- pheatmap(df_beta,color = viridis(n = 256, alpha = 1, begin = 0, end = 1, option = "viridis"),fontsize_row=8,fontsize_col=3,cluster_rows=FALSE,cluster_cols=FALSE,show_colnames=F)
 }
 else{
-p1 <- pheatmap(df_beta,color = colorRampPalette(c("navy", "white", "firebrick3"))(100),fontsize_row=8,fontsize_col=8,cluster_rows=FALSE,cluster_cols=FALSE,show_colnames=F)
+p1 <- pheatmap(df_beta,color = viridis(n = 256, alpha = 1, begin = 0, end = 1, option = "viridis"),fontsize_row=8,fontsize_col=8,cluster_rows=FALSE,cluster_cols=FALSE,show_colnames=F)
 }
 ggsave(f,p1)
 }

@@ -65,6 +65,7 @@ def get_model(experiment_home,args):
 
 	sp = spruce.Spruce()
 	sp.cell_topic.model_id = experiment_home+args.cell_topic['out']+args.cell_topic['model_id']
+	sp.cell_topic.id = experiment_home+args.cell_topic['out']
 
 	input_dims = args.cell_topic['eval']['input_dims']
 	layers = args.cell_topic['train']['layers']

@@ -101,10 +101,12 @@ def run_model(experiment_home,args,mode):
 		input_dims2 = args.interaction_topic['train']['input_dims2']
 		device = 'cpu'
 
-		df_betal,df_betar,df_betal_bias,df_betar_bias = sp.eval_interaction_topic(batch_size,input_dims1,input_dims2,latent_dims,layers1,layers2)
+		df_betalm,df_betalv,df_betarm,df_betarv,df_betal_bias,df_betar_bias = sp.eval_interaction_topic(batch_size,input_dims1,input_dims2,latent_dims,layers1,layers2)
 
-		df_betal.to_csv(sp.interaction_topic.model_id+'_it_beta_l.csv.gz',index=False,compression='gzip')
-		df_betar.to_csv(sp.interaction_topic.model_id+'_it_beta_r.csv.gz',index=False,compression='gzip')
+		df_betalm.to_csv(sp.interaction_topic.model_id+'_it_beta_lm.csv.gz',index=False,compression='gzip')
+		df_betalv.to_csv(sp.interaction_topic.model_id+'_it_beta_lv.csv.gz',index=False,compression='gzip')
+		df_betarm.to_csv(sp.interaction_topic.model_id+'_it_beta_rm.csv.gz',index=False,compression='gzip')
+		df_betarv.to_csv(sp.interaction_topic.model_id+'_it_beta_rv.csv.gz',index=False,compression='gzip')
 		df_betal_bias.to_csv(sp.interaction_topic.model_id+'_it_beta_l_bias.csv.gz',index=False,compression='gzip')
 		df_betar_bias.to_csv(sp.interaction_topic.model_id+'_it_beta_r_bias.csv.gz',index=False,compression='gzip')
 
@@ -113,7 +115,10 @@ def get_model(experiment_home,args):
 	sp = spruce.Spruce()
 	sp.args = args
 	sp.cell_topic.model_id = experiment_home+ args.cell_topic['out']+args.cell_topic['model_id']
+	sp.cell_topic.id = experiment_home+ args.cell_topic['out']
+
 	sp.interaction_topic.model_id = experiment_home+ args.interaction_topic['out']+args.interaction_topic['model_id']
+	sp.interaction_topic.id = experiment_home+ args.interaction_topic['out']
 
 	sp.data.raw_l_data_genes = pd.read_pickle(experiment_home+args.data+args.sample_id+args.raw_l_data_genes)[0].values
 	sp.data.raw_r_data_genes = pd.read_pickle(experiment_home+args.data+args.sample_id+args.raw_r_data_genes)[0].values
@@ -141,11 +146,15 @@ def get_model(experiment_home,args):
 	model.eval()
 	sp.interaction_topic.model = model
 
-	sp.interaction_topic.beta_r = pd.read_csv(sp.interaction_topic.model_id+'_it_beta_l.csv.gz',compression='gzip')
-	sp.interaction_topic.beta_l = pd.read_csv(sp.interaction_topic.model_id+'_it_beta_r.csv.gz',compression='gzip')
+	sp.interaction_topic.beta_rm = pd.read_csv(sp.interaction_topic.model_id+'_it_beta_lm.csv.gz',compression='gzip')
+	sp.interaction_topic.beta_rv = pd.read_csv(sp.interaction_topic.model_id+'_it_beta_lv.csv.gz',compression='gzip')
+	sp.interaction_topic.beta_lm = pd.read_csv(sp.interaction_topic.model_id+'_it_beta_rm.csv.gz',compression='gzip')
+	sp.interaction_topic.beta_lv = pd.read_csv(sp.interaction_topic.model_id+'_it_beta_rv.csv.gz',compression='gzip')
 
-	sp.interaction_topic.beta_r.columns = sp.data.raw_r_data_genes
-	sp.interaction_topic.beta_l.columns = sp.data.raw_l_data_genes
+	sp.interaction_topic.beta_rm.columns = sp.data.raw_r_data_genes
+	sp.interaction_topic.beta_rv.columns = sp.data.raw_r_data_genes
+	sp.interaction_topic.beta_lm.columns = sp.data.raw_l_data_genes
+	sp.interaction_topic.beta_lv.columns = sp.data.raw_l_data_genes
 
 	return sp
 

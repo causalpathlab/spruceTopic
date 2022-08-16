@@ -28,6 +28,7 @@ class Spruce:
 
     class cell_topic:
         def __init__(self):
+            self.id = None
             self.model_id = None
             self.model = None
             self.z = None
@@ -38,11 +39,14 @@ class Spruce:
 
     class interaction_topic:
         def __init__(self):
+            self.id = None
             self.model_id = None
             self.model = None
             self.neighbour_h = None
-            self.beta_l = None
-            self.beta_r = None
+            self.beta_lm = None
+            self.beta_lv = None
+            self.beta_rm = None
+            self.beta_rv = None
 
     def run_cell_topic(self,batch_size,l_rate,epochs,layers,latent_dims,device):
 
@@ -134,26 +138,32 @@ class Spruce:
         model.load_state_dict(self.interaction_topic.model)
         model.eval()
 
-        betal,betal_bias,betar,betar_bias =  None,None,None,None
+        betalm,betalv,betal_bias,betarm,betarv,betar_bias =  None,None,None,None,None,None
         
         for n,p in model.named_parameters():
             print(n)
             if n == 'etm.decoder.p_beta_l_mean':
-                betal=p
+                betalm=p
+            if n == 'etm.decoder.p_beta_l_lnvar':
+                betalv=torch.exp(p)
             elif n == 'etm.decoder.p_beta_r_mean':
-                betar=p
+                betarm=p
+            elif n == 'etm.decoder.p_beta_r_lnvar':
+                betarv=torch.exp(p)
             elif n == 'etm.decoder.p_beta_l_bias':
                 betal_bias=p
             elif n == 'etm.decoder.p_beta_r_bias':
                 betar_bias=p
             
 
-        df_beta1 = pd.DataFrame(betal.to('cpu').detach().numpy())
-        df_beta2 = pd.DataFrame(betar.to('cpu').detach().numpy())
+        df_betalm = pd.DataFrame(betalm.to('cpu').detach().numpy())
+        df_betalv = pd.DataFrame(betalv.to('cpu').detach().numpy())
+        df_betarm = pd.DataFrame(betarm.to('cpu').detach().numpy())
+        df_betarv = pd.DataFrame(betarv.to('cpu').detach().numpy())
         df_beta1_bias = pd.DataFrame(betal_bias.to('cpu').detach().numpy())
         df_beta2_bias = pd.DataFrame(betar_bias.to('cpu').detach().numpy())
 
-        return df_beta1,df_beta2,df_beta1_bias,df_beta2_bias
+        return df_betalm,df_betalv,df_betarm,df_betarv,df_beta1_bias,df_beta2_bias
 
     def interaction_topic_prob(self,cell_indxs):
 
@@ -198,21 +208,58 @@ class Spruce:
         
         return nbrs,topics_prob
     
-    def interaction_topic_prop_with_cellids(self,cancer_cells):
+    def interaction_topic_prob_pairwise(self,cell_nbr_indxs):
+
+        df_h = self.cell_topic.h
+
+        df_l = self.data.raw_l_data
+        df_r = self.data.raw_r_data
+        df_l = df_l[df_l['index'].isin(df_h['cell'].values)]
+        df_r = df_r[df_r['index'].isin(df_h['cell'].values)]
+        df_lr = self.data.raw_lr_data
+        df_lr = df_lr.loc[df_l.columns[1:],df_r.columns[1:]]
+        df_nbr = self.cell_topic.neighbour
+
+        # device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
+        device='cpu'
+        nbrmat = torch.tensor(df_nbr.iloc[:,1:].values.astype(np.compat.long),requires_grad=False).to(device)
+        lmat = torch.tensor(df_l.iloc[:,1:].values.astype(np.float32),requires_grad=False).to(device)
+        rmat = torch.tensor(df_r.iloc[:,1:].values.astype(np.float32),requires_grad=False).to(device)
+        lrmat = torch.tensor(df_lr.values.astype(np.float32),requires_grad=False).to(device)
+
+        topics_prob = []
+        for i,c_n in enumerate(cell_nbr_indxs):
+            
+            if i%1000==0:
+                print(i)
+
+            c_idx,n_idx = c_n[0],c_n[1]
+            cm_l = lmat[c_idx].unsqueeze(0)
+            cm_r = rmat[c_idx].unsqueeze(0)
+
+            cm_lr = torch.mm(cm_l,lrmat).mul(cm_r)
+            cm_rl = torch.mm(cm_r,torch.t(lrmat)).mul(cm_l)
+            
+            cn_l = lmat[n_idx].unsqueeze(0)
+            cn_r = rmat[n_idx].unsqueeze(0)
+
+            lprime,rprime =  cm_lr + torch.mm(cn_l,lrmat).mul(cn_r) , cm_rl + torch.mm(cn_r,torch.t(lrmat)).mul(cn_l)
+
+            m1,v1,m2,v2,blm,blv,brm,brv,theta,alpha_l,alpha_r  = self.interaction_topic.model.etm(lprime,rprime)
+
+            topics_prob.append([c_idx,n_idx,theta.detach().numpy()])
         
-        cell_indxs = self.cell_topic.neighbour[self.cell_topic.neighbour['cell'].isin(cancer_cells)].index.values
-
-        nbrs,cc_it_prob = self.interaction_topic_prob(cell_indxs)
-
-        df = pd.DataFrame()
-        for indx,c_c in enumerate(cancer_cells):
-            dft = pd.DataFrame(cc_it_prob[indx])
-            dft['cancer_cell'] = c_c
-            n = [ int(x) for x in nbrs[indx]]
-            dft['nbr']=self.cell_topic.neighbour.loc[n,'cell'].values
-            df = pd.concat([df, dft], axis=0, ignore_index=True)        
-            print(df.shape)
-        return df
+        return topics_prob
+    
+    def interaction_topic_prop_with_cellids(self,cancer_nbr_cells):
+        
+        df_cn = pd.DataFrame(cancer_nbr_cells,columns=['cancer','nbr'])
+        df_indx = self.cell_topic.neighbour.copy()
+        df_indx = df_indx.iloc[:,0].reset_index()
+        c_indx = pd.merge(df_cn,df_indx,left_on='cancer',right_on='cell',how='left')['index'].values
+        nbr_indx = pd.merge(df_cn,df_indx,left_on='nbr',right_on='cell',how='left')['index'].values
+        cell_nbr_indxs = [[x,y] for x,y in zip(c_indx,nbr_indx)]
+        return self.interaction_topic_prob_pairwise(cell_nbr_indxs)
 
     def interaction_topic_prop_with_cellids_nbrsummed(self,query_cells):
         
@@ -227,10 +274,6 @@ class Spruce:
         split_df = pd.DataFrame(df[1].tolist(), columns=[ 't'+str(x) for x in range(25)])
         df = pd.concat([df, split_df], axis=1).drop(columns=[1])
         return df 
-
-
-
-
 
     def interaction_topic_states(self):
 

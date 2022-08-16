@@ -42,7 +42,7 @@ ggplot(df_h_m, aes(x=cell, y=hvalue,fill=Topic)) +
     plot.background = element_rect(fill='transparent', color=NA))+
   guides(fill = guide_legend(nrow = 1))
 
-ggsave(f,p,width = 60, height = 20,limitsize=F)
+ggsave(f,p,width = 60, height = 10,limitsize=F)
 }
 
 struct_plot_interaction_topic <- function(df_h,f) {
@@ -53,21 +53,24 @@ df_h_m$Topic <- factor(df_h_m$Topic)
 colnames(df_h_m) = c("cell", "cluster", "Topic", "hvalue")
 
 df_h_m$Topic <- gsub("X","",df_h_m$Topic)
+df_h_m$Topic <- factor(df_h_m$Topic, levels=c("2", "4", "7","10","18","22","24"))
+df_h_m$cluster <- factor(df_h_m$cluster, levels=c("3", "2", "1","4","0","6","5"))
 
-n <- 25
-qual_col_pals = brewer.pal.info[brewer.pal.info$category == 'qual',]
-col_vector = unlist(mapply(brewer.pal, qual_col_pals$maxcolors, rownames(qual_col_pals)))
+col_vector <- as.vector(kelly.colors(22))[16:22]
+
+
+
 
 # df_h_m = df_h_m[df_h_m$Topic %in% c(2,4,7,10,18,22,24),]
 
-sc = "aliceblue"
-l <- c("0" = sc,"1" =sc,"3" = sc,"5" = sc,"6" = sc,"8"=sc,"9"=sc,"11"=sc,"12"=sc,"13"=sc,"14"=sc,"15"=sc,"16"=sc,"17"=sc,"19"=sc,"20"=sc,"21"=sc,"23"=sc,"2"="aquamarine" , "4"="coral" , "7"= "firebrick", "10"="darkviolet" , "18"="seagreen" ,"22"="royalblue" , "24"="hotpink" )
+# sc = "aliceblue"
+# l <- c("0" = sc,"1" =sc,"3" = sc,"5" = sc,"6" = sc,"8"=sc,"9"=sc,"11"=sc,"12"=sc,"13"=sc,"14"=sc,"15"=sc,"16"=sc,"17"=sc,"19"=sc,"20"=sc,"21"=sc,"23"=sc,"2"="aquamarine" , "4"="coral" , "7"= "firebrick", "10"="darkviolet" , "18"="seagreen" ,"22"="royalblue" , "24"="hotpink" )
 
-col_vector = c()
-for (t in df_h_m$Topic){
-  print(l[t])
-  col_vector = append(col_vector,l[t])
-}
+# col_vector = c()
+# for (t in df_h_m$Topic){
+#   print(l[t])
+#   col_vector = append(col_vector,l[t])
+# }
 
 p <-
 ggplot(df_h_m, aes(x=cell, y=hvalue,fill=Topic)) +
