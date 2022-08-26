@@ -1,9 +1,9 @@
-#########################################################
-################################ set up 
+################################ set up ##################
 args_home ="/home/BCCRC.CA/ssubedi/projects/experiments/spruce_topic/2_cell_topic_v_beta/"
 # args_home ="/home/sishirsubedi/projects/experiments/spruce_topic/2_cell_topic_v_beta/"
 setwd(paste(args_home,'scripts/',sep=''))
 library(yaml)
+options(rlib_downstream_check = FALSE)
 config = paste(args_home,"config.yaml",sep="") 
 args = read_yaml(config)
 ct_model_id = paste(args_home,args$cell_topic$out,args$cell_topic$model_id,sep='')
@@ -12,109 +12,93 @@ ct_id = paste(args_home,args$cell_topic$out,args$cell_topic$id,sep='')
 it_id = paste(args_home,args$interaction_topic$out,args$interaction_topic$id,sep='')
 
 
-chordDiagram <- function(){
 
-file = paste(it_id,"8_chorddata.csv.gz",sep="")
+##### gsea 
+source('fig_1_gsea.R')
+file = paste(it_id,"12_gsea.csv",sep="")
+df = read.csv(file, sep = ",", header=TRUE,check.names=FALSE)
+run_gsea(df)
+
+
+
+subtype_heatmap <- function(){
+file = paste(it_id,"5_subtype_heatmap_r.csv.gz",sep="")
 df = read.table(file, sep = ",", header=TRUE)
-df = df[order(df$topic),]
-df$topic = as.factor(df$topic)
 
-library(reshape)
+dfm = melt(df,id=c('Cancer', 'subtype', 'cell_topic' ))
 
-dfm = melt(df,id=c('topic'))
-dfm = dfm[,c('value','variable')]
-colnames(dfm) = c('gene','genetype')
+dfm$value = ifelse(dfm$value > 3.0,3.0,dfm$value)
 
-dfl = df[,c(1,2)]
-library("circlize")
-f = paste(it_id,"8_chorddata_ligand.pdf",sep="")
-pdf(f)
-# df[,c(1,3,4)]
-genes<- as.character(dfl[[2]])
-othercol = structure(rep("grey", length(genes)), names = genes)
-grid_col = c("2" = "#b3446c", "4" = "#dcd300", "7" = "#882d17",
-"10"="#8db600","18"="#654522","22"="#e25822","24"="#2b3d26", othercol )
+p <-
+ggplot(dfm, aes(x=Cancer, y=variable,fill=value)) +
+  geom_tile() +
+  scale_fill_gradient(low = "white", high = "darkred")+
+  facet_grid(~ cell_topic + subtype, scales = "free", switch = "x", space = "free")+
+  theme(axis.text.x=element_blank(),
+      axis.ticks.x=element_blank(),
+      text = element_text(size=2),
+        panel.margin=unit(.01, "lines"),
+        panel.border = element_rect(color = "black", fill = NA, size = 0.1), 
+        strip.background = element_rect(color = "black", size = 0.1))
+    #   axis.text.y=element_blank(),
+    #   axis.ticks.y=element_blank())
 
+ggsave(paste(it_id,"5_subtype_heatmap_r.pdf",sep=""),p,width = 8, height = 6,dpi=600)
 
+file = paste(it_id,"5_subtype_heatmap_l.csv.gz",sep="")
+df = read.table(file, sep = ",", header=TRUE)
 
+dfm = melt(df,id=c('Cancer', 'subtype', 'cell_topic' ))
 
-# chordDiagram(df,,grid.col=grid_col,col = grid_col[as.character(df[[1]])],annotationTrack=NULL)
+dfm$value = ifelse(dfm$value > 3.0,3.0,dfm$value)
 
+p <-
+ggplot(dfm, aes(x=Cancer, y=variable,fill=value)) +
+  geom_tile() +
+  scale_fill_gradient(low = "white", high = "darkred")+
+  facet_grid(~ cell_topic + subtype, scales = "free", switch = "x", space = "free")+
+  theme(axis.text.x=element_blank(),
+      axis.ticks.x=element_blank(),
+      text = element_text(size=2),
+        panel.margin=unit(.01, "lines"),
+        panel.border = element_rect(color = "black", fill = NA, size = 0.1), 
+        strip.background = element_rect(color = "black", size = 0.1))
+    #   axis.text.y=element_blank(),
+    #   axis.ticks.y=element_blank())
 
-# Plot chord diagram
-chordDiagram(dfl,
-             grid.col=grid_col,
-             col = grid_col[as.character(dfl[[1]])],
-             annotationTrack = c("grid"), 
-             preAllocateTracks = 1, 
-
-             )
-
-
-highlight.sector(dfl$ligand,
-                 track.index = 1, col = "white",
-                 text = "Ligand", cex = 1, text.col = "black", 
-                 niceFacing = TRUE, font=2)
-highlight.sector(dfl$topic,
-                 track.index = 1, col = "white",
-                 text = "Interaction topics", cex = 1, text.col = "black", 
-                 niceFacing = TRUE, font=2)
-circos.trackPlotRegion(track.index = 1, panel.fun = function(x, y) {
-  xlim = get.cell.meta.data("xlim")
-  ylim = get.cell.meta.data("ylim")
-  sector.name = get.cell.meta.data("sector.index")
-  circos.text(mean(xlim), ylim[1] + .1, sector.name, facing = "clockwise", niceFacing = TRUE, adj = c(0, 0.5),cex=0.4)
-#   circos.axis(h = "top", labels.cex = 0, major.tick.percentage = 0.2, sector.index = sector.name, track.index = 2)
-  circos.axis(h = "top",labels=NULL)
-}, bg.border = NA)
-dev.off()
-circos.clear()
-
-
-dfr = df[,c(1,3)]
-library("circlize")
-f = paste(it_id,"8_chorddata_receptor.pdf",sep="")
-pdf(f)
-# df[,c(1,3,4)]
-genes<- as.character(dfr[[2]])
-othercol = structure(rep("grey", length(genes)), names = genes)
-grid_col = c("2" = "#b3446c", "4" = "#dcd300", "7" = "#882d17",
-"10"="#8db600","18"="#654522","22"="#e25822","24"="#2b3d26", othercol )
-
-
-
-
-# chordDiagram(df,,grid.col=grid_col,col = grid_col[as.character(df[[1]])],annotationTrack=NULL)
-
-
-# Plot chord diagram
-chordDiagram(dfr,
-             grid.col=grid_col,
-             col = grid_col[as.character(dfr[[1]])],
-             annotationTrack = c("grid"), 
-             preAllocateTracks = 1, 
-
-             )
-highlight.sector(df$receptor,
-                 track.index = 1, col = "white",
-                 text = "Receptor", cex = 1, text.col = "black", 
-                 niceFacing = TRUE, font=2)
-highlight.sector(dfr$topic,
-                 track.index = 1, col = "white",
-                 text = "Interaction topics", cex = 1, text.col = "black", 
-                 niceFacing = TRUE, font=2)
-circos.trackPlotRegion(track.index = 1, panel.fun = function(x, y) {
-  xlim = get.cell.meta.data("xlim")
-  ylim = get.cell.meta.data("ylim")
-  sector.name = get.cell.meta.data("sector.index")
-  circos.text(mean(xlim), ylim[1] + .1, sector.name, facing = "clockwise", niceFacing = TRUE, adj = c(0, 0.5),cex=0.4)
-#   circos.axis(h = "top", labels.cex = 0, major.tick.percentage = 0.2, sector.index = sector.name, track.index = 2)
-  circos.axis(labels=NULL)
-}, bg.border = NA)
-dev.off()
-circos.clear()
+ggsave(paste(it_id,"5_subtype_heatmap_l.pdf",sep=""),p,width = 8, height = 6,dpi=600)
 
 }
+#### bipartite 
+#https://rdrr.io/cran/bipartite/man/plotweb.html
+library(bipartite)
+library(ggplot2)
+library(gridExtra)
+library(reshape)
+
+file = paste(it_id,"8_lrnetwork.csv.gz",sep="")
+df = read.table(file, sep = ",", header=TRUE)
+
+for ( i in c(2,4,7,10,18,22,24)){
+print(i)
+dfm = df[df$topic==i,]
+if (dim(dfm)[1]>100){dfm = dfm[c(1:100),]}
+print(max(dfm$score))
+print(min(dfm$score))
+matrix = table(dfm[,c(1,2)])
+edge_colors = colorRampPalette(c("grey80","tan2"))(length(dfm$score))
+f=paste(it_id,"8_lrnetwork_",i,".pdf",sep="")
+pdf(f)
+p <- plotweb(matrix, method="normal", 
+labsize=1,text.rot = 90,
+col.high='salmon',col.low='cyan',
+col.interaction = edge_colors,
+bor.col.high='black',bor.col.low='black',bor.col.interaction='NA',
+y.width.low=0.05,y.width.high=0.05,
+arrow='no',ybig=0.1)
+dev.off()
+}
+
 
 ########
 source('fig_1_stplot.R')
@@ -239,6 +223,32 @@ weightmat_lr_plot(df_beta,tag,top_genes,topgenes_file,f)
 # f = paste(it_model_id,"_it_beta_r_hmap_all_v2.png",sep="")
 # top_genes=FALSE
 # weightmat_lr_plot(df_beta,tag,top_genes,topgenes_file,f)
+
+
+source('fig_2_lr_hmap_v2.R')
+beta = paste(it_model_id,"_it_beta_lm.csv.gz",sep="")
+beta_cols = read.table(paste(args_home,args$data,args$sample_id,'receptors.csv.gz',sep=''),header=TRUE)
+df_beta = read.table(beta, sep = ",", header=TRUE)
+colnames(df_beta) = beta_cols$X0
+df_beta = as.data.frame(df_beta)
+rownames(df_beta) = 0:24
+df_beta = df_beta[c("2","4","7", "10","18","22","24"),]
+tag='ligands'
+f = paste(it_id,"2_beta_weight_all_receptors.pdf",sep="")
+top_genes=FALSE
+weightmat_lr_plot(df_beta,tag,top_genes,topgenes_file,f)
+
+beta = paste(it_model_id,"_it_beta_rm.csv.gz",sep="")
+beta_cols = read.table(paste(args_home,args$data,args$sample_id,'ligands.csv.gz',sep=''),header=TRUE)
+df_beta = read.table(beta, sep = ",", header=TRUE)
+colnames(df_beta) = beta_cols$X0
+df_beta = as.data.frame(df_beta)
+rownames(df_beta) = 0:24
+df_beta = df_beta[c("2","4","7", "10","18","22","24"),]
+tag='receptors'
+f = paste(it_id,"2_beta_weight_all_ligands.pdf",sep="")
+top_genes=FALSE
+weightmat_lr_plot(df_beta,tag,top_genes,topgenes_file,f)
 
 #########################################################
 
@@ -386,3 +396,13 @@ df_h = read.table(h_sample_file, sep = ",", header=TRUE)
 struct_plot_interaction_topic(df_h,paste(it_id,'_it_6_topic_sample_kmeans_stplot.png',sep=''))
 
 
+
+
+
+#### fgsea
+library('fgsea')
+data(examplePathways)
+df_file = paste(it_id,"_gse.csv.gz",sep="")
+df = read.table(df_file, sep = ",", header=TRUE)
+
+er = df[1,]

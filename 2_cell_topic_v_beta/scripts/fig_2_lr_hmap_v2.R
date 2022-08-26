@@ -19,8 +19,8 @@ print(top_genes)
 df_beta = select(df_beta,all_of(top_genes))
 }
 
-row_order = row.order(df_beta)
-df_beta = df_beta[row_order,]
+# row_order = row.order(df_beta)
+# df_beta = df_beta[row_order,]
 
 df_beta_t = df_beta
 df_beta_t$topic = rownames(df_beta)
@@ -36,12 +36,18 @@ df_beta[df_beta > 10] = 10
 
 if(p_top_genes){
 p1 <- pheatmap(t(df_beta),color = viridis(n = 256, alpha = 1, begin = 0, end = 1, option = "viridis"),fontsize_row=6,fontsize_col=8,cluster_rows=FALSE,cluster_cols=FALSE,show_rownames=T)
+ggsave(f,p1,width = 2, height = 6)
+
 }
 else{
-p1 <- pheatmap(t(df_beta),color = viridis(n = 256, alpha = 1, begin = 0, end = 1, option = "viridis"),fontsize_row=6,fontsize_col=8,cluster_rows=FALSE,cluster_cols=FALSE,show_rownames=F)
+# p1 <- pheatmap(df_beta,color = colorRampPalette(c("blue", "white", "red"))(20),fontsize_row=6,fontsize_col=8,cluster_rows=FALSE,cluster_cols=FALSE,show_colnames=F)
+p1 <- pheatmap(df_beta,color =viridis(n = 256, alpha = 1, begin = 0, end = 1, option = "viridis"),fontsize_row=6,fontsize_col=8,cluster_rows=FALSE,cluster_cols=FALSE,show_colnames=F)
+
+ggsave(f,p1,width = 6, height = 2)
+
 }
 
-ggsave(f,p1,width = 2, height = 6)
+
 }
 
 

@@ -43,12 +43,11 @@ def gse_celltopic(spr):
 		print(i)
 		print(res)
 
-
-def gse_interactiontopic(spr,df_db):
+def gse_interactiontopic_lrpair(spr,df_db):
 	# select gene set database
 	# https://maayanlab.cloud/Enrichr/#libraries
-	df_r = spr.interaction_topic.beta_l
-	df_l = spr.interaction_topic.beta_r
+	df_r = spr.interaction_topic.beta_lm.copy()
+	df_l = spr.interaction_topic.beta_rm.copy()
 
 
 	lr_topic = []
@@ -97,35 +96,49 @@ def gse_interactiontopic(spr,df_db):
 
 	return df_grps
 
-def gse_interactiontopic_v2(spr,df_db):
+def gse_interactiontopic_lr_ranked(spr):
 	# select gene set database
 	# https://maayanlab.cloud/Enrichr/#libraries
-	df_r = spr.interaction_topic.beta_l
-	df_l = spr.interaction_topic.beta_r
-
 	
+	# import mygene  # to convert gene name to entrez id
+
+	df_r = spr.interaction_topic.beta_lm.copy()
+	df_l = spr.interaction_topic.beta_rm.copy()
+
 	df = pd.concat([df_r,df_l],axis=1)
+
+	return df
+
+	# mg = mygene.MyGeneInfo()
+	# out = mg.querymany(df.columns, scopes='symbol', fields='entrezgene', species='human')
+
+	# df_out = pd.DataFrame(out) 
+	# df_out.loc[df_out['query']=='GPR1',['_id']]=2825
+
+	# df.columns = df_out['_id'].values
+	# df.to_csv(spr.interaction_topic.id+'12_gse.csv.gz',index=False,compression='gzip')
+	# return df
 
 	df_grps = pd.DataFrame()
 
 	for i in range(df.shape[0]):
-		# rnk = pd.DataFrame(df.iloc[i,:].sort_values(axis=0,ascending=False)).reset_index().rename(columns={'index':0,0:1})
+		if i not in [0,2,4,7,10,18,22,24]: continue
 		rnk_combined = pd.DataFrame(df.iloc[i,:].sort_values(axis=0,ascending=False)).reset_index().rename(columns={'index':0,0:1})
 		rnk_combined.columns = [0,1]
 		rnk_combined = rnk_combined[rnk_combined[1]>0]
-		print(rnk_combined)
+		print(rnk_combined.head())
 		res = gp.prerank(rnk=rnk_combined,
-						gene_sets='MSigDB_Hallmark_2020',
+						gene_sets='KEGG_2021_Human',
 						processes=4,
-						permutation_num=100,
+						permutation_num=1000,
 						outdir=None,
-						no_plot=True,seed=6).res2d.sort_values('fdr').iloc[0:5,3].reset_index()
+						# no_plot=True,seed=6).res2d.sort_values('fdr').iloc[0:5,3].reset_index()
+						no_plot=True,seed=6).res2d.sort_values('fdr').reset_index()
 		
-		res = res[res['fdr']<0.01]
+		# res = res[res['fdr']<0.01]
 		
 		if res.shape[0]>0:
 			res['topic']=i
 			df_grps = pd.concat([df_grps, res], axis=0, ignore_index=True)
 
 	return df_grps
-

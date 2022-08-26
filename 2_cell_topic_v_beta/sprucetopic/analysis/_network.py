@@ -191,37 +191,30 @@ def interaction_statewise_lr_network(spr,states,top_lr=200,keep_db=True,df_db=No
 
 def lr_correlation_network(spr,df,interact_topics,zcutoff,corr_th,mode):
 
-	import matplotlib.pylab as plt
-	import networkx as nx
-	from networkx.algorithms import bipartite
-	import colorcet as cc
-	import seaborn as sns
-	import scipy.stats as stats
+	# import matplotlib.pylab as plt
+	# import networkx as nx
+	# from networkx.algorithms import bipartite
+	# import colorcet as cc
+	# import seaborn as sns
+	# import scipy.stats as stats
 
-	plt.rcParams['figure.figsize'] = [15,20]
-	plt.rcParams['figure.autolayout'] = True
+	# plt.rcParams['figure.figsize'] = [15,20]
+	# plt.rcParams['figure.autolayout'] = True
 
-	fig, ax = plt.subplots(3,3) 
-	ax = ax.ravel()
+	# fig, ax = plt.subplots(3,3) 
+	# ax = ax.ravel()
 
-
+	df_all = pd.DataFrame()
 	for i,topic in enumerate(interact_topics):
-
-		# r_vals = spr.interaction_topic.beta_r.iloc[topic,:]
-		# receptors = r_vals[stats.zscore(r_vals)>zcutoff].index.values
-		# l_vals = spr.interaction_topic.beta_l.iloc[topic,:]
-		# ligands = l_vals[stats.zscore(l_vals)>zcutoff].index.values
 
 		r_m = spr.interaction_topic.beta_rm.iloc[topic,:]
 		r_v = spr.interaction_topic.beta_rv.iloc[topic,:]
 		zs_r = r_m/np.sqrt(r_v)
-		# receptors = zs_r[abs(zs_r)>zcutoff].index.values
 		receptors = zs_r[zs_r>zcutoff].index.values
 
 		l_m = spr.interaction_topic.beta_lm.iloc[topic,:]
 		l_v = spr.interaction_topic.beta_lv.iloc[topic,:]
 		zs_l = l_m/np.sqrt(l_v)
-		# ligands = zs_l[abs(zs_l)>zcutoff].index.values
 		ligands = zs_l[zs_l>zcutoff].index.values
 		
 
@@ -247,6 +240,132 @@ def lr_correlation_network(spr,df,interact_topics,zcutoff,corr_th,mode):
 		df_corr.index = all_genes
 		df_corr.columns = all_genes
 		
+		df_corr = df_corr[df_corr.index.isin(ligands)]
+		df_corr = df_corr[ [x for x in df_corr.columns if x in receptors ]]
+		
+		df_corr = df_corr.reset_index().melt(id_vars=['index'])
+		df_corr.columns = ['ligands','receptors','score']
+
+		df_corr = df_corr[df_corr['score']>corr_th]
+		
+		df_corr = df_corr.sort_values('score',ascending=False).reset_index(drop=True)
+
+		print(df_corr.shape)
+
+		# for visualization get top 100 lr pairs
+		# df_corr = df_corr.iloc[0:100,:]
+
+		df_corr['topic'] = topic
+		df_all = pd.concat([df_all,df_corr], axis=0, ignore_index=True)
+	
+	return df_all
+	# 	norder = dfg_nodes.groupby(1).count().reset_index().sort_values(1,ascending=False)[0].values
+
+	# 	g = nx.Graph()
+	# 	for node in norder:
+	# 		dfn = dfg_nodes[dfg_nodes[1]==node]
+	# 		for idx,row in dfn.iterrows():
+	# 			if row[0] not in g.nodes():
+	# 				g.add_node(row[0],bipartite=0)
+	# 				g.nodes[row[0]]['w'] = 1
+	# 			if row[1] not in g.nodes():
+	# 				g.add_node(row[1],bipartite=1)
+	# 				g.nodes[row[1]]['w'] = 1
+	# 			g.add_edge(row[0],row[1],weight=row[2])
+	# 			g.nodes[row[0]]['w'] += 1
+	# 			g.nodes[row[1]]['w'] += 1
+
+
+	# 	left_nodes = [ node for node in g.nodes() if g.nodes[node]['bipartite']==0]
+	# 	edges = g.edges()
+	# 	weights = [ g[u][v]['weight'] for u,v in edges]
+
+	# 	g = sorted(g.nodes(), key=lambda n: g.nodes[n]['w'])
+	# 	for n in g.nodes():
+	# 		print(g.nodes[n]['w'])
+
+
+	# 	if len(g.nodes()) > 0:
+	# 		fs = 6
+	# 		ax[i].set_axis_off()
+	# 		ax[i].set_title(str(topic),fontsize=30)
+	# 		color_map = ['salmon' if node in receptors else 'darkcyan' for node in g]
+	# 		pos = nx.drawing.layout.bipartite_layout(g,left_nodes)
+
+	# 		nx.draw(g,pos=pos,with_labels=False,ax=ax[i],node_color=color_map,edge_color='grey',width=weights,node_size=20)
+	# 		pos_attrs = {}
+	# 		adj = 0.1
+	# 		for node, coords in pos.items():
+	# 			if coords[0] > 0 and coords[1] > 0:
+	# 				pos_attrs[node] = (coords[0] + adj, coords[1])
+	# 			elif coords[0] < 0 and coords[1] < 0:
+	# 				pos_attrs[node] = (coords[0]- adj, coords[1])
+	# 			elif coords[0] > 0 and coords[1] < 0:
+	# 				pos_attrs[node] = (coords[0]+ adj, coords[1])
+	# 			elif coords[0] < 0 and coords[1] > 0:
+	# 				pos_attrs[node] = (coords[0]- adj, coords[1])
+
+	# 		nx.draw_networkx_labels(g, pos_attrs,ax=ax[i],font_size=fs,font_weight='bold')
+
+	# 		break
+
+	# plt.savefig(spr.interaction_topic.id+'7_lr_network_it_topics_corr_'+mode+'.pdf',dpi=300);plt.close()
+	
+
+def ll_rr_correlation_network(spr,df,interact_topics,zcutoff,corr_th,mode):
+
+	import matplotlib.pylab as plt
+	import networkx as nx
+	import colorcet as cc
+	import seaborn as sns
+	import scipy.stats as stats
+
+	plt.rcParams['figure.figsize'] = [20,20]
+	plt.rcParams['figure.autolayout'] = True
+
+	fig, ax = plt.subplots(3,3) 
+	ax = ax.ravel()
+
+
+	for i,topic in enumerate(interact_topics):
+
+		# r_vals = spr.interaction_topic.beta_r.iloc[topic,:]
+		# receptors = r_vals[stats.zscore(r_vals)>zcutoff].index.values
+		# l_vals = spr.interaction_topic.beta_l.iloc[topic,:]
+		# ligands = l_vals[stats.zscore(l_vals)>zcutoff].index.values
+
+		r_m = spr.interaction_topic.beta_rm.iloc[topic,:]
+		r_v = spr.interaction_topic.beta_rv.iloc[topic,:]
+		zs_r = r_m/np.sqrt(r_v)
+		receptors = zs_r[zs_r>zcutoff].index.values
+
+		l_m = spr.interaction_topic.beta_lm.iloc[topic,:]
+		l_v = spr.interaction_topic.beta_lv.iloc[topic,:]
+		zs_l = l_m/np.sqrt(l_v)
+		ligands = zs_l[zs_l>zcutoff].index.values
+		
+
+		# receptors = list(spr.interaction_topic.beta_r.iloc[topic,:].sort_values(ascending=False).head(300).index)
+		# ligands = list(spr.interaction_topic.beta_l.iloc[topic,:].sort_values(ascending=False).head(300).index)
+
+		all_genes = np.concatenate([ligands,receptors])
+		# print(all_genes)
+
+		df_gexp = spr.data.raw_data.loc[:,np.concatenate([['index'],all_genes])].copy()
+
+		cancer_cells = df[df['interact_topic']==topic]['Cancer'].unique()
+		nbr_cells = df[df['interact_topic']==topic]['nbr'].unique()
+		all_cells = np.concatenate( [cancer_cells , nbr_cells])
+
+		df_gexp_topic = df_gexp[df_gexp['index'].isin(all_cells)].copy()
+		df_gexp_topic.index = df_gexp_topic['index']
+		df_gexp_topic = df_gexp_topic.drop(columns=['index'])	
+		df_gexp_topic = df_gexp_topic.T
+
+		df_corr = pd.DataFrame(np.corrcoef(df_gexp_topic))
+		df_corr.index = all_genes
+		df_corr.columns = all_genes
+		
 		df_corr = df_corr.reset_index().melt(id_vars=['index'])
 		df_corr.columns = ['gene1','gene2','c']
 
@@ -254,214 +373,74 @@ def lr_correlation_network(spr,df,interact_topics,zcutoff,corr_th,mode):
 		
 		df_corr = df_corr[df_corr['gene1']!=df_corr['gene2']]
 
-		df_corr = df_corr.sort_values('c',ascending=False).reset_index(drop=True)
-
-		keep = []
-		k_lrpair = []
-		for idx,row in df_corr.iterrows():
-			g1 = row['gene1']
-			g2 = row['gene2']
-			if (g1 in ligands and g2 in receptors):
-				if g1+'_'+g2 not in k_lrpair:
-					keep.append(idx)
-					k_lrpair.append(g1+'_'+g2)
-			elif (g2 in ligands and g1 in receptors):
-				if g2+'_'+g1 not in k_lrpair:
-					keep.append(idx)
-					k_lrpair.append(g2+'_'+g1)
-
-		df_corr = df_corr.iloc[keep]
-
-		print(df_corr.shape)
-
+		df_corr = df_corr.sort_values('c',ascending=False)
 		# for visualization get top 100 lr pairs
-		df_corr = df_corr.iloc[0:100,:]
+		df_corr = df_corr.iloc[0:200,:]
 
 		print(df_corr.shape)
 
-		g_nodes = []
 		if mode == 'lr':
+			g = nx.Graph()
 			for idx,row in df_corr.iterrows():
 				g1 = row['gene1']
 				g2 = row['gene2']
-				if (g1 in ligands and g2 in receptors):
-						g_nodes.append([g1,g2,row['c']])
-				elif (g1 in receptors and g2 in ligands):
-						g_nodes.append([g2,g1,row['c']])
+				if g1==g2:continue
+				if (g1 in ligands and g2 in receptors) or (g1 in receptors and g2 in ligands):
+					g.add_node(row['gene1'])
+					g.add_node(row['gene2'])
+					g.add_edge(row['gene1'],row['gene2'],weight= row['c'])
+		if mode == 'll':
+			g = nx.Graph()
+			for idx,row in df_corr.iterrows():
+				g1 = row['gene1']
+				g2 = row['gene2']
+				if g1==g2:continue
+				if (g1 in ligands and g2 in ligands):
+					g.add_node(row['gene1'])
+					g.add_node(row['gene2'])
+					g.add_edge(row['gene1'],row['gene2'],weight= row['c'])
+		if mode == 'rr':
+			g = nx.Graph()
+			for idx,row in df_corr.iterrows():
+				g1 = row['gene1']
+				g2 = row['gene2']
+				if g1==g2:continue
+				if (g1 in receptors and g2 in receptors):
+					g.add_node(row['gene1'])
+					g.add_node(row['gene2'])
+					g.add_edge(row['gene1'],row['gene2'],weight= row['c'])
 
-		dfg_nodes = pd.DataFrame(g_nodes)
-		# return dfg_nodes
-		norder = dfg_nodes.groupby(1).count().reset_index().sort_values(1,ascending=False)[0].values
 
-		g = nx.Graph()
-		for node in norder:
-			dfn = dfg_nodes[dfg_nodes[1]==node]
-			for idx,row in dfn.iterrows():
-				if row[0] not in g.nodes():
-					g.add_node(row[0],bipartite=0)
-				if row[1] not in g.nodes():
-					g.add_node(row[1],bipartite=1)
-				g.add_edge(row[0],row[1],weight=row[2])
+		# remove = [node for node, degree in g.degree() if degree < 2]
+		# g.remove_nodes_from(remove)
 
-
-		left_nodes = [ node for node in g.nodes() if g.nodes[node]['bipartite']==0]
 		edges = g.edges()
 		weights = [ g[u][v]['weight'] for u,v in edges]
-
 		if len(g.nodes()) > 0:
-			fs = 6
+			fs = 4	
+			# if topic ==18 : fs = 4
 			ax[i].set_axis_off()
 			ax[i].set_title(str(topic),fontsize=30)
 			color_map = ['salmon' if node in receptors else 'darkcyan' for node in g]
-			pos = nx.drawing.layout.bipartite_layout(g,left_nodes)
-
-			nx.draw(g,pos=pos,with_labels=False,ax=ax[i],node_color=color_map,edge_color='grey',width=weights,node_size=20)
+			pos = nx.circular_layout(g,scale=2)
+			nx.draw(g,pos=pos,with_labels=False,ax=ax[i],node_color=color_map,edge_color='grey',width=weights,node_size=30)
+			# nx.draw(g,pos=pos,with_labels=False,ax=ax[i],node_color=color_map,edge_color='grey')
 			pos_attrs = {}
-			adj = 0.1
+			adj = 0.05
 			for node, coords in pos.items():
 				if coords[0] > 0 and coords[1] > 0:
-					pos_attrs[node] = (coords[0] + adj, coords[1])
+					pos_attrs[node] = (coords[0], coords[1] + adj)
 				elif coords[0] < 0 and coords[1] < 0:
-					pos_attrs[node] = (coords[0]- adj, coords[1])
+					pos_attrs[node] = (coords[0], coords[1] - adj)
 				elif coords[0] > 0 and coords[1] < 0:
-					pos_attrs[node] = (coords[0]+ adj, coords[1])
+					pos_attrs[node] = (coords[0], coords[1] - adj)
 				elif coords[0] < 0 and coords[1] > 0:
-					pos_attrs[node] = (coords[0]- adj, coords[1])
+					pos_attrs[node] = (coords[0], coords[1] + adj)
 
 			nx.draw_networkx_labels(g, pos_attrs,ax=ax[i],font_size=fs,font_weight='bold')
 
 
 	plt.savefig(spr.interaction_topic.id+'7_lr_network_it_topics_corr_'+mode+'.pdf',dpi=300);plt.close()
-
-# def ll_rr_correlation_network(spr,df,interact_topics,zcutoff,corr_th,mode):
-
-# 	import matplotlib.pylab as plt
-# 	import networkx as nx
-# 	import colorcet as cc
-# 	import seaborn as sns
-# 	import scipy.stats as stats
-
-# 	plt.rcParams['figure.figsize'] = [20,20]
-# 	plt.rcParams['figure.autolayout'] = True
-
-# 	fig, ax = plt.subplots(3,3) 
-# 	ax = ax.ravel()
-
-
-# 	for i,topic in enumerate(interact_topics):
-
-# 		# r_vals = spr.interaction_topic.beta_r.iloc[topic,:]
-# 		# receptors = r_vals[stats.zscore(r_vals)>zcutoff].index.values
-# 		# l_vals = spr.interaction_topic.beta_l.iloc[topic,:]
-# 		# ligands = l_vals[stats.zscore(l_vals)>zcutoff].index.values
-
-# 		r_m = spr.interaction_topic.beta_rm.iloc[topic,:]
-# 		r_v = spr.interaction_topic.beta_rv.iloc[topic,:]
-# 		zs_r = r_m/np.sqrt(r_v)
-# 		receptors = zs_r[zs_r>zcutoff].index.values
-
-# 		l_m = spr.interaction_topic.beta_lm.iloc[topic,:]
-# 		l_v = spr.interaction_topic.beta_lv.iloc[topic,:]
-# 		zs_l = l_m/np.sqrt(l_v)
-# 		ligands = zs_l[zs_l>zcutoff].index.values
-		
-
-# 		# receptors = list(spr.interaction_topic.beta_r.iloc[topic,:].sort_values(ascending=False).head(300).index)
-# 		# ligands = list(spr.interaction_topic.beta_l.iloc[topic,:].sort_values(ascending=False).head(300).index)
-
-# 		all_genes = np.concatenate([ligands,receptors])
-# 		# print(all_genes)
-
-# 		df_gexp = spr.data.raw_data.loc[:,np.concatenate([['index'],all_genes])].copy()
-
-# 		cancer_cells = df[df['interact_topic']==topic]['Cancer'].unique()
-# 		nbr_cells = df[df['interact_topic']==topic]['nbr'].unique()
-# 		all_cells = np.concatenate( [cancer_cells , nbr_cells])
-
-# 		df_gexp_topic = df_gexp[df_gexp['index'].isin(all_cells)].copy()
-# 		df_gexp_topic.index = df_gexp_topic['index']
-# 		df_gexp_topic = df_gexp_topic.drop(columns=['index'])	
-# 		df_gexp_topic = df_gexp_topic.T
-
-# 		df_corr = pd.DataFrame(np.corrcoef(df_gexp_topic))
-# 		df_corr.index = all_genes
-# 		df_corr.columns = all_genes
-		
-# 		df_corr = df_corr.reset_index().melt(id_vars=['index'])
-# 		df_corr.columns = ['gene1','gene2','c']
-
-# 		df_corr = df_corr[df_corr['c']>corr_th]
-		
-# 		df_corr = df_corr[df_corr['gene1']!=df_corr['gene2']]
-
-# 		df_corr = df_corr.sort_values('c',ascending=False)
-# 		# for visualization get top 100 lr pairs
-# 		df_corr = df_corr.iloc[0:200,:]
-
-# 		print(df_corr.shape)
-
-# 		if mode == 'lr':
-# 			g = nx.Graph()
-# 			for idx,row in df_corr.iterrows():
-# 				g1 = row['gene1']
-# 				g2 = row['gene2']
-# 				if g1==g2:continue
-# 				if (g1 in ligands and g2 in receptors) or (g1 in receptors and g2 in ligands):
-# 					g.add_node(row['gene1'])
-# 					g.add_node(row['gene2'])
-# 					g.add_edge(row['gene1'],row['gene2'],weight= row['c'])
-# 		if mode == 'll':
-# 			g = nx.Graph()
-# 			for idx,row in df_corr.iterrows():
-# 				g1 = row['gene1']
-# 				g2 = row['gene2']
-# 				if g1==g2:continue
-# 				if (g1 in ligands and g2 in ligands):
-# 					g.add_node(row['gene1'])
-# 					g.add_node(row['gene2'])
-# 					g.add_edge(row['gene1'],row['gene2'],weight= row['c'])
-# 		if mode == 'rr':
-# 			g = nx.Graph()
-# 			for idx,row in df_corr.iterrows():
-# 				g1 = row['gene1']
-# 				g2 = row['gene2']
-# 				if g1==g2:continue
-# 				if (g1 in receptors and g2 in receptors):
-# 					g.add_node(row['gene1'])
-# 					g.add_node(row['gene2'])
-# 					g.add_edge(row['gene1'],row['gene2'],weight= row['c'])
-
-
-# 		# remove = [node for node, degree in g.degree() if degree < 2]
-# 		# g.remove_nodes_from(remove)
-
-# 		edges = g.edges()
-# 		weights = [ g[u][v]['weight'] for u,v in edges]
-# 		if len(g.nodes()) > 0:
-# 			fs = 4	
-# 			# if topic ==18 : fs = 4
-# 			ax[i].set_axis_off()
-# 			ax[i].set_title(str(topic),fontsize=30)
-# 			color_map = ['salmon' if node in receptors else 'darkcyan' for node in g]
-# 			pos = nx.circular_layout(g,scale=2)
-# 			nx.draw(g,pos=pos,with_labels=False,ax=ax[i],node_color=color_map,edge_color='grey',width=weights,node_size=30)
-# 			# nx.draw(g,pos=pos,with_labels=False,ax=ax[i],node_color=color_map,edge_color='grey')
-# 			pos_attrs = {}
-# 			adj = 0.05
-# 			for node, coords in pos.items():
-# 				if coords[0] > 0 and coords[1] > 0:
-# 					pos_attrs[node] = (coords[0], coords[1] + adj)
-# 				elif coords[0] < 0 and coords[1] < 0:
-# 					pos_attrs[node] = (coords[0], coords[1] - adj)
-# 				elif coords[0] > 0 and coords[1] < 0:
-# 					pos_attrs[node] = (coords[0], coords[1] - adj)
-# 				elif coords[0] < 0 and coords[1] > 0:
-# 					pos_attrs[node] = (coords[0], coords[1] + adj)
-
-# 			nx.draw_networkx_labels(g, pos_attrs,ax=ax[i],font_size=fs,font_weight='bold')
-
-
-# 	plt.savefig(spr.interaction_topic.id+'7_lr_network_it_topics_corr_'+mode+'.pdf',dpi=300);plt.close()
 
 def lr_chord_network(spr,df,interact_topics,zcutoff,corr_th,mode):
 
@@ -556,7 +535,6 @@ def lr_chord_network(spr,df,interact_topics,zcutoff,corr_th,mode):
 	dfg_nodes = pd.DataFrame(g_nodes)
 	dfg_nodes.columns = ['topic','ligand','receptor','score']
 	return dfg_nodes
-
 
 def cell_neighbours_on_umap(spr):
 	import matplotlib.pylab as plt

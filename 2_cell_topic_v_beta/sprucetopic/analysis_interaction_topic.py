@@ -66,6 +66,10 @@ def top_genes():
     top_n = 10
     df_top_genes = _topics.topic_top_lr_genes(spr,top_n)
     df_top_genes.to_csv(spr.interaction_topic.id+'2_beta_weight_top_'+str(top_n)+'_genes.csv.gz',index=False,compression='gzip')
+    
+    top_n = 600
+    df_top_genes = _topics.topic_top_lr_genes(spr,top_n)
+    df_top_genes.to_csv(spr.interaction_topic.id+'2_beta_weight_top_'+str(top_n)+'_genes.csv.gz',index=False,compression='gzip')
 
 def metafile():
     ##################################################################
@@ -424,6 +428,15 @@ def correlation_lr_network():
     corr_th = 0.3
     zcutoff = 4.0
     selected_int_topics = [2,4,7,10,18,22,24]
+    
+
+    ### correlation network
+
+    dfall = _network.lr_correlation_network(spr,df,selected_int_topics,zcutoff,corr_th,'lr')
+    dfall.to_csv(spr.interaction_topic.id+'8_lrnetwork.csv.gz',index=False,compression='gzip')
+
+
+    ## chord network
 
     df_chord = _network.lr_chord_network(spr,df,selected_int_topics,zcutoff,corr_th,'lr')
     # df_chord = df_chord.sort_values(['ligand','receptor'])
@@ -560,39 +573,101 @@ def deg_analysis():
     dftest['interact_topic'].value_counts()
     dftest.cluster_celltype.value_counts()
 
-# cancer_subtype_ct_it_distribution()
-# ##################################################################
-# ##################################################################
-# # NOT INCLUDED IN FIGURES
-# ##################################################################
+def heterogeneity_tnbc():
+    
+    celltype='Cancer'
 
-# ##################################################################
-# # 5 network graph
-# # Check interaction state of cancer cells and neighbouring cells 
+    # print(subtype)
+    df=pd.read_csv(spr.interaction_topic.id+'3_meta_Cancer_cells_nbrs.csv.gz',compression='gzip')
+    selected_int_topics = [2,4,7,10,18,22,24]
+    df = df[df['interact_topic'].isin(selected_int_topics)]
+    dfmeta = pd.read_csv(spr.interaction_topic.id+'3_a_meta_ct_argmax_maxprop.csv.gz')
+    df = pd.merge(df,dfmeta[['cell','subtype','cell_topic']],left_on=celltype,right_on='cell',how='left')
 
-# '''
-# take all cancer cells and remove state 7 and 10 
-# plot network to show cancer cell states and neighbour cells belonging
-# to that state
-# '''
-# from analysis import _network
-# df = pd.read_csv(spr.interaction_topic.id+'_it_model_all_topics_cancer_cells.csv.gz',compression='gzip')
-# # df = df[df['cluster_celltype'] == 'Cancer Epithelial']
-# # df = df[~df['interact_topic'].isin([7,10])]
-# _network.cell_interaction_network(spr,df)
+    from util._io import read_config
+    from collections import namedtuple
+    experiment_config = read_config(experiment_home+'config.yaml')
+    args = namedtuple('Struct',experiment_config.keys())(*experiment_config.values())
+    dfraw = pd.read_pickle(experiment_home+args.data+args.sample_id+args.raw_data)
+    from anndata import AnnData
+    import scanpy as sc
+    import numpy as np
+    adata = AnnData(dfraw.iloc[:,1:].values)
+    sc.pp.normalize_total(adata, target_sum=1e4)
+    sc.pp.log1p(adata)
+    dfn = adata.to_df()
+    dfn.columns = dfraw.columns[1:]
+    dfn['index'] = dfraw['index'].values
+    dfn = dfn.set_index('index')
+
+    ## select only cancer cells 
+    dfn = dfn[dfn.index.isin(df['Cancer'].unique())]
+
+    df = df.drop_duplicates(['Cancer','subtype','cell_topic'])
+
+    dfjoin = pd.merge(dfn,df[['Cancer','subtype','cell_topic']],left_on=dfn.index,right_on='Cancer',how='left')
+
+    dfjoin = dfjoin[ (     ( (dfjoin['cell_topic']==24) & (dfjoin['subtype'] =='HER2+') ) |    
+                 ( (dfjoin['cell_topic']==48) & (dfjoin['subtype'] =='ER+')) |
+                 ( (dfjoin['cell_topic']==19) & (dfjoin['subtype'] =='ER+')) |
+                 ( (dfjoin['cell_topic']==9) & (dfjoin['subtype'] =='TNBC')) |
+                 ( (dfjoin['cell_topic']==21) & (dfjoin['subtype'] =='TNBC')) |
+                 ( (dfjoin['cell_topic']==24) & (dfjoin['subtype'] =='TNBC')) |
+                 ( (dfjoin['cell_topic']==33) & (dfjoin['subtype'] =='TNBC')) |
+                 ( (dfjoin['cell_topic']==43) & (dfjoin['subtype'] =='TNBC') )
+            ) ]
+
+    selected_int_topics = [24,22,18,10,7,4,2]
+    tr,tl= _topics.get_topic_top_genes(spr,selected_int_topics,10)
+    # dfn_l = dfn[tl]
+
+    ext = ['Cancer','subtype','cell_topic']
+    dfjoin_r = dfjoin[ext+tr]
+    dfjoin_l = dfjoin[ext+tl]
+
+    # dfjoin_l = dfjoin_l.groupby(['subtype','cell_topic']).sample(frac=0.1)
+    # dfjoin_r = dfjoin_r.groupby(['subtype','cell_topic']).sample(frac=0.1)
+    
+    
+    ### select topics for plot
+    dfjoin_r.to_csv(spr.interaction_topic.id+'5_subtype_heatmap_r.csv.gz',index=False,compression='gzip')
+    dfjoin_l.to_csv(spr.interaction_topic.id+'5_subtype_heatmap_l.csv.gz',index=False,compression='gzip')
+
+def gse():
+    from analysis import _gsea
+    dfge = _gsea.gse_interactiontopic_lr_ranked(spr)
+    # dfge.to_csv(spr.interaction_topic.id+'12_gseapy_out.csv',index=False)
+    df.to_csv(spr.interaction_topic.id+'12_gsea.csv',index=False)
+    
+def survival():
+
+    from analysis import _survival
+
+    data='/data/TNBC/bulk/BRCA-US/'
+    
+    dfm = pd.read_csv(data+'donor.BRCA-US.tsv.gz',sep='\t')
+    # dfm['overall_time'] = [ x if pd.isna(y) else y for x,y in zip(dfm['donor_interval_of_last_followup'],dfm['donor_survival_time'])]
+    dfm = dfm[dfm['donor_vital_status']=='deceased']
+    dfm['overall_time'] = dfm['donor_survival_time']
+     
+    df = pd.read_csv(data+'exp_seq.BRCA-US.tsv.gz',sep='\t')
+    df = df[['icgc_donor_id','gene_id','normalized_read_count']]
+    df = df[df['icgc_donor_id'].isin(dfm['icgc_donor_id'])]
+    df = df.pivot_table(index=['icgc_donor_id'],columns='gene_id',values='normalized_read_count')
+
+    df_score = _survival.generate_data_it(spr,df,dfm)
+    df_score.to_csv(spr.interaction_topic.id+'11_survival_analysis_it_2g.csv.gz',index=False,compression='gzip')
+
+    df_exp = np.exp(df_score.iloc[:,3:])
+    df_exp = df_exp.div(df_exp.sum(axis=1), axis=0) 
+    df_score[[2,4,7,10,18,22,24]] = df_exp
+    df_score.to_csv(spr.interaction_topic.id+'11_survival_analysis_it_mod_1.csv.gz',index=False,compression='gzip')
 
 
-# ##################################################################
-# # 7 interaction topic gse analysis
-# ##################################################################
-# '''
-# take ligand and receptor weight and average them
-# '''
-# df_db = pd.read_csv( experiment_home + spr.args.database+ spr.args.lr_db,sep='\t', usecols=['lr_pair'])
-# df = _gsea.gse_interactiontopic_v2(spr,df_db)
-# df.to_csv(spr.interaction_topic.id+'_it_gsea.csv.gz',index=False,compression='gzip')
-
-# from analysis import _gsea
-# _gsea.gsea(spr)
-
+    df_score = pd.melt(df_score,id_vars=['icgc_donor_id','donor_vital_status','overall_time'])                                            
+    df_score.to_csv(spr.interaction_topic.id+'11_survival_analysis_it_mod.csv.gz',index=False,compression='gzip')
+    
+    
+    df_score = _survival.generate_data_ct(spr,df,dfm)
+    df_score.to_csv(spr.interaction_topic.id+'11_survival_analysis_ct.csv.gz',index=False,compression='gzip')
 

@@ -204,7 +204,7 @@ def plt_cn(spr,df,statelist):
 	import matplotlib.pylab as plt
 	import colorcet as cc
 	import seaborn as sns
-	plt.rcParams['figure.figsize'] = [6,4]
+	plt.rcParams['figure.figsize'] = [10,5]
 	plt.rcParams['figure.autolayout'] = True
 	sns.set(font_scale=0.5)
 	fig, ax = plt.subplots(7,2)
@@ -227,18 +227,8 @@ def get_cell_neighbours_states_lr(spr,df,topic):
 	df_nbr_l = spr.data.raw_l_data[spr.data.raw_l_data['index'].isin(df['nbr'].values)]
 	df_nbr_r = spr.data.raw_r_data[spr.data.raw_r_data['index'].isin(df['nbr'].values)]
 
-	# df_cancer_l.iloc[:,1:] = df_cancer_l.iloc[:,1:].div(df_cancer_l.iloc[:,1:].sum(axis=1), axis=0)
-	# df_cancer_r.iloc[:,1:] = df_cancer_r.iloc[:,1:].div(df_cancer_r.iloc[:,1:].sum(axis=1), axis=0)
-
-	# df_nbr_l.iloc[:,1:] = df_nbr_l.iloc[:,1:].div(df_nbr_l.iloc[:,1:].sum(axis=1), axis=0)
-	# df_nbr_r.iloc[:,1:] = df_nbr_r.iloc[:,1:].div(df_nbr_r.iloc[:,1:].sum(axis=1), axis=0)
-
-	# df_cancer_l = df_cancer_l.sample(n=df_nbr_l.shape[0])
-	# df_cancer_r = df_cancer_r.sample(n=df_nbr_r.shape[0])
-
-
-	top_r = list(spr.interaction_topic.beta_rm.iloc[topic,:].sort_values(ascending=False).head(5).index)
-	top_l = list(spr.interaction_topic.beta_lm.iloc[topic,:].sort_values(ascending=False).head(5).index)
+	top_r = list(spr.interaction_topic.beta_rm.iloc[topic,:].sort_values(ascending=False).head(10).index)
+	top_l = list(spr.interaction_topic.beta_lm.iloc[topic,:].sort_values(ascending=False).head(10).index)
 	
 	df_cancer_l = df_cancer_l.loc[:,top_l]
 	df_cancer_r = df_cancer_r.loc[:,top_r]
@@ -255,9 +245,6 @@ def get_cell_neighbours_states_lr(spr,df,topic):
 
 	dfl = dfl.applymap(math.sqrt)
 	dfr = dfr.applymap(math.sqrt)
-
-	dfl[dfl>1]=1
-	dfr[dfr>1]=1
 	
 	return dfl,dfr
 
@@ -273,3 +260,15 @@ def interaction_summary(sp,topics_prob):
 			print(idx)
 	df = pd.DataFrame(summary,columns=['cell_i','cell_j','interaction_topic','interaction_probability'])
 	df.to_csv(sp.interaction_topic.id+'_interaction_summary.tsv.gz',sep='\t',index=False,compression='gzip')
+
+
+def get_topic_top_genes(spr,topics,n):
+	
+	r,l =[],[]
+	for topic in topics:
+		top_r = list(spr.interaction_topic.beta_rm.iloc[topic,:].sort_values(ascending=False).head(n).index)
+		top_l = list(spr.interaction_topic.beta_lm.iloc[topic,:].sort_values	(ascending=False).head(n).index)
+		for _r in top_r: r.append(_r)
+		for _l in top_l: l.append(_l)
+	return r,l
+	

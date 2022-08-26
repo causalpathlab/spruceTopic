@@ -33,3 +33,5 @@ pred_hpc <- SingleR(test = sce, ref = ref, assay.type.test=1,labels = ref$label.
 
 require(remotes)
 install_version("rjson", version = "0.5.0", repos = "http://cran.us.r-project.org")
+
+

@@ -1,68 +1,41 @@
-
-# library(msigdbr)
-
-
-# immunesigdb_human_db <- msigdbr::msigdbr(species = "human",
-# 										category = "C7",
-# 										subcategory = "IMMUNESIGDB")
-# immunesigdb_human_db = as.data.frame(immunesigdb_human_db)
-# write.csv(immunesigdb_human_db, file=gzfile("immunesigdb_human_db.csv.gz"))
-
-# hallmark_human_db <- msigdbr::msigdbr(species = "human",
-# 										category = "H")
-# hallmark_human_db = as.data.frame(hallmark_human_db)
-# write.csv(hallmark_human_db, file=gzfile("hallmark_human_db.csv.gz"))
-
+library(fgsea)
+library(data.table)
 library(ggplot2)
-library(gridExtra)
-library(reshape)
-library(yaml)
 library(pheatmap)
-library(RColorBrewer)
-library(dplyr)
-setwd(box::file())
 source("Util.R")
 
-args = commandArgs(trailingOnly=TRUE)
-args_home ="/home/BCCRC.CA/ssubedi/projects/experiments/spruce_topic/2_cell_topic_v_beta/"
-config = paste(args_home,"config/",args[1],".yaml",sep="") 
-args = read_yaml(config)
 
-weightmat_phmap_plot_i <- function(args) {
+run_gsea <- function(df,cutoff){
+msigdbr_df <- msigdbr::msigdbr(species = "human", category = "C2",subcategory = "KEGG")
+pathways = split(x = msigdbr_df$gene_symbol, f = msigdbr_df$gs_name)
 
+selected_topics = c(3,5,8,11,19,23,25)
 
+fr = data.frame()
+for ( i in selected_topics ){
+print(paste('processing',i-1))
+ranks = as.double(sort(df[i,],descending=FALSE))
+names(ranks) = colnames(sort(df[i,],descending=FALSE))
+fgseaRes = fgsea(pathways = pathways, stats =ranks ,nperm=10000)
+# fgseaRes = fgseaRes[order(pval), ]
+fgseaRes[,'topic'] = paste('topic',i-1) 
+fgseaRes = fgseaRes[fgseaRes$padj<cutoff,]
+fgseaRes = as.data.frame(fgseaRes)
+fr <- rbind(fr,fgseaRes)
+}
+dfm=fr
+dfm$padj = -log10(dfm$padj)
+dfm = dcast(dfm,pathway~topic,value.var="padj")
+dfm[is.na(dfm)] <- 0
+# dfm$topic = as.factor(dfm$topic)
 
-beta = paste(args_home,args$output,args$cell_topic$out,args$cell_topic$model_info,args$cell_topic$model_id,"_cmark_hypergeom_test.tsv.gz",sep="")
+rownames(dfm) = dfm$pathway
+dfm$pathway = NULL
 
-df_beta = read.table(beta, sep = "\t", header=TRUE)
+row_order = row.order(dfm)
+dfm = dfm[row_order,]
 
-df_beta = cast(df_beta,pathway~topic,value.var='pval')
-df_beta = as.data.frame(df_beta)
-rownames(df_beta) = df_beta$pathway
-df_beta = df_beta[,2:dim(df_beta)[2]]
-print(head(df_beta))
-df_beta = t(df_beta)
-
-
-row_order = row.order(df_beta)
-
-df_beta_t = as.data.frame(df_beta)
-df_beta_t$topic = rownames(df_beta)
-df_beta_t = melt(df_beta_t)
-colnames(df_beta_t)=c('row','col','weight')
-col_order = col.order(df_beta_t,row_order)
-
-df_beta = df_beta[,col_order]
-df_beta = df_beta[row_order,]
-
-# df_beta[df_beta < 0.01] = 0
-# df_beta[df_beta > 1e-5] = 1
-
-p1 <- pheatmap(t(df_beta),colorRampPalette(c("navy", "grey","white"))(100),fontsize_row=8,fontsize_col=8,cluster_rows=FALSE,cluster_cols=FALSE,show_colnames=T)
-
-
-f = paste(args_home,args$output,args$cell_topic$out,args$cell_topic$model_info,args$cell_topic$model_id,"_cell_topic_cmark.pdf",sep="")
-ggsave(f,p1)
+p <-   pheatmap(dfm,color =colorRampPalette(c("white", "tan2"))(100),fontsize_row=6,fontsize_col=8,cluster_rows=FALSE,cluster_cols=FALSE,column_names_side = c("top"),angle_col = c("45"))
+ggsave(paste(it_id,"12_gsea.pdf",sep=""),p,width = 5, height = 6,dpi=600)
 
 }
-weightmat_phmap_plot_i(args)
