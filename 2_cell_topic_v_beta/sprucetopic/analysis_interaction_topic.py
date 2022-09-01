@@ -483,7 +483,7 @@ def subtype_circle_plot():
 
 def cancer_nbr_normal_nonnormal():
 
-    df = pd.read_csv(spr.interaction_topic.id+'2_a_meta_ct_argmax_maxprop.csv.gz')
+    df = pd.read_csv(spr.interaction_topic.id+'3_a_meta_ct_argmax_maxprop.csv.gz')
 
     '''here we are using celltype instead of
     cluster_celltype because cancer cells are 
@@ -504,16 +504,16 @@ def cancer_nbr_normal_nonnormal():
     dfs = dfs.rename(columns={celltype:'celltype_val'})
 
     # dfs = dfs[dfs['celltype_val']]
-    dfs.to_csv(spr.interaction_topic.id+'3_cell_nbr_ct_norm_cancer_summary.csv.gz',index=False,compression='gzip')
+    dfs.to_csv(spr.interaction_topic.id+'4_cell_nbr_ct_norm_cancer_summary.csv.gz',index=False,compression='gzip')
 
     # cancer vs normal in interaction topic
 
-    df=pd.read_csv(spr.interaction_topic.id+'2_meta_Cancer_cells_nbrs.csv.gz',compression='gzip')
+    df=pd.read_csv(spr.interaction_topic.id+'3_meta_Cancer_cells_nbrs.csv.gz',compression='gzip')
     selected_int_topics = [2,4,7,10,18,22,24]
     df = df[df['interact_topic'].isin(selected_int_topics)]
 
     celltype='Cancer'
-    dfmeta = pd.read_csv(spr.interaction_topic.id+'2_a_meta_ct_argmax_maxprop.csv.gz')
+    dfmeta = pd.read_csv(spr.interaction_topic.id+'3_a_meta_ct_argmax_maxprop.csv.gz')
     df = pd.merge(df,dfmeta,left_on='nbr',right_on='cell',how='left')
 
     '''here we are using celltype instead of
@@ -532,7 +532,7 @@ def cancer_nbr_normal_nonnormal():
 
     dfs = dfs.rename(columns={celltype:'celltype_val'})
 
-    dfs.to_csv(spr.interaction_topic.id+'3_cell_nbr_it_norm_cancer_summary.csv.gz',index=False,compression='gzip')
+    dfs.to_csv(spr.interaction_topic.id+'4_cell_nbr_it_norm_cancer_summary.csv.gz',index=False,compression='gzip')
 
 def deg_analysis():
     ##################################################################

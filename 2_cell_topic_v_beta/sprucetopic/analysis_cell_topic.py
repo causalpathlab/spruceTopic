@@ -13,7 +13,7 @@ def generate_umap_coordinates():
 
     dfh = spr.cell_topic.h.copy()
     df_umap= pd.DataFrame()
-    df_umap['cell_id'] = dfh['cell']
+    df_umap['cell'] = dfh['cell']
 
     umap_2d = umap.UMAP(n_components=2, init='random', random_state=0,min_dist=0.0,metric='cosine')
     proj_2d = umap_2d.fit(dfh.iloc[:,1:])
@@ -49,7 +49,7 @@ def umap_plots_argmax():
     p.axes.set_title("UMAP plot of cell-mixture with argmax cell topic assignment",fontsize=30)
     p.set_xlabel("UMAP1",fontsize=20)
     p.set_ylabel("UMAP2",fontsize=20)
-    plt.savefig(spr.cell_topic.id+'1_a_umap_ct_argmax.png',dpi=300);plt.close()
+    plt.savefig(spr.cell_topic.id+'1_a_umap_ct_argmax.png',dpi=600);plt.close()
 
 def kmeans_label():
 
@@ -128,6 +128,7 @@ def umap_add_cell_annotation_label():
 
     'CAF_n':'CAF',
     'CAFs':'CAF',
+    'Myofibroblast_n':'CAF',
 
     'Cancer_Epithelial':'Cancer',
 
@@ -159,7 +160,6 @@ def umap_add_cell_annotation_label():
 
     df_umap.to_csv(spr.cell_topic.id +'1_d_celltopic_label.csv.gz',index=False,compression='gzip')
 
-
 #### plot figures ####
 
 def umap_plots_kmeans_label():
@@ -183,7 +183,7 @@ def umap_plots_kmeans_label():
     p.set_xlabel("UMAP1",fontsize=20)
     p.set_ylabel("UMAP2",fontsize=20)
     plt.axis('off')
-    plt.savefig(spr.cell_topic.id+'2_a_kmeans_celltype_grouped.png',dpi=300);plt.close()
+    plt.savefig(spr.cell_topic.id+'2_a_kmeans_celltype_grouped.png',dpi=600);plt.close()
 
 def latent_hist_plots():
     ##################################################################
@@ -203,7 +203,7 @@ def latent_hist_plots():
     _ = plt.xticks(rotation=45, ha='right')
     p.set_xlabel('Cell topic',fontsize=20)
     p.set_ylabel('Topic proportion distribution',fontsize=20)
-    plt.savefig(spr.cell_topic.id+'2_a_topic_distribution.png',dpi=300);plt.close()
+    plt.savefig(spr.cell_topic.id+'2_a_topic_distribution.png',dpi=600);plt.close()
 
     ##################################################################
     # 1 b
@@ -219,7 +219,7 @@ def latent_hist_plots():
     p = sns.barplot(x='cell_topic',y='argmax_count',data=df_hmax,palette=sns.color_palette("hls", 50))
     p.set_xlabel("Cell Topic",fontsize=20)
     p.set_ylabel("Total cells",fontsize=20)
-    plt.savefig(spr.cell_topic.id+'2_a_ct_argmax.png',dpi=300);plt.close()
+    plt.savefig(spr.cell_topic.id+'2_a_ct_argmax.png',dpi=600);plt.close()
 
     '''    In [73]: df_hmax.argmax_count.mean()
         Out[73]: 3118.26
@@ -261,7 +261,7 @@ def latent_hist_plots_withcelltype():
     ax.set_xlabel("Cell topic",fontsize=20)
     ax.set_ylabel("Cell type distribution",fontsize=20)
     sns.move_legend(ax, "center left", bbox_to_anchor=(1, 0.5))
-    plt.savefig(spr.cell_topic.id+'2_b_ct_celltype_dist_norm.pdf',format="pdf",dpi=300);plt.close()
+    plt.savefig(spr.cell_topic.id+'2_b_ct_celltype_dist_norm.pdf',format="pdf",dpi=600);plt.close()
 
     ax=sns.histplot(data=dfs,x="cell_topic",
     hue="celltype",weights="celltype_val",multiple="stack",discrete=True,palette=sns.color_palette(colors, 9))
@@ -269,7 +269,7 @@ def latent_hist_plots_withcelltype():
     ax.set_xlabel("Cell topic",fontsize=20)
     ax.set_ylabel("Cell type distribution",fontsize=20)
     sns.move_legend(ax, "center left", bbox_to_anchor=(1, 0.5))
-    plt.savefig(spr.cell_topic.id+'2_c_ct_celltype_dist.pdf',format="pdf",dpi=300);plt.close()
+    plt.savefig(spr.cell_topic.id+'2_c_ct_celltype_dist.pdf',format="pdf",dpi=600);plt.close()
 
     dfs.to_csv(spr.cell_topic.id+'2_d_ct_celltype_dist_norm.csv',index=False)
 
@@ -286,7 +286,7 @@ def umap_plots_kmeans_label():
     import colorcet as cc
     import seaborn as sns
 
-    df_umap = pd.read_csv(spr.cell_topic.id+'1_a_umap_cordinates.csv.gz',compression='gzip')
+    df_umap = pd.read_csv(spr.cell_topic.id+'1_d_celltopic_label.csv.gz',compression='gzip')
 
     # if we need to select topics with >100 cells
     # selected_topic = list(df_umap.topic.value_counts().index[0:32])
@@ -300,10 +300,10 @@ def umap_plots_kmeans_label():
     p.axes.set_title("UMAP plot of cell-mixture with argmax cell topic assignment",fontsize=30)
     p.set_xlabel("UMAP1",fontsize=20)
     p.set_ylabel("UMAP2",fontsize=20)
-    plt.savefig(spr.cell_topic.id+'2_c_umap_ct_argmax.png',dpi=300);plt.close()
+    plt.savefig(spr.cell_topic.id+'2_c_umap_ct_argmax.png',dpi=600);plt.close()
 
 
-    df_umap = pd.read_csv(spr.cell_topic.id +'2_b_umap_cordinates_celllabel.csv.gz')
+    df_umap = pd.read_csv(spr.cell_topic.id +'1_d_celltopic_label.csv.gz')
     # plot all labels
     import matplotlib.pylab as plt
     plt.rcParams['figure.figsize'] = [15, 10]
@@ -318,7 +318,7 @@ def umap_plots_kmeans_label():
     # plt.figtext(.1,.8,"singleR/CHETAH for normal dataset",fontsize=20)
     p.set_xlabel("UMAP1",fontsize=20)
     p.set_ylabel("UMAP2",fontsize=20)
-    plt.savefig(spr.cell_topic.id+'2_d_umap_celltype.png',dpi=300);plt.close()
+    plt.savefig(spr.cell_topic.id+'2_d_umap_celltype.png',dpi=600);plt.close()
 
     #### plot major cell types
 
@@ -328,68 +328,7 @@ def umap_plots_kmeans_label():
     import colorcet as cc
     import seaborn as sns
 
-    df_umap = pd.read_csv(spr.cell_topic.id +'2_b_umap_cordinates_celllabel.csv.gz')
-
-    xrep={
-    'B_cell_n':'B',
-    'B_cells_Memory':'B',
-    'B_cells_Naive':'B',
-
-    'CAF_n':'CAF',
-    'CAFs_MSC_iCAF_like':'CAF',
-    'CAFs_myCAF_like':'CAF',
-
-    'Cancer_Basal_SC':'Cancer',
-    'Cancer_Cycling':'Cancer',
-    'Cancer_Her2_SC':'Cancer',
-    'Cancer_LumA_SC':'Cancer',
-    'Cancer_LumB_SC':'Cancer',
-
-    'Endothelial_ACKR1':'Endothelial',
-    'Endothelial_CXCL12':'Endothelial',
-    'Endothelial_Lymphatic_LYVE1':'Endothelial',
-    'Endothelial_RGS5':'Endothelial',
-    'Endothelial_n':'Endothelial',
-
-    'Epithelial_n':'Epithelial',
-    'Luminal_Progenitors':'Epithelial',
-    'Mature_Luminal':'Epithelial',
-    'Myoepithelial':'Epithelial',
-
-    'Cycling_Myeloid':'Myeloid',
-    'DCs':'Myeloid',
-    'Dendritic_n':'Myeloid',
-    'Macrophage':'Myeloid',
-    'Macrophage_n':'Myeloid',
-    'Mast_n':'Myeloid',
-    'Monocyte':'Myeloid',
-
-    'Myofibroblast_n':'Fibroblasts',
-
-    'NKT_cells':'NK',
-    'NK_cells':'NK',
-    'NK_n':'NK',
-
-    'PVL_Differentiated':'PVL',
-    'PVL_Immature':'PVL',
-    'Cycling_PVL':'PVL',
-
-    'Plasma_n':'Plasmablasts',
-    'Plasmablasts':'Plasmablasts',
-
-    'Cycling_T_cells':'T',
-    'CD4_T_cell_n':'T',
-    'T_CD4_pan':'T',
-    'CD8_T_cell_n':'T',
-    'T_CD8_pan':'T',
-    'T_cells_CD4+':'T',
-    'T_cells_CD8+':'T',
-    'reg._T_cell_n':'T'
-
-    }
-
-    df_umap['celltype'] = [ xrep[x] for x in df_umap['celltype_minor']]
-
+    df_umap = pd.read_csv(spr.cell_topic.id +'1_d_celltopic_label.csv.gz')
 
     df_umap = df_umap.sort_values('celltype')
     # cp = sns.color_palette(cc.glasbey, n_colors=len(df_umap['celltype'].unique()))
@@ -402,11 +341,11 @@ def umap_plots_kmeans_label():
     # plt.figtext(.1,.8,"singleR/CHETAH for normal dataset",fontsize=20)
     p.set_xlabel("UMAP1",fontsize=20)
     p.set_ylabel("UMAP2",fontsize=20)
-    plt.savefig(spr.cell_topic.id+'2_e_umap_celltype_grouped.png',format='png',dpi=300);plt.close()
+    plt.savefig(spr.cell_topic.id+'2_e_umap_celltype_grouped.png',format='png',dpi=600);plt.close()
 
 def umap_plot_cell_subtype_label():
 
-    df_umap = pd.read_csv(spr.cell_topic.id +'2_b_umap_cordinates_celllabel.csv.gz')
+    df_umap = pd.read_csv(spr.cell_topic.id +'1_d_celltopic_label.csv.gz')
     df_umap['selected'] = [ x  if x in ['TNBC','ER+','HER2+'] else 'Others' for x in df_umap['subtype']]
     df_umap = df_umap.sort_values('selected')
 
@@ -418,14 +357,15 @@ def umap_plot_cell_subtype_label():
     # plt.figtext(.1,.8,"singleR/CHETAH for normal dataset",fontsize=20)
     p.set_xlabel("UMAP1",fontsize=20)
     p.set_ylabel("UMAP2",fontsize=20)
-    plt.savefig(spr.cell_topic.id+'2_f_umap_celltype_subtype.png',format='png',dpi=300);plt.close()
+    plt.savefig(spr.cell_topic.id+'2_f_umap_celltype_subtype.png',format='png',dpi=600);plt.close()
 
 def umap_plot_cell_normal_dataset_label():
 
-    df_umap = pd.read_csv(spr.cell_topic.id +'2_b_umap_cordinates_celllabel.csv.gz')
-    df_umap['selected'] = [ x  if '_n' in x else 'Others' for x in df_umap['celltype']]
+    df_umap = pd.read_csv(spr.cell_topic.id +'1_d_celltopic_label.csv.gz')
+    df_umap['selected'] = [ x  if '_n' in x else 'Others' for x in df_umap['cluster_celltype']]
     df_umap = df_umap.sort_values('selected')
-    colors =  ["orange", "#1CE6FF", "#FF34FF", "#FF4A46", "#008941", "#006FA6", "#A30059","#FFDBE5", "#7A4900","gray", "#0000A6", "#63FFAC", "#B79762", "#004D43"]
+    colors =  ["orange", "#1CE6FF", "fuchsia", "#7A4900", "green","gray","#006FA6" ,"limegreen", "red", "blue"]
+    colors =  ["orange", "#1CE6FF",  "#7A4900","green","#006FA6" ,"gray", "red",]
 
 
     sns.set_palette(sns.color_palette(colors))
@@ -435,12 +375,28 @@ def umap_plot_cell_normal_dataset_label():
     # plt.figtext(.1,.8,"singleR/CHETAH for normal dataset",fontsize=20)
     p.set_xlabel("UMAP1",fontsize=20)
     p.set_ylabel("UMAP2",fontsize=20)
-    plt.savefig(spr.cell_topic.id+'2_g_umap_celltype_gsenormal.png',format='png',dpi=300);plt.close()
+    plt.savefig(spr.cell_topic.id+'2_g_umap_celltype_gsenormal.png',format='png',dpi=600);plt.close()
+
+
+    df_umap['selected'] = [ x  if '_n' not in x else 'Others' for x in df_umap['cluster_celltype']]
+    df_umap['selected'] = [ x  if '_pan' not in x else 'Others' for x in df_umap['selected']]
+    df_umap = df_umap.sort_values('selected')
+    colors =  ["orange", "#1CE6FF", "fuchsia", "#7A4900", "#006FA6" ,"green","gray","limegreen", "red", "blue"]
+
+
+    sns.set_palette(sns.color_palette(colors))
+    p = sns.scatterplot(data=df_umap, x='umap1', y='umap2', hue='selected',s=0.2)
+    plt.legend(title='Celltype',title_fontsize=18, fontsize=14,loc='center left', bbox_to_anchor=(1, 0.5))
+    p.axes.set_title("UMAP plot of cells from cancer dataset",fontsize=30)
+    # plt.figtext(.1,.8,"singleR/CHETAH for normal dataset",fontsize=20)
+    p.set_xlabel("UMAP1",fontsize=20)
+    p.set_ylabel("UMAP2",fontsize=20)
+    plt.savefig(spr.cell_topic.id+'2_g_umap_celltype_gsecancer.png',format='png',dpi=600);plt.close()
 
 def umap_plot_cell_pan_dataset_label():
 
-    df_umap = pd.read_csv(spr.cell_topic.id +'2_b_umap_cordinates_celllabel.csv.gz')
-    selected = [ x  if '_pan' in x else 'Others' for x in df_umap['celltype']]
+    df_umap = pd.read_csv(spr.cell_topic.id +'1_d_celltopic_label.csv.gz')
+    selected = [ x  if '_pan' in x else 'Others' for x in df_umap['celltype_major']]
     colors = ["Gray","Green", "Red"]
     sns.set_palette(sns.color_palette(colors))
     p = sns.scatterplot(data=df_umap, x='umap1', y='umap2', hue=selected,s=0.2)
@@ -449,11 +405,11 @@ def umap_plot_cell_pan_dataset_label():
     # plt.figtext(.1,.8,"singleR/CHETAH for normal dataset",fontsize=20)
     p.set_xlabel("UMAP1",fontsize=20)
     p.set_ylabel("UMAP2",fontsize=20)
-    plt.savefig(spr.cell_topic.id+'2_h_umap_celltype_pan.png',format="png",dpi=300);plt.close()
+    plt.savefig(spr.cell_topic.id+'2_h_umap_celltype_pan.png',format="png",dpi=600);plt.close()
 
 def umap_plot_cell_kmeans_cluster_label():
 
-    df_umap = pd.read_csv(spr.cell_topic.id +'2_i_kmeans.csv.gz')
+    df_umap = pd.read_csv(spr.cell_topic.id +'1_d_celltopic_label.csv.gz')
     ######
 
     cp = sns.color_palette(cc.glasbey, n_colors=len(df_umap['cluster'].unique()))
@@ -463,9 +419,7 @@ def umap_plot_cell_kmeans_cluster_label():
     p.axes.set_title("UMAP plot of cell-mixture kmeans label",fontsize=30)
     p.set_xlabel("UMAP1",fontsize=20)
     p.set_ylabel("UMAP2",fontsize=20)
-    plt.savefig(spr.cell_topic.id+'2_j_kmeans_cluster.png',dpi=300);plt.close()
-
-
+    plt.savefig(spr.cell_topic.id+'2_j_kmeans_cluster.png',dpi=600);plt.close()
 
 def struct_plot_from_kmeans():
     ##################################################################
