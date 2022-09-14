@@ -454,6 +454,16 @@ def correlation_lr_network():
     # df_chordm['score'] = 1
     # df_chordm = df_chordm[['value','topic','variable']]
 
+
+    # get and mark top genes
+    from analysis import _topics
+    top_n = 50
+    df_top_genes = _topics.topic_top_lr_genes(spr,top_n)
+    top_receptors = df_top_genes[df_top_genes['GeneType']=='ligands']['Gene'].unique()
+    top_ligands = df_top_genes[df_top_genes['GeneType']=='receptors']['Gene'].unique()
+
+    df_chord['ligand'] = [ x+'*' if x in top_ligands else x for x in df_chord['ligand']]
+    df_chord['receptor'] = [ x+'*' if x in top_receptors else x for x in df_chord['receptor']]
     df_chord = df_chord.drop(columns=['score'])
     df_chord.to_csv(spr.interaction_topic.id+'8_chorddata.csv.gz',index=False,compression='gzip')
 
@@ -618,10 +628,16 @@ def heterogeneity_tnbc():
             ) ]
 
     selected_int_topics = [24,22,18,10,7,4,2]
-    tr,tl= _topics.get_topic_top_genes(spr,selected_int_topics,10)
+    tr,tl= _topics.get_topic_top_genes(spr,selected_int_topics,25)
     # dfn_l = dfn[tl]
 
     ext = ['Cancer','subtype','cell_topic']
+    dfjoin_r = dfjoin[ext+tr]
+    dfjoin_l = dfjoin[ext+tl]
+
+    tr = list(pd.DataFrame(dfjoin_r.iloc[:,3:].mean(),columns=['val']).query("val>0.05").index)
+    tl = list(pd.DataFrame(dfjoin_l.iloc[:,3:].mean(),columns=['val']).query("val>0.05").index)
+
     dfjoin_r = dfjoin[ext+tr]
     dfjoin_l = dfjoin[ext+tl]
 

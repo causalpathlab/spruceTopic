@@ -1,5 +1,5 @@
 ### chord diagram  ###
-chordDiagram <- function(){
+plot_chordDiagram <- function(){
 
 file = paste(it_id,"8_chorddata.csv.gz",sep="")
 df = read.table(file, sep = ",", header=TRUE)
@@ -33,8 +33,7 @@ chordDiagram(dfl,
              grid.col=grid_col,
              col = grid_col[as.character(dfl[[1]])],
              annotationTrack = c("grid"), 
-             preAllocateTracks = 1, 
-
+             preAllocateTracks = 1
              )
 
 

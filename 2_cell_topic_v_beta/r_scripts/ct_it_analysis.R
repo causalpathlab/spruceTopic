@@ -1,7 +1,7 @@
 ################################ set up ##################
 args_home ="/home/BCCRC.CA/ssubedi/projects/experiments/spruce_topic/2_cell_topic_v_beta/"
 # args_home ="/home/sishirsubedi/projects/experiments/spruce_topic/2_cell_topic_v_beta/"
-setwd(paste(args_home,'scripts/',sep=''))
+setwd(paste(args_home,'r_scripts/',sep=''))
 library(yaml)
 options(rlib_downstream_check = FALSE)
 config = paste(args_home,"config.yaml",sep="") 
@@ -180,7 +180,7 @@ summary_plot_cancer_v2(df_summary,f,tag,col)
 source('fig_topic_summary.R')
 summary_file = paste(it_id,'4_cell_nbr_it_norm_cancer_summary.csv.gz',sep="")
 df_summary = read.table(summary_file,sep=',', header=TRUE)
-f = paste(it_model_id,'4_cell_nbr_it_norm_cancer_summary.pdf',sep="")
+f = paste(it_id,'4_cell_nbr_it_norm_cancer_summary.pdf',sep="")
 col=1
 tag='interact_topic_x'
 df_summary$cells = 'Cancer neighbours'
@@ -194,6 +194,25 @@ source('fig_celltype_summary.R')
 df = read.table(paste(it_id,'4_it_celltypedist.csv.gz',sep=""),sep=',', header=TRUE)
 f = paste(it_id,"4_it_celltypedist.pdf",sep="")
 ccv_struct_plot_v2(df,f)
+
+
+source('fig_celltype_summary.R')
+df = read.table(paste(it_id,'4_it_celltypedist.csv.gz',sep=""),sep=',', header=TRUE)
+df$interact_topic = as.factor(df$interact_topic)
+
+library(ggplot2)
+library(Polychrome)
+
+col_vector <- as.vector(kelly.colors(22))[16:22]
+
+p <-
+ggplot(df, aes(x=cluster_celltype, y=celltype,size=ncount, fill=as.factor(interact_topic))) +
+  geom_point() +
+  scale_fill_manual("Cell type ",values=col_vector)+
+  facet_wrap(~cluster_celltype+interact_topic)
+
+f = paste(it_id,"4_it_celltypedist_hmap.pdf",sep="")
+ggsave(f,p,width = 30, height = 20,limitsize=F)
 
 source('fig_celltype_summary.R')
 df = read.table(paste(it_model_id,'_it_4_cancercells_it_cluster_celltypedist_normal.csv.gz',sep=""),sep=',', header=TRUE)
