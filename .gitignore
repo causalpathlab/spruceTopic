@@ -2,7 +2,7 @@
 # Ignore all data files
 /data/
 /database/
-
+/output/
 
 *.txt
 *.csv
